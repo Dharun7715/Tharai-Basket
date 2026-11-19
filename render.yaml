@@ -17,6 +17,12 @@ services:
         value: 25
       - key: MIN_ORDER_VALUE
         value: 100
+      - key: DELIVERY_CENTER_LAT
+        value: 11.69522
+      - key: DELIVERY_CENTER_LON
+        value: 77.96991
+      - key: DELIVERY_RADIUS_KM
+        value: 5
       - key: DATABASE_URL
         fromDatabase:
           name: tharai-basket-db
