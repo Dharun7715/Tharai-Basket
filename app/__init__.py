@@ -1,4 +1,5 @@
 import os
+import hmac
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from functools import wraps
@@ -281,6 +282,41 @@ def create_app():
                 return redirect(request.args.get('next') or url_for('index'))
             flash('Incorrect email or password.', 'danger')
         return render_template('auth.html', mode='login')
+
+    @app.route('/admin/setup', methods=['GET', 'POST'])
+    def admin_setup():
+        # One-time setup is available only before the first administrator exists.
+        setup_key = os.environ.get('ADMIN_SETUP_KEY', '')
+        if not setup_key or User.query.filter_by(role='admin').first():
+            abort(404)
+
+        if request.method == 'POST':
+            supplied_key = request.form.get('setup_key', '')
+            if not hmac.compare_digest(supplied_key, setup_key):
+                flash('Invalid setup key.', 'danger')
+                return render_template('admin_setup.html')
+
+            name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip().lower()
+            password = request.form.get('password', '')
+            confirm_password = request.form.get('confirm_password', '')
+
+            if not name or not email or len(password) < 12:
+                flash('Enter your name, email and a password with at least 12 characters.', 'danger')
+            elif password != confirm_password:
+                flash('Passwords do not match.', 'danger')
+            elif User.query.filter_by(email=email).first():
+                flash('An account with this email already exists. Use a different email.', 'danger')
+            else:
+                admin = User(name=name, email=email, role='admin', active=True)
+                admin.set_password(password)
+                db.session.add(admin)
+                db.session.commit()
+                login_user(admin)
+                flash('Administrator account created. Keep your login details safe.', 'success')
+                return redirect(url_for('admin_dashboard'))
+
+        return render_template('admin_setup.html')
 
     @app.get('/logout')
     @login_required
