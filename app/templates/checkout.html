@@ -1,1 +1,54 @@
-{% extends 'base.html' %}{% block title %}Checkout | Tharai Basket{% endblock %}{% block content %}<section class="section"><div class="container"><div class="section-heading"><div><span class="eyebrow">ALMOST THERE</span><h2>Delivery <em>details.</em></h2></div></div><div class="cart-layout"><form method="post" class="form-card"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Recipient name<input name="name" value="{{ current_user.name }}" required></label><label>Phone number<input name="phone" value="{{ current_user.phone }}" required></label><label>Full delivery address<textarea name="address" rows="4" required placeholder="Door number, street, area, Tharamangalam"></textarea></label><label>Payment method<select name="payment_method"><option value="COD">Cash on Delivery</option><option value="UPI">UPI (payment confirmation required)</option></select></label><button class="btn btn-full">Place order</button></form><aside class="summary-card"><h3>Order summary</h3>{% for row in rows %}<div class="summary-line"><span>{{ row.product.name }} × {{ row.quantity }}</span><strong>{{ row.line_total|inr }}</strong></div>{% endfor %}<div class="summary-line"><span>Subtotal</span><strong>{{ subtotal|inr }}</strong></div><div class="summary-line"><span>Delivery</span><strong>{{ 'FREE' if delivery_fee == 0 else delivery_fee|inr }}</strong></div><div class="summary-total"><span>Payable</span><strong>{{ total|inr }}</strong></div><p class="summary-note">UPI is currently recorded as awaiting confirmation. Live payment gateway is not enabled in this starter release.</p></aside></div></div></section>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Checkout | Tharai Basket{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="section-heading"><div><span class="eyebrow">ALMOST THERE</span><h2>Delivery <em>details.</em></h2></div></div>
+    <div class="cart-layout">
+      <form method="post" class="form-card">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Recipient name<input name="name" value="{{ current_user.name }}" required></label>
+        <label>Phone number<input name="phone" value="{{ current_user.phone }}" required></label>
+        <label>Full delivery address<textarea name="address" rows="4" required placeholder="Door number, street, area, Tharamangalam"></textarea></label>
+        <label>Payment method
+          <select name="payment_method" id="payment-method" onchange="toggleUpiPayment()">
+            <option value="COD">Cash on Delivery</option>
+            <option value="UPI">UPI – Scan any UPI app</option>
+          </select>
+        </label>
+        <div id="upi-payment-panel" class="summary-card" style="display:none;margin:16px 0">
+          <h3>Pay securely using any UPI app</h3>
+          <p class="summary-note">Scan this QR using Google Pay, PhonePe, Paytm, BHIM or another UPI app. The payable amount is pre-filled.</p>
+          <div style="text-align:center;padding:12px">
+            <img src="{{ upi_qr_data }}" alt="Dynamic UPI payment QR for ₹{{ '%.2f'|format(total) }}" style="width:min(100%,280px);height:auto;background:#fff;padding:10px;border-radius:12px">
+            <h2 style="margin:8px 0">₹{{ '%.2f'|format(total) }}</h2>
+            <p><strong>{{ upi_id }}</strong></p>
+          </div>
+          <label>UPI transaction reference / UTR
+            <input name="upi_reference" id="upi-reference" placeholder="Enter the UTR after payment" autocomplete="off">
+          </label>
+          <small class="muted">Your order will remain awaiting UPI verification until the store confirms the payment.</small>
+        </div>
+        <button class="btn btn-full">Place order</button>
+      </form>
+      <aside class="summary-card">
+        <h3>Order summary</h3>
+        {% for row in rows %}<div class="summary-line"><span>{{ row.product.name }} × {{ row.quantity }}</span><strong>{{ row.line_total|inr }}</strong></div>{% endfor %}
+        <div class="summary-line"><span>Subtotal</span><strong>{{ subtotal|inr }}</strong></div>
+        <div class="summary-line"><span>Delivery</span><strong>{{ 'FREE' if delivery_fee == 0 else delivery_fee|inr }}</strong></div>
+        <div class="summary-total"><span>Payable</span><strong>{{ total|inr }}</strong></div>
+        <p class="summary-note">Free delivery on orders of ₹300 or more. Otherwise, delivery is ₹25 within Tharamangalam.</p>
+      </aside>
+    </div>
+  </div>
+</section>
+<script>
+function toggleUpiPayment() {
+  const method = document.getElementById('payment-method').value;
+  const panel = document.getElementById('upi-payment-panel');
+  const reference = document.getElementById('upi-reference');
+  panel.style.display = method === 'UPI' ? 'block' : 'none';
+  reference.required = method === 'UPI';
+}
+</script>
+{% endblock %}
