@@ -41,20 +41,66 @@ python run.py
 
 Open `http://127.0.0.1:5000`.
 
+On macOS/Linux, activate with `source .venv/bin/activate` and set environment variables using `export`.
+
+## Admin account
+
+Create an administrator interactively:
+
+```bash
+flask --app wsgi:app create-admin
+```
+
+Do not use a shared or default admin password. Keep credentials private.
+
+## Demo data
+
+```bash
+flask --app wsgi:app seed-demo
+```
+
+Demo prices are examples only. Replace them with verified wholesale costs and approved selling prices before enabling orders.
+
 ## Render deployment
 
-A `render.yaml` blueprint is included. Create a Blueprint from this repository, confirm PostgreSQL and web service resources, set a strong `SECRET_KEY`, deploy, then create an admin account and seed demo data through Render Shell.
+A `render.yaml` blueprint is included. For deployment:
+
+1. Push this project to a private or public GitHub repository.
+2. In Render, create a Blueprint from that repository.
+3. Confirm the PostgreSQL database and web service resources.
+4. Set a strong `SECRET_KEY` in the Render environment.
+5. Deploy, then use Render Shell to run `flask --app wsgi:app create-admin` and `flask --app wsgi:app seed-demo` as appropriate.
+6. Verify `/health`, customer signup, admin login, product management and test checkout.
+
+Persistent uploads should be moved to an object-storage service before production because the default local upload folder may not persist across redeploys.
 
 ## GitHub upload
 
-The full project folder must be pushed to the repository root. Never commit `.env`, credentials, payment keys or customer data.
+Create a repository named `tharai-basket`, then upload the contents of this project folder (not the enclosing parent folder). Alternatively:
 
-## Current limitations
+```bash
+git init
+git add .
+git commit -m "Initial Tharai Basket MVP"
+git branch -M main
+git remote add origin https://github.com/YOUR-USERNAME/tharai-basket.git
+git push -u origin main
+```
+
+## Configuration
+
+See `.env.example`. Never commit `.env`, credentials, payment keys or customer data.
+
+## Current limitations to address before launch
 
 - No live Razorpay/UPI payment integration is activated.
 - No live GPS tracking or automated route optimisation.
-- Supplier purchasing, actual cost entry and stock reconciliation need further production work.
-- Refunds, cancellation rules, coupon redemption, customer address book and automated notifications are not complete.
-- Local image uploads need persistent object storage on hosted deployment.
+- Supplier purchases can be generated as lists, but supplier assignment, actual cost entry and stock reconciliation need a full purchasing workflow before production.
+- Product edit UI, refund workflow, cancellation rules, coupon redemption and customer address book are not yet complete.
+- Admin-created delivery partner passwords should be temporary and changed securely; add password-reset flow before launch.
+- Upload validation checks extension; production deployment should also inspect file content and use persistent object storage.
+- This MVP does not include automated SMS/email/WhatsApp notifications.
+
+## License
 
 Private project. Add an appropriate license before public distribution.
