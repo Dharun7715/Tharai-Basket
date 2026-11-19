@@ -1,9 +1,14 @@
 import os
 import hmac
+import base64
+import io
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 from pathlib import Path
+from urllib.parse import urlencode
+
+import qrcode
 
 from flask import Flask, render_template, redirect, url_for, request, flash, session, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -387,15 +392,36 @@ def create_app():
             return redirect(url_for('cart'))
         threshold = app.config['FREE_DELIVERY_THRESHOLD']
         fee = Decimal('0') if subtotal >= threshold else app.config['DELIVERY_FEE']
+        total = subtotal + fee
+
+        # Create a dynamic UPI QR with this checkout's exact payable amount.
+        upi_params = {
+            'pa': '8838145515@sbi',
+            'pn': 'DHARUN M',
+            'am': f'{total:.2f}',
+            'cu': 'INR',
+            'tn': 'Tharai Basket order payment',
+        }
+        upi_uri = 'upi://pay?' + urlencode(upi_params)
+        qr_image = qrcode.make(upi_uri)
+        qr_buffer = io.BytesIO()
+        qr_image.save(qr_buffer, format='PNG')
+        upi_qr_data = 'data:image/png;base64,' + base64.b64encode(qr_buffer.getvalue()).decode('ascii')
+
         if request.method == 'POST':
             name = request.form.get('name', '').strip()
             phone = request.form.get('phone', '').strip()
             address = request.form.get('address', '').strip()
-            payment = request.form.get('payment_method', 'COD')
+            payment = request.form.get('payment_method', 'COD').upper()
+            upi_reference = request.form.get('upi_reference', '').strip()
+            if payment not in ['COD', 'UPI']:
+                abort(400)
             if not all([name, phone, address]):
                 flash('Please complete your delivery details.', 'danger')
             elif subtotal < app.config['MIN_ORDER_VALUE']:
                 flash(f"Minimum order value is {app.config['CURRENCY']}{app.config['MIN_ORDER_VALUE']}.", 'warning')
+            elif payment == 'UPI' and not upi_reference:
+                flash('After paying by UPI, enter the UPI transaction reference / UTR.', 'warning')
             else:
                 # Re-check stock and calculate all prices on the server.
                 for row in rows:
@@ -404,8 +430,10 @@ def create_app():
                         return redirect(url_for('cart'))
                 order = Order(order_number=f"TB{datetime.utcnow():%y%m%d%H%M%S}{current_user.id}", user_id=current_user.id,
                               customer_name=name, phone=phone, address_text=address, subtotal=subtotal,
-                              delivery_fee=fee, total=subtotal + fee, payment_method=payment,
-                              payment_status='Pending' if payment == 'COD' else 'Awaiting UPI confirmation', status='Pending')
+                              delivery_fee=fee, total=total, payment_method=payment,
+                              payment_status='Pending' if payment == 'COD' else 'Awaiting UPI verification',
+                              status='Pending',
+                              notes=(f'UPI reference submitted by customer: {upi_reference}' if payment == 'UPI' else ''))
                 db.session.add(order)
                 db.session.flush()
                 for row in rows:
@@ -415,10 +443,10 @@ def create_app():
                     p.stock -= row['quantity']
                 db.session.commit()
                 session['cart'] = {}
-                flash(f'Order {order.order_number} placed successfully. Our team will confirm it shortly.', 'success')
+                flash(f'Order {order.order_number} placed successfully. UPI payment will be verified by our team.' if payment == 'UPI' else f'Order {order.order_number} placed successfully. Our team will confirm it shortly.', 'success')
                 return redirect(url_for('my_orders'))
-        return render_template('checkout.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=subtotal + fee)
-
+        return render_template('checkout.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=total,
+                               upi_qr_data=upi_qr_data, upi_id='8838145515@sbi')
     @app.get('/my-orders')
     @login_required
     def my_orders():
