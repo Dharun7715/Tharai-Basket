@@ -245,9 +245,12 @@ def create_app():
 
     @app.get('/')
     def index():
-        categories = Category.query.filter_by(active=True).order_by(Category.name).all()
-        products = Product.query.filter_by(active=True).order_by(Product.featured.desc(), Product.name).limit(24).all()
-        return render_template('index.html', categories=categories, products=products)
+        location_verified = bool(session.get('delivery_location'))
+        categories = Category.query.filter_by(active=True).order_by(Category.name).all() if location_verified else []
+        products = Product.query.filter_by(active=True).order_by(Product.featured.desc(), Product.name).limit(24).all() if location_verified else []
+        return render_template('index.html', categories=categories, products=products,
+                               location_verified=location_verified,
+                               delivery_location=session.get('delivery_location'))
 
     @app.get('/product/<int:product_id>')
     def product_detail(product_id):
@@ -402,6 +405,35 @@ def create_app():
         distance_km = 6371.0 * 2 * math.asin(math.sqrt(haversine))
         eligible = distance_km <= app.config['DELIVERY_RADIUS_KM']
         return jsonify({'eligible': eligible, 'distance_km': round(distance_km, 2), 'radius_km': app.config['DELIVERY_RADIUS_KM']})
+
+    @app.post('/api/set-delivery-location')
+    def set_delivery_location():
+        try:
+            customer_lat = float(request.form.get('lat', ''))
+            customer_lon = float(request.form.get('lon', ''))
+            if not (-90 <= customer_lat <= 90 and -180 <= customer_lon <= 180):
+                raise ValueError('Invalid coordinates')
+        except (TypeError, ValueError):
+            return jsonify({'eligible': False, 'error': 'Valid GPS coordinates are required.'}), 400
+        lat1 = math.radians(app.config['DELIVERY_CENTER_LAT'])
+        lat2 = math.radians(customer_lat)
+        dlat = lat2 - lat1
+        dlon = math.radians(customer_lon - app.config['DELIVERY_CENTER_LON'])
+        haversine = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+        distance_km = 6371.0 * 2 * math.asin(math.sqrt(haversine))
+        eligible = distance_km <= app.config['DELIVERY_RADIUS_KM']
+        if eligible:
+            session['delivery_location'] = {'lat': customer_lat, 'lon': customer_lon,
+                                            'distance_km': round(distance_km, 2)}
+            return jsonify({'eligible': True, 'distance_km': round(distance_km, 2)})
+        session.pop('delivery_location', None)
+        return jsonify({'eligible': False, 'distance_km': round(distance_km, 2),
+                        'error': 'Delivery is available only within 5 km of Tharamangalam town centre.'}), 403
+
+    @app.get('/change-delivery-location')
+    def clear_delivery_location():
+        session.pop('delivery_location', None)
+        return redirect(url_for('index'))
 
     @app.route('/checkout', methods=['GET', 'POST'])
     @login_required
