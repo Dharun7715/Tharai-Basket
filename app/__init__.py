@@ -2,6 +2,7 @@ import os
 import hmac
 import base64
 import io
+import math
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from functools import wraps
@@ -39,6 +40,9 @@ def create_app():
         FREE_DELIVERY_THRESHOLD=Decimal(os.environ.get('FREE_DELIVERY_THRESHOLD', '300')),
         DELIVERY_FEE=Decimal(os.environ.get('DELIVERY_FEE', '25')),
         MIN_ORDER_VALUE=Decimal(os.environ.get('MIN_ORDER_VALUE', '100')),
+        DELIVERY_CENTER_LAT=float(os.environ.get('DELIVERY_CENTER_LAT', '11.69522')),
+        DELIVERY_CENTER_LON=float(os.environ.get('DELIVERY_CENTER_LON', '77.96991')),
+        DELIVERY_RADIUS_KM=float(os.environ.get('DELIVERY_RADIUS_KM', '5')),
         CURRENCY='₹',
     )
     # Render commonly supplies postgres://; SQLAlchemy expects postgresql://.
@@ -381,6 +385,24 @@ def create_app():
         fee = Decimal('0') if subtotal >= threshold else app.config['DELIVERY_FEE']
         return render_template('cart.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=subtotal + fee, threshold=threshold)
 
+    @app.get('/api/delivery-check')
+    def delivery_check():
+        try:
+            customer_lat = float(request.args.get('lat', ''))
+            customer_lon = float(request.args.get('lon', ''))
+            if not (-90 <= customer_lat <= 90 and -180 <= customer_lon <= 180):
+                raise ValueError('Invalid coordinates')
+        except (TypeError, ValueError):
+            return jsonify({'eligible': False, 'error': 'Valid GPS coordinates are required.'}), 400
+        lat1 = math.radians(app.config['DELIVERY_CENTER_LAT'])
+        lat2 = math.radians(customer_lat)
+        dlat = lat2 - lat1
+        dlon = math.radians(customer_lon - app.config['DELIVERY_CENTER_LON'])
+        haversine = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+        distance_km = 6371.0 * 2 * math.asin(math.sqrt(haversine))
+        eligible = distance_km <= app.config['DELIVERY_RADIUS_KM']
+        return jsonify({'eligible': eligible, 'distance_km': round(distance_km, 2), 'radius_km': app.config['DELIVERY_RADIUS_KM']})
+
     @app.route('/checkout', methods=['GET', 'POST'])
     @login_required
     def checkout():
@@ -414,9 +436,26 @@ def create_app():
             address = request.form.get('address', '').strip()
             payment = request.form.get('payment_method', 'COD').upper()
             upi_reference = request.form.get('upi_reference', '').strip()
+            try:
+                customer_lat = float(request.form.get('delivery_lat', ''))
+                customer_lon = float(request.form.get('delivery_lon', ''))
+                if not (-90 <= customer_lat <= 90 and -180 <= customer_lon <= 180):
+                    raise ValueError('Invalid coordinates')
+                lat1 = math.radians(app.config['DELIVERY_CENTER_LAT'])
+                lat2 = math.radians(customer_lat)
+                dlat = lat2 - lat1
+                dlon = math.radians(customer_lon - app.config['DELIVERY_CENTER_LON'])
+                haversine = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+                distance_km = 6371.0 * 2 * math.asin(math.sqrt(haversine))
+            except (TypeError, ValueError):
+                distance_km = None
             if payment not in ['COD', 'UPI']:
                 abort(400)
-            if not all([name, phone, address]):
+            if distance_km is None:
+                flash('Please share your current location to check delivery availability.', 'warning')
+            elif distance_km > app.config['DELIVERY_RADIUS_KM']:
+                flash(f"Sorry, delivery is currently available only within {app.config['DELIVERY_RADIUS_KM']:g} km of Tharamangalam town centre. Your location is {distance_km:.1f} km away.", 'danger')
+            elif not all([name, phone, address]):
                 flash('Please complete your delivery details.', 'danger')
             elif subtotal < app.config['MIN_ORDER_VALUE']:
                 flash(f"Minimum order value is {app.config['CURRENCY']}{app.config['MIN_ORDER_VALUE']}.", 'warning')
