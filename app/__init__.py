@@ -518,6 +518,41 @@ def create_app():
                 return redirect(url_for('my_orders'))
         return render_template('checkout.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=total,
                                upi_qr_data=upi_qr_data, upi_id='8838145515@sbi')
+    @app.post('/order/<int:order_id>/buy-again')
+    @login_required
+    def buy_again(order_id):
+        if current_user.role != 'customer':
+            abort(403)
+        order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
+        cart = session.get('cart', {})
+        added = 0
+        unavailable = []
+        for item in order.items:
+            if not item.product_id:
+                unavailable.append(item.product_name)
+                continue
+            product = Product.query.get(item.product_id)
+            if not product or not product.active or product.stock <= 0:
+                unavailable.append(item.product_name)
+                continue
+            key = str(product.id)
+            requested = int(item.quantity)
+            current_qty = int(cart.get(key, 0))
+            new_qty = min(current_qty + requested, product.stock)
+            if new_qty > current_qty:
+                cart[key] = new_qty
+                added += new_qty - current_qty
+            if new_qty < current_qty + requested:
+                unavailable.append(product.name)
+        session['cart'] = cart
+        if added:
+            flash(f'{added} item(s) from order {order.order_number} added to your basket.', 'success')
+        if unavailable:
+            flash('Some items were unavailable or limited by current stock: ' + ', '.join(sorted(set(unavailable))), 'warning')
+        if not added and not unavailable:
+            flash('No available items found in this order.', 'warning')
+        return redirect(url_for('cart'))
+
     @app.get('/my-orders')
     @login_required
     def my_orders():
