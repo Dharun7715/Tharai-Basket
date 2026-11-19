@@ -31,8 +31,8 @@ def create_app():
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         MAX_CONTENT_LENGTH=5 * 1024 * 1024,
         UPLOAD_FOLDER=str(BASE_DIR / 'static' / 'uploads'),
-        FREE_DELIVERY_THRESHOLD=Decimal(os.environ.get('FREE_DELIVERY_THRESHOLD', '200')),
-        DELIVERY_FEE=Decimal(os.environ.get('DELIVERY_FEE', '20')),
+        FREE_DELIVERY_THRESHOLD=Decimal(os.environ.get('FREE_DELIVERY_THRESHOLD', '300')),
+        DELIVERY_FEE=Decimal(os.environ.get('DELIVERY_FEE', '25')),
         MIN_ORDER_VALUE=Decimal(os.environ.get('MIN_ORDER_VALUE', '100')),
         CURRENCY='₹',
     )
