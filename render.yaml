@@ -2,6 +2,7 @@ services:
   - type: web
     name: tharai-basket
     runtime: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wsgi:app
     healthCheckPath: /health
@@ -22,5 +23,6 @@ services:
           property: connectionString
 databases:
   - name: tharai-basket-db
+    plan: free
     databaseName: tharaibasket
     user: tharaibasket
