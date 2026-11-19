@@ -1,1 +1,30 @@
-{% extends 'base.html' %}{% block title %}My Orders | Tharai Basket{% endblock %}{% block content %}<section class="section"><div class="container"><div class="section-heading"><div><span class="eyebrow">YOUR THARAI BASKET ACTIVITY</span><h2>My <em>orders.</em></h2></div></div>{% for order in orders %}<a class="order-card" href="{{ url_for('order_detail', order_id=order.id) }}"><div><small>{{ order.order_number }} · {{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</small><strong>{{ order.items|length }} item(s)</strong></div><span class="status-pill">{{ order.status }}</span><strong>{{ order.total|inr }}</strong></a>{% else %}<div class="empty-panel"><div>📦</div><h3>No orders yet.</h3><p>Your completed orders will show up here.</p><a class="btn" href="{{ url_for('index') }}">Start shopping</a></div>{% endfor %}</div></section>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}My Orders | Tharai Basket{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="section-heading">
+      <div><span class="eyebrow">YOUR THARAI BASKET ACTIVITY</span><h2>My <em>orders.</em></h2></div>
+    </div>
+    {% for order in orders %}
+    <div class="order-card" style="align-items:center">
+      <a href="{{ url_for('order_detail', order_id=order.id) }}" style="flex:1;min-width:160px">
+        <small>{{ order.order_number }} · {{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</small>
+        <strong>{{ order.items|length }} item(s)</strong>
+        <span class="status-pill">{{ order.status }}</span>
+      </a>
+      <strong>{{ order.total|inr }}</strong>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn btn-small btn-outline" href="{{ url_for('order_detail', order_id=order.id) }}">View order</a>
+        <form method="post" action="{{ url_for('buy_again', order_id=order.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-small" type="submit">Buy again</button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-panel"><div>📦</div><h3>No orders yet.</h3><p>Your completed orders will show up here.</p><a class="btn" href="{{ url_for('index') }}">Start shopping</a></div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
