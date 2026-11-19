@@ -7,6 +7,9 @@
     <div class="cart-layout">
       <form method="post" class="form-card">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="delivery_lat" id="delivery-lat">
+        <input type="hidden" name="delivery_lon" id="delivery-lon">
+        <div class="summary-card" style="margin-bottom:16px"><h3>Check delivery availability</h3><p class="summary-note">Delivery is available within 5 km of Tharamangalam town centre only.</p><button type="button" class="btn btn-outline" id="get-location-btn" onclick="detectDeliveryLocation()">Use my current location</button><p id="location-status" class="summary-note" role="status" aria-live="polite">Share your GPS location to continue.</p></div>
         <label>Recipient name<input name="name" value="{{ current_user.name }}" required></label>
         <label>Phone number<input name="phone" value="{{ current_user.phone }}" required></label>
         <label>Full delivery address<textarea name="address" rows="4" required placeholder="Door number, street, area, Tharamangalam"></textarea></label>
@@ -43,6 +46,35 @@
   </div>
 </section>
 <script>
+function detectDeliveryLocation() {
+  const button = document.getElementById('get-location-btn');
+  const status = document.getElementById('location-status');
+  const latField = document.getElementById('delivery-lat');
+  const lonField = document.getElementById('delivery-lon');
+  if (!navigator.geolocation) { status.textContent = 'Location is not supported by this browser.'; return; }
+  button.disabled = true;
+  status.textContent = 'Detecting location… Please allow browser location access.';
+  navigator.geolocation.getCurrentPosition(async position => {
+    const lat = position.coords.latitude, lon = position.coords.longitude;
+    try {
+      const response = await fetch('/api/delivery-check?lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon));
+      const result = await response.json();
+      if (response.ok && result.eligible) {
+        latField.value = lat; lonField.value = lon;
+        status.textContent = '✓ Delivery available. Distance from Tharamangalam centre: ' + result.distance_km.toFixed(1) + ' km.';
+        status.style.color = 'green';
+      } else {
+        latField.value = ''; lonField.value = '';
+        status.textContent = 'Sorry, delivery is available only within 5 km of Tharamangalam town centre. Your distance: ' + result.distance_km + ' km.';
+        status.style.color = '#b42318';
+      }
+    } catch (e) { status.textContent = 'Could not verify location. Please try again.'; latField.value = ''; lonField.value = ''; }
+    button.disabled = false;
+  }, error => {
+    status.textContent = error.code === 1 ? 'Location permission denied. Allow location access and try again.' : 'Could not get location. Enable GPS and try again.';
+    button.disabled = false;
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+}
 function toggleUpiPayment() {
   const method = document.getElementById('payment-method').value;
   const panel = document.getElementById('upi-payment-panel');
