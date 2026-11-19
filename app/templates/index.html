@@ -1,50 +1,107 @@
 {% extends 'base.html' %}{% block title %}Tharai Basket | Groceries at your doorstep{% endblock %}
 {% block content %}
 {% if not location_verified %}
-<section class="section" style="min-height:70vh;display:grid;place-items:center">
-  <div class="container" style="max-width:620px">
-    <div class="summary-card" style="padding:clamp(24px,5vw,48px);text-align:center">
-      <div style="font-size:48px;margin-bottom:12px">📍</div>
-      <span class="eyebrow">THARAI BASKET · THARAMANGALAM</span>
-      <h1 style="margin:12px 0">Where should we <em>deliver?</em></h1>
-      <p class="muted">Select your current location first. We’ll check whether your address is within our 5 km delivery area before showing products.</p>
-      <button type="button" class="btn btn-full" id="choose-location" onclick="chooseDeliveryLocation()">Use my current location</button>
-      <p id="location-message" class="summary-note" role="status" aria-live="polite" style="margin-top:16px">Allow location access when your browser asks.</p>
-      <small class="muted">We use your location only to check delivery availability.</small>
+<section class="section" style="min-height:70vh">
+  <div class="container" style="max-width:900px">
+    <div class="summary-card" style="padding:clamp(20px,4vw,36px)">
+      <div style="text-align:center">
+        <div style="font-size:42px;margin-bottom:8px">📍</div>
+        <span class="eyebrow">THARAI BASKET · THARAMANGALAM</span>
+        <h1 style="margin:10px 0">Where should we <em>deliver?</em></h1>
+        <p class="muted">Choose either option. To set manually, move the map and tap your exact home or delivery location.</p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:20px 0">
+        <button type="button" class="btn" id="gps-location" onclick="chooseDeliveryLocation()">◎ Use my current location</button>
+        <button type="button" class="btn btn-outline" id="manual-location" onclick="enableManualSelection()">⌖ Select manually on map</button>
+      </div>
+      <div id="map-help" class="summary-note" role="status" aria-live="polite" style="margin-bottom:12px">Map-la unga veedu irukkura place-ah tap pannunga. Marker set aagum.</div>
+      <div id="delivery-map" style="height:380px;width:100%;border-radius:16px;overflow:hidden;border:1px solid #d9e3d8;z-index:1"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px">
+        <button type="button" class="btn btn-full" id="confirm-map-location" onclick="submitSelectedLocation()" disabled>Confirm this location</button>
+      </div>
+      <p id="location-message" class="summary-note" role="status" aria-live="polite" style="margin-top:12px">Delivery available only within 5 km of our Tharamangalam service centre.</p>
+      <small class="muted">Your selected pin is used only to check delivery availability. Map data © OpenStreetMap contributors.</small>
     </div>
   </div>
 </section>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <script>
-async function chooseDeliveryLocation() {
-  const button = document.getElementById('choose-location');
+const DELIVERY_CENTRE = [11.69522, 77.96991];
+let deliveryMap, selectedMarker, selectedCoords = null;
+
+function initDeliveryMap() {
+  if (deliveryMap || !window.L) return;
+  deliveryMap = L.map('delivery-map').setView(DELIVERY_CENTRE, 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(deliveryMap);
+  L.circle(DELIVERY_CENTRE, {radius:5000, color:'#24834a', fillColor:'#24834a', fillOpacity:0.08, weight:2}).addTo(deliveryMap);
+  deliveryMap.on('click', event => setMapMarker(event.latlng.lat, event.latlng.lng));
+  setTimeout(() => deliveryMap.invalidateSize(), 250);
+}
+function setMapMarker(lat, lon) {
+  selectedCoords = {lat, lon};
+  if (selectedMarker) selectedMarker.setLatLng([lat, lon]);
+  else selectedMarker = L.marker([lat, lon], {draggable:true}).addTo(deliveryMap);
+  selectedMarker.on('dragend', event => {
+    const point = event.target.getLatLng();
+    selectedCoords = {lat:point.lat, lon:point.lng};
+  });
+  document.getElementById('confirm-map-location').disabled = false;
+  document.getElementById('map-help').textContent = 'Pin selected. Correct location-na “Confirm this location” press pannunga.';
+  document.getElementById('location-message').textContent = 'Selected: ' + lat.toFixed(5) + ', ' + lon.toFixed(5);
+}
+function enableManualSelection() {
+  initDeliveryMap();
+  document.getElementById('map-help').textContent = 'Map-la unga veedu irukkura exact place-ah tap pannunga. Pin-ah drag panni adjust pannalam.';
+  deliveryMap.invalidateSize();
+  document.getElementById('delivery-map').scrollIntoView({behavior:'smooth', block:'center'});
+}
+async function submitSelectedLocation() {
+  if (!selectedCoords) return;
+  const button = document.getElementById('confirm-map-location');
   const message = document.getElementById('location-message');
-  if (!navigator.geolocation) { message.textContent = 'Your browser does not support GPS location.'; return; }
-  button.disabled = true;
-  button.textContent = 'Detecting location…';
-  message.textContent = 'Please allow location access in your browser.';
-  navigator.geolocation.getCurrentPosition(async position => {
+  button.disabled = true; button.textContent = 'Checking delivery area…';
+  try {
     const token = document.querySelector('input[name="csrf_token"]').value;
-    const body = new URLSearchParams({lat: position.coords.latitude, lon: position.coords.longitude, csrf_token: token});
-    try {
-      const response = await fetch('/api/set-delivery-location', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
-      const result = await response.json();
-      if (response.ok && result.eligible) {
-        message.textContent = 'Delivery available! ' + result.distance_km.toFixed(1) + ' km from our service centre. Loading products…';
-        window.location.reload();
-      } else {
-        message.textContent = 'Sorry, your location is outside our 5 km delivery area (' + result.distance_km + ' km away).';
-      }
-    } catch (error) { message.textContent = 'Could not verify your location. Please try again.'; }
-    button.disabled = false;
-    button.textContent = 'Use my current location';
+    const body = new URLSearchParams({lat:selectedCoords.lat, lon:selectedCoords.lon, csrf_token:token});
+    const response = await fetch('/api/set-delivery-location', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+    const result = await response.json();
+    if (response.ok && result.eligible) {
+      message.textContent = 'Delivery available! ' + result.distance_km.toFixed(1) + ' km away. Loading products…';
+      window.location.reload();
+    } else {
+      message.textContent = 'Sorry, this pin is outside our 5 km delivery area (' + (result.distance_km ?? '—') + ' km away). Please select another place.';
+    }
+  } catch (error) {
+    message.textContent = 'Could not verify this location. Please try again.';
+  }
+  button.disabled = !selectedCoords;
+  button.textContent = 'Confirm this location';
+}
+function chooseDeliveryLocation() {
+  const button = document.getElementById('gps-location');
+  const message = document.getElementById('location-message');
+  if (!navigator.geolocation) { message.textContent = 'GPS is not supported in this browser. Please select manually on the map.'; return; }
+  button.disabled = true; button.textContent = 'Detecting location…';
+  navigator.geolocation.getCurrentPosition(position => {
+    initDeliveryMap();
+    const lat = position.coords.latitude, lon = position.coords.longitude;
+    deliveryMap.setView([lat, lon], 17);
+    setMapMarker(lat, lon);
+    message.textContent = 'GPS location detected. Confirm the pin below.';
+    button.disabled = false; button.textContent = '◎ Use my current location';
+    document.getElementById('delivery-map').scrollIntoView({behavior:'smooth', block:'center'});
   }, error => {
-    message.textContent = error.code === 1 ? 'Location permission denied. Enable it in browser settings and try again.' : 'Could not detect location. Please enable GPS and retry.';
-    button.disabled = false;
-    button.textContent = 'Use my current location';
+    message.textContent = error.code === 1 ? 'Location permission denied. You can still select your location manually on the map.' : 'Could not detect GPS. Please select manually on the map.';
+    button.disabled = false; button.textContent = '◎ Use my current location';
+    enableManualSelection();
   }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
 }
+document.addEventListener('DOMContentLoaded', initDeliveryMap);
 </script>
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 {% else %}
 <div class="container" style="padding-top:12px"><p class="summary-note">📍 Delivery available · {{ delivery_location.distance_km }} km from Tharamangalam centre · <a href="{{ url_for('clear_delivery_location') }}">Change location</a></p></div>
 <section class="hero"><div class="container hero-grid"><div class="hero-copy"><span class="eyebrow"><span class="pulse-dot"></span> NOW SERVING THARAMANGALAM</span><h1>Your everyday<br><em>basket,</em> made easy.</h1><p>Fresh essentials, fair prices and friendly local delivery. Shop from home and let us bring your favourites to your doorstep.</p><div class="hero-actions"><a class="btn" href="#shop">Shop groceries <span>↗</span></a><a class="text-link" href="#how">How it works <span>→</span></a></div><div class="hero-proof"><div class="proof-avatars"><span>✓</span><span>♥</span><span>✦</span></div><div><strong>Local shopping, made simpler</strong><small>Built around Tharamangalam families</small></div></div></div><div class="hero-art"><div class="hero-image"><img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1100&q=85" alt="Fresh vegetables and groceries"></div><div class="floating-card floating-top"><span class="float-icon">✦</span><div><strong>Fresh picks</strong><small>Everyday essentials</small></div></div><div class="floating-card floating-bottom"><span class="float-icon green-icon">⌂</span><div><strong>Local delivery</strong><small>Right to your doorstep</small></div></div><div class="hero-orbit"></div></div></div></section>
