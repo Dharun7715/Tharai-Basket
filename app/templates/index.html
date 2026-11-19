@@ -10,12 +10,12 @@
         <h1 style="margin:10px 0">Where should we <em>deliver?</em></h1>
         <p class="muted">Choose either option. To set manually, move the map and tap your exact home or delivery location.</p>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:20px 0">
+      <div class="location-actions">
         <button type="button" class="btn" id="gps-location" onclick="chooseDeliveryLocation()">◎ Use my current location</button>
         <button type="button" class="btn btn-outline" id="manual-location" onclick="enableManualSelection()">⌖ Select manually on map</button>
       </div>
       <div id="map-help" class="summary-note" role="status" aria-live="polite" style="margin-bottom:12px">Map-la unga veedu irukkura place-ah tap pannunga. Marker set aagum.</div>
-      <div id="delivery-map" style="height:380px;width:100%;border-radius:16px;overflow:hidden;border:1px solid #d9e3d8;z-index:1"></div>
+      <div id="delivery-map"></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px">
         <button type="button" class="btn btn-full" id="confirm-map-location" onclick="submitSelectedLocation()" disabled>Confirm this location</button>
       </div>
@@ -24,6 +24,17 @@
     </div>
   </div>
 </section>
+<style>
+#delivery-map{height:380px;width:100%;border-radius:16px;overflow:hidden;border:1px solid #d9e3d8;z-index:1}
+.location-actions{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}
+.location-actions .btn{min-height:46px}
+@media(max-width:620px){
+  #delivery-map{height: min(58vh, 340px); min-height:260px}
+  .location-actions{display:grid;grid-template-columns:1fr;gap:10px}
+  .location-actions .btn{width:100%;min-height:48px}
+  #confirm-map-location{width:100%;min-height:48px}
+}
+</style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
