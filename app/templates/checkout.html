@@ -21,10 +21,13 @@
             <div class="tb-location-copy"><strong>Check delivery availability</strong><p>We currently deliver within 5 km of Tharamangalam town centre.</p><span id="location-status" role="status" aria-live="polite">Share your GPS location to continue.</span></div>
             <button type="button" class="btn btn-outline tb-location-button" id="get-location-btn" onclick="detectDeliveryLocation()">Use GPS</button>
           </div>
+          {% if saved_addresses %}<label class="tb-saved-address-select">Use a saved address
+            <select id="saved-address-select" onchange="fillSavedAddress(this)"><option value="">Enter a new address</option>{% for address in saved_addresses %}<option value="{{ address.id }}" data-recipient="{{ address.recipient }}" data-phone="{{ address.phone }}" data-address="{{ address.line1 }}{% if address.landmark %}, {{ address.landmark }}{% endif %}{% if address.pincode %}, {{ address.pincode }}{% endif %}">{{ address.label }} — {{ address.line1 }}</option>{% endfor %}</select>
+          </label>{% endif %}
           <div class="tb-fields-grid">
-            <label>Recipient name<input name="name" value="{{ current_user.name }}" required placeholder="Your full name"></label>
-            <label>Phone number<input name="phone" value="{{ current_user.phone }}" required placeholder="Mobile number" inputmode="tel"></label>
-            <label class="tb-full-field">Full delivery address<textarea name="address" rows="3" required placeholder="Door number, street, area, landmark, Tharamangalam"></textarea></label>
+            <label>Recipient name<input id="checkout-recipient" name="name" value="{{ current_user.name }}" required placeholder="Your full name"></label>
+            <label>Phone number<input id="checkout-phone" name="phone" value="{{ current_user.phone }}" required placeholder="Mobile number" inputmode="tel"></label>
+            <label class="tb-full-field">Full delivery address<textarea id="checkout-address" name="address" rows="3" required placeholder="Door number, street, area, landmark, Tharamangalam"></textarea></label>
           </div>
         </section>
 
@@ -93,6 +96,7 @@
 .tb-location-icon{width:38px;height:38px;border-radius:11px;background:#e4f2e7;color:#246d3b;display:grid;place-items:center;font-size:25px;flex-shrink:0}
 .tb-location-copy{flex:1;min-width:0}.tb-location-copy strong{font-size:12px}.tb-location-copy p{font-size:10px;color:#7d8a80;margin:3px 0}.tb-location-copy span{font-size:10px;color:#728176}
 .tb-location-button{white-space:nowrap;padding:10px 13px;font-size:11px}
+.tb-saved-address-select{display:grid;gap:7px;margin:-4px 0 15px;font-size:11px;font-weight:700;color:#526257}.tb-saved-address-select select{width:100%;border:1px solid #dfe8e0;border-radius:10px;padding:12px 13px;background:#fff;font:400 12px 'DM Sans';color:#24372a}
 .tb-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
 .tb-fields-grid label,.tb-payment-select,.tb-upi-panel label{display:grid;gap:7px;font-size:11px;font-weight:700;color:#526257}
 .tb-fields-grid input,.tb-fields-grid textarea,.tb-payment-select select,.tb-upi-panel input{width:100%;border:1px solid #dfe8e0;border-radius:10px;padding:12px 13px;font:400 12px 'DM Sans',sans-serif;color:#24372a;background:#fff;outline:none;transition:.2s}
@@ -210,6 +214,14 @@ function detectDeliveryLocation() {
     button.disabled = false;
   }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
 }
+function fillSavedAddress(select) {
+  const option = select.options[select.selectedIndex];
+  if (!option || !option.value) return;
+  document.getElementById('checkout-recipient').value = option.dataset.recipient || '';
+  document.getElementById('checkout-phone').value = option.dataset.phone || '';
+  document.getElementById('checkout-address').value = option.dataset.address || '';
+}
+
 function toggleUpiPayment() {
   const method = document.getElementById('payment-method').value;
   const panel = document.getElementById('upi-payment-panel');
