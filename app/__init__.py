@@ -337,6 +337,56 @@ def create_app():
             flash('Incorrect email or password.', 'danger')
         return render_template('auth.html', mode='login')
 
+    @app.route('/account', methods=['GET', 'POST'])
+    @login_required
+    def account():
+        if current_user.role != 'customer':
+            abort(403)
+        if request.method == 'POST':
+            name = request.form.get('name', '').strip()
+            phone = request.form.get('phone', '').strip()
+            if not name or len(name) > 120 or len(phone) > 20:
+                flash('Enter a valid name and phone number.', 'danger')
+            else:
+                current_user.name = name
+                current_user.phone = phone
+                db.session.commit()
+                flash('Your profile has been updated.', 'success')
+                return redirect(url_for('account'))
+        addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.id.desc()).all()
+        return render_template('account.html', addresses=addresses)
+
+    @app.post('/account/address/add')
+    @login_required
+    def account_address_add():
+        if current_user.role != 'customer':
+            abort(403)
+        label = request.form.get('label', 'Home').strip()[:40] or 'Home'
+        recipient = request.form.get('recipient', '').strip()
+        phone = request.form.get('phone', '').strip()
+        line1 = request.form.get('line1', '').strip()
+        landmark = request.form.get('landmark', '').strip()
+        pincode = request.form.get('pincode', '').strip()
+        if not all([recipient, phone, line1]) or len(recipient) > 120 or len(phone) > 20 or len(line1) > 220 or len(landmark) > 160 or len(pincode) > 10:
+            flash('Please complete the required address details.', 'danger')
+        else:
+            db.session.add(Address(user_id=current_user.id, label=label, recipient=recipient,
+                                   phone=phone, line1=line1, landmark=landmark, pincode=pincode))
+            db.session.commit()
+            flash('Delivery address saved.', 'success')
+        return redirect(url_for('account'))
+
+    @app.post('/account/address/<int:address_id>/delete')
+    @login_required
+    def account_address_delete(address_id):
+        if current_user.role != 'customer':
+            abort(403)
+        address = Address.query.filter_by(id=address_id, user_id=current_user.id).first_or_404()
+        db.session.delete(address)
+        db.session.commit()
+        flash('Saved address deleted.', 'info')
+        return redirect(url_for('account'))
+
     @app.route('/admin/setup', methods=['GET', 'POST'])
     def admin_setup():
         # One-time setup is available only before the first administrator exists.
@@ -661,8 +711,10 @@ def create_app():
                 session.pop('coupon_code', None)
                 flash(f'Order {order.order_number} placed successfully. UPI payment will be verified by our team.' if payment == 'UPI' else f'Order {order.order_number} placed successfully. Our team will confirm it shortly.', 'success')
                 return redirect(url_for('my_orders'))
+        saved_addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.id.desc()).all()
         return render_template('checkout.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=total,
-                               coupon=coupon, discount=discount, upi_qr_data=upi_qr_data, upi_id='8838145515@sbi')
+                               coupon=coupon, discount=discount, saved_addresses=saved_addresses,
+                               upi_qr_data=upi_qr_data, upi_id='8838145515@sbi')
     @app.post('/order/<int:order_id>/buy-again')
     @login_required
     def buy_again(order_id):
