@@ -39,7 +39,7 @@
  .discount-tag{top:8px;left:8px;font-size:9px;padding:4px 7px}
 }
 </style>
-{% if not location_verified %}
+{% if show_location_picker %}
 <section class="section tb-location-section">
   <div class="container" style="max-width:900px">
     <div class="summary-card tb-location-card" style="padding:clamp(16px,3vw,28px)">
@@ -221,7 +221,11 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
   <div class="tb-home-toolbar">
     <div class="tb-home-location">
       <span aria-hidden="true">📍</span>
+      {% if location_verified %}
       <span>Delivering to your location <small>{{ delivery_location.distance_km }} km · <a href="{{ url_for('clear_delivery_location') }}">Change</a></small></span>
+      {% else %}
+      <span>Choose delivery location <small><a href="{{ url_for('index', choose_location=1) }}">Set your location</a> · Browse products first</small></span>
+      {% endif %}
     </div>
     <div class="tb-search-row">
       <form class="tb-home-search" method="get" action="{{ url_for('index') }}#shop" role="search">

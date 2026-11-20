@@ -63,3 +63,15 @@ html.tb-app-launch .tb-app-splash img{display:block;width:min(82vw,430px);height
 html.tb-app-launch.tb-splash-done .tb-app-splash{opacity:0;visibility:hidden;pointer-events:none}
 @keyframes tb-splash-progress{from{transform:translateX(0)}to{transform:translateX(165%)}} 
 @media(prefers-reduced-motion:reduce){.tb-splash-loader:after{animation:none}}
+
+/* Keep login and signup visible on mobile before authentication */
+.auth-nav-btn{display:inline-flex!important;align-items:center;justify-content:center;min-height:34px;padding:7px 11px!important;border-radius:9px;font-size:11px;white-space:nowrap}
+.auth-login-btn{background:#fff!important;color:#176b39!important;border:1px solid #bcd7c3;box-shadow:none!important}
+.auth-signup-btn{background:#176b39!important;color:#fff!important}
+@media(max-width:620px){
+ .nav-wrap{gap:6px}
+ .nav-actions{gap:6px;margin-left:auto}
+ .nav-actions .nav-icon{padding:7px 8px;font-size:10px;white-space:nowrap}
+ .nav-actions .auth-nav-btn{font-size:10px;min-height:31px;padding:6px 8px!important}
+ .brand-logo{width:104px;max-height:49px}
+}

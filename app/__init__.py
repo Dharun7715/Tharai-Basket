@@ -637,7 +637,8 @@ def create_app():
     @app.get('/')
     def index():
         location_verified = bool(session.get('delivery_location'))
-        categories = Category.query.filter_by(active=True).order_by(Category.name).all() if location_verified else []
+        show_location_picker = request.args.get('choose_location') == '1'
+        categories = Category.query.filter_by(active=True).order_by(Category.name).all()
         search_query = request.args.get('q', '').strip()[:100]
         category_id = request.args.get('category', type=int)
         min_price = request.args.get('min_price', '').strip()
@@ -678,9 +679,9 @@ def create_app():
         }
         if sort not in sort_options:
             sort = 'recommended'
-        products = products_query.order_by(*sort_options[sort]).all() if location_verified else []
+        products = products_query.order_by(*sort_options[sort]).all()
         recently_viewed = []
-        if location_verified and not search_query and not category_id and not min_price and not max_price and not in_stock:
+        if not search_query and not category_id and not min_price and not max_price and not in_stock:
             viewed_ids = session.get('recently_viewed_products', [])
             if viewed_ids:
                 viewed_map = {p.id: p for p in Product.query.filter(
@@ -720,6 +721,7 @@ def create_app():
             wishlist_product_ids = {item.product_id for item in WishlistItem.query.filter_by(user_id=current_user.id).all()}
         filters_active = bool(search_query or category_id or min_price or max_price or in_stock or sort != 'recommended')
         return render_template('index.html', categories=categories, products=products,
+                               show_location_picker=show_location_picker,
                                location_verified=location_verified,
                                delivery_location=session.get('delivery_location'),
                                wishlist_product_ids=wishlist_product_ids,
