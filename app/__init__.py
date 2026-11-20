@@ -925,6 +925,8 @@ def create_app():
 
     def calculate_delivery_fee(subtotal, membership=None):
         threshold = delivery_threshold_for_membership(membership)
+        if membership and membership.tier == 'Gold':
+            return Decimal('0.00') if subtotal > threshold else Decimal(str(app.config['DELIVERY_FEE']))
         return Decimal('0.00') if subtotal >= threshold else Decimal(str(app.config['DELIVERY_FEE']))
 
     def active_cart_coupon(subtotal):
