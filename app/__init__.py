@@ -2035,7 +2035,8 @@ def create_app():
             combos=ComboOffer.query.order_by(ComboOffer.created_at.desc()).all(),
             sales=FlashSale.query.order_by(FlashSale.ends_at.desc()).all(),
             customers=User.query.filter_by(role='customer', active=True).order_by(User.name).all(),
-            membership_requests=MembershipPayment.query.order_by(MembershipPayment.created_at.desc()).limit(100).all())
+            membership_requests=MembershipPayment.query.order_by(MembershipPayment.created_at.desc()).limit(100).all(),
+            active_memberships=VipMembership.query.filter_by(active=True).order_by(VipMembership.starts_at.desc()).all())
 
     @app.post('/admin/growth-tools/gallery')
     @admin_required
@@ -2113,6 +2114,15 @@ def create_app():
         sale.active = not sale.active
         db.session.commit()
         flash(f'Flash sale for {sale.product.name} is now {"active" if sale.active else "inactive"}.', 'success')
+        return redirect(url_for('admin_growth_tools'))
+
+    @app.post('/admin/memberships/<int:membership_id>/cancel')
+    @admin_required
+    def admin_membership_cancel(membership_id):
+        membership = VipMembership.query.get_or_404(membership_id)
+        membership.active = False
+        db.session.commit()
+        flash(f'{membership.tier} membership cancelled for {membership.user.name}.', 'success')
         return redirect(url_for('admin_growth_tools'))
 
     @app.post('/admin/growth-tools/membership')
