@@ -1,0 +1,8 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Abandoned Carts | Tharai Basket{% endblock %}
+{% block admin_content %}
+<div class="admin-top"><div><span class="eyebrow">CUSTOMER FOLLOW-UP</span><h1>Abandoned <em>carts.</em></h1><p class="muted">Carts saved by signed-in customers who have not completed checkout.</p></div></div>
+<div class="admin-panel"><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Email</th><th>Phone</th><th>Saved cart data</th><th>Last updated</th></tr></thead><tbody>
+{% for cart in carts %}<tr><td><strong>{{ cart.user.name if cart.user else 'Customer' }}</strong></td><td>{{ cart.user.email if cart.user else '—' }}</td><td>{{ cart.user.phone if cart.user else '—' }}</td><td><code style="white-space:normal;word-break:break-word">{{ cart.cart_data }}</code></td><td>{{ cart.updated_at.strftime('%d %b %Y, %I:%M %p') }}</td></tr>{% else %}<tr><td colspan="5">No abandoned carts captured yet. Only logged-in customer carts are tracked.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}
