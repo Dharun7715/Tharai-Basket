@@ -1557,21 +1557,6 @@ def create_app():
         db.session.commit(); flash(f'{tier} membership activated for {customer.name}.', 'success')
         return redirect(url_for('admin_growth_tools'))
 
-    @app.get('/admin/dynamic-pricing')
-    @admin_required
-    def admin_dynamic_pricing():
-        suggestions = []
-        for product in Product.query.filter_by(active=True).all():
-            sold = db.session.query(db.func.coalesce(db.func.sum(OrderItem.quantity),0)).join(
-                Order, Order.id == OrderItem.order_id).filter(OrderItem.product_id == product.id,
-                Order.status == 'Delivered', Order.created_at >= datetime.utcnow()-timedelta(days=30)).scalar() or 0
-            if product.stock <= 3: action, reason = 'Protect margin', 'Very low stock; avoid discounting and replenish.'
-            elif product.stock >= 25 and sold == 0: action, reason = 'Review a promotion', 'High stock and no delivered sales in 30 days.'
-            elif product.stock >= 15 and sold < 3: action, reason = 'Consider a combo', 'Slow movement with elevated stock.'
-            else: action, reason = 'Keep current price', 'Stock and recent sales look balanced.'
-            suggestions.append({'product':product,'sold':int(sold),'action':action,'reason':reason})
-        return render_template('admin/dynamic_pricing.html', suggestions=suggestions)
-
     @app.route('/admin/products', methods=['GET', 'POST'])
     @admin_required
     def admin_products():
