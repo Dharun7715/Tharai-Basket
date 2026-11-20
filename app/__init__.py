@@ -305,14 +305,58 @@ def create_app():
     def index():
         location_verified = bool(session.get('delivery_location'))
         categories = Category.query.filter_by(active=True).order_by(Category.name).all() if location_verified else []
-        products = Product.query.filter_by(active=True).order_by(Product.featured.desc(), Product.name).limit(24).all() if location_verified else []
+        search_query = request.args.get('q', '').strip()[:100]
+        category_id = request.args.get('category', type=int)
+        min_price = request.args.get('min_price', '').strip()
+        max_price = request.args.get('max_price', '').strip()
+        sort = request.args.get('sort', 'recommended')
+        in_stock = request.args.get('in_stock') == '1'
+        products_query = Product.query.filter_by(active=True)
+        if search_query:
+            pattern = f'%{search_query}%'
+            products_query = products_query.filter(db.or_(Product.name.ilike(pattern),
+                                                           Product.brand.ilike(pattern),
+                                                           Product.description.ilike(pattern)))
+        selected_category = None
+        if category_id:
+            selected_category = Category.query.filter_by(id=category_id, active=True).first()
+            if selected_category:
+                products_query = products_query.filter_by(category_id=selected_category.id)
+            else:
+                category_id = None
+        try:
+            if min_price:
+                products_query = products_query.filter(Product.price >= max(Decimal('0'), Decimal(min_price)))
+        except (InvalidOperation, TypeError):
+            min_price = ''
+        try:
+            if max_price:
+                products_query = products_query.filter(Product.price <= max(Decimal('0'), Decimal(max_price)))
+        except (InvalidOperation, TypeError):
+            max_price = ''
+        if in_stock:
+            products_query = products_query.filter(Product.stock > 0)
+        sort_options = {
+            'recommended': (Product.featured.desc(), Product.name.asc()),
+            'price_low': (Product.price.asc(), Product.name.asc()),
+            'price_high': (Product.price.desc(), Product.name.asc()),
+            'name': (Product.name.asc(),),
+            'newest': (Product.created_at.desc(),),
+        }
+        if sort not in sort_options:
+            sort = 'recommended'
+        products = products_query.order_by(*sort_options[sort]).all() if location_verified else []
         wishlist_product_ids = set()
         if current_user.is_authenticated and current_user.role == 'customer':
             wishlist_product_ids = {item.product_id for item in WishlistItem.query.filter_by(user_id=current_user.id).all()}
+        filters_active = bool(search_query or category_id or min_price or max_price or in_stock or sort != 'recommended')
         return render_template('index.html', categories=categories, products=products,
                                location_verified=location_verified,
                                delivery_location=session.get('delivery_location'),
-                               wishlist_product_ids=wishlist_product_ids)
+                               wishlist_product_ids=wishlist_product_ids,
+                               search_query=search_query, selected_category_id=category_id,
+                               min_price=min_price, max_price=max_price, sort=sort,
+                               in_stock=in_stock, filters_active=filters_active)
 
     @app.get('/product/<int:product_id>')
     def product_detail(product_id):
