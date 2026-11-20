@@ -639,7 +639,12 @@ def create_app():
         applied_coupon_code = session.get('coupon_code')
         threshold = app.config['FREE_DELIVERY_THRESHOLD']
         fee = Decimal('0.00') if subtotal >= threshold else app.config['DELIVERY_FEE']
-        coupon, discount = active_cart_coupon(subtotal)
+        coupon, coupon_discount = active_cart_coupon(subtotal)
+        reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
+        reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
+        available_reward_points = max(0, reward_credits - int(reward_spent or 0))
+        reward_discount = min(Decimal(available_reward_points), subtotal) if session.get('use_rewards') else Decimal('0.00')
+        discount = min(subtotal, coupon_discount + reward_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
         upi_params = {'pa': '8838145515@sbi', 'pn': 'DHARUN M', 'am': f'{total:.2f}',
                       'cu': 'INR', 'tn': 'Tharai Basket order payment'}
@@ -653,7 +658,8 @@ def create_app():
             'line_total': f"{current_row['line_total']:.2f}" if current_row else '0.00',
             'subtotal': f'{subtotal:.2f}', 'delivery_fee': f'{fee:.2f}',
             'delivery_label': 'FREE' if fee == 0 else f'₹{fee:.2f}',
-            'discount': f'{discount:.2f}', 'coupon_code': coupon.code if coupon else None,
+            'discount': f'{discount:.2f}', 'coupon_discount': f'{coupon_discount:.2f}',
+            'reward_discount': f'{reward_discount:.2f}', 'coupon_code': coupon.code if coupon else None,
             'total': f'{total:.2f}', 'upi_qr_data': qr_data,
             'item_count': sum(int(value) for value in session.get('cart', {}).values()),
             'coupon_message': 'Coupon removed: basket value is below its minimum.' if applied_coupon_code and not coupon else None
