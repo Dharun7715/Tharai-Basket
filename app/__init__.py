@@ -335,8 +335,8 @@ def create_app():
         if selected_date == today:
             first = local_now.replace(tzinfo=None) + timedelta(hours=2)
             minute_remainder = first.minute % 30
-            if minute_remainder:
-                first += timedelta(minutes=30 - minute_remainder)
+            if minute_remainder or first.second or first.microsecond:
+                first += timedelta(minutes=(30 - minute_remainder) if minute_remainder else 30)
             first = first.replace(second=0, microsecond=0)
         else:
             first = datetime.combine(selected_date, datetime.strptime('08:00', '%H:%M').time())
@@ -957,7 +957,7 @@ def create_app():
                 db.session.add(order)
                 db.session.flush()
                 db.session.add(DeliverySchedule(order_id=order.id, delivery_date=delivery_date, delivery_slot=delivery_slot))
-                create_customer_notification(order, 'Order placed successfully', f'Your order {order.order_number} has been received. We will confirm it shortly.')
+                create_customer_notification(order, 'Order placed successfully', f'Your order {order.order_number} has been received. Requested delivery: {delivery_date} at {delivery_slot}. We will confirm it shortly.')
                 for row in rows:
                     p = row['product']
                     db.session.add(OrderItem(order_id=order.id, product_id=p.id, product_name=p.name,
