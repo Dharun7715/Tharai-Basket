@@ -872,7 +872,11 @@ def create_app():
         combo_id = session.get('combo_offer_id')
         if not combo_id:
             return None, Decimal('0.00')
-        combo = ComboOffer.query.filter_by(id=combo_id, active=True).first()
+        now_utc = datetime.utcnow()
+        combo = ComboOffer.query.filter_by(id=combo_id, active=True).filter(
+            db.or_(ComboOffer.starts_at.is_(None), ComboOffer.starts_at <= now_utc),
+            db.or_(ComboOffer.ends_at.is_(None), ComboOffer.ends_at > now_utc)
+        ).first()
         if not combo:
             session.pop('combo_offer_id', None)
             return None, Decimal('0.00')
@@ -890,6 +894,21 @@ def create_app():
         combo_price = Decimal(str(combo.combo_price))
         discount = min(regular_bundle, max(Decimal('0.00'), regular_bundle - combo_price))
         return combo, discount.quantize(Decimal('0.01'))
+
+    def current_vip_membership():
+        if not current_user.is_authenticated or current_user.role != 'customer':
+            return None
+        return VipMembership.query.filter_by(user_id=current_user.id, active=True).filter(
+            VipMembership.ends_at > datetime.utcnow()
+        ).order_by(VipMembership.ends_at.desc()).first()
+
+    def calculate_delivery_fee(subtotal, membership=None):
+        threshold = Decimal(str(app.config['FREE_DELIVERY_THRESHOLD']))
+        if membership and membership.tier == 'Platinum':
+            return Decimal('0.00')
+        if membership and membership.tier == 'Gold':
+            threshold = Decimal('200.00')
+        return Decimal('0.00') if subtotal >= threshold else Decimal(str(app.config['DELIVERY_FEE']))
 
     def active_cart_coupon(subtotal):
         code = session.get('coupon_code')
@@ -941,7 +960,8 @@ def create_app():
             return jsonify({'empty': True, 'redirect': url_for('cart')})
         applied_coupon_code = session.get('coupon_code')
         threshold = app.config['FREE_DELIVERY_THRESHOLD']
-        fee = Decimal('0.00') if subtotal >= threshold else app.config['DELIVERY_FEE']
+        membership = current_vip_membership()
+        fee = calculate_delivery_fee(subtotal, membership)
         coupon, coupon_discount = active_cart_coupon(subtotal)
         active_combo, combo_discount = active_cart_combo(rows)
         reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
@@ -998,7 +1018,8 @@ def create_app():
     def cart():
         rows, subtotal = cart_data()
         threshold = app.config['FREE_DELIVERY_THRESHOLD']
-        fee = Decimal('0') if subtotal >= threshold else app.config['DELIVERY_FEE']
+        membership = current_vip_membership()
+        fee = calculate_delivery_fee(subtotal, membership)
         coupon, coupon_discount = active_cart_coupon(subtotal)
         active_combo, combo_discount = active_cart_combo(rows)
         reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
@@ -1073,7 +1094,8 @@ def create_app():
             flash('Your basket is empty.', 'warning')
             return redirect(url_for('cart'))
         threshold = app.config['FREE_DELIVERY_THRESHOLD']
-        fee = Decimal('0') if subtotal >= threshold else app.config['DELIVERY_FEE']
+        membership = current_vip_membership()
+        fee = calculate_delivery_fee(subtotal, membership)
         coupon, coupon_discount = active_cart_coupon(subtotal)
         active_combo, combo_discount = active_cart_combo(rows)
         reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
@@ -1187,7 +1209,7 @@ def create_app():
         active_combo, combo_discount = active_cart_combo(rows)
         return render_template('checkout.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=total,
                                coupon=coupon, discount=discount, reward_discount=reward_discount,
-                               combo=active_combo, combo_discount=combo_discount,
+                               membership=membership, combo=active_combo, combo_discount=combo_discount,
                                available_reward_points=available_reward_points, use_rewards=use_rewards,
                                saved_addresses=saved_addresses, upi_qr_data=upi_qr_data, upi_id='8838145515@sbi',
                                delivery_date=delivery_date, delivery_slots=delivery_slots, delivery_slot=delivery_slot,
@@ -1574,10 +1596,13 @@ def create_app():
             flash('Enter a title, at least two products and a valid price.', 'danger'); return redirect(url_for('admin_growth_tools'))
         valid = Product.query.filter(Product.id.in_([int(x) for x in ids]), Product.active.is_(True)).all()
         if len(valid) != len(ids): flash('Selected products must be active.', 'danger'); return redirect(url_for('admin_growth_tools'))
+        bundle_value = sum((Decimal(str(p.price)) for p in valid), Decimal('0.00'))
+        if price >= bundle_value:
+            flash(f'Combo price must be below the regular bundle total of ₹{bundle_value:.2f}.', 'danger'); return redirect(url_for('admin_growth_tools'))
         import json
         db.session.add(ComboOffer(title=request.form['title'].strip()[:140], description=request.form.get('description','')[:500],
                                   product_ids=json.dumps([p.id for p in valid]), combo_price=price, active=True))
-        db.session.commit(); flash('Combo offer created.', 'success')
+        db.session.commit(); flash(f'Combo offer created. Regular bundle total ₹{bundle_value:.2f}; combo price ₹{price:.2f}.', 'success')
         return redirect(url_for('admin_growth_tools'))
 
     @app.post('/admin/growth-tools/flash-sale')
