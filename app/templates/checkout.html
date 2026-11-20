@@ -48,6 +48,7 @@
 
         <section class="tb-checkout-card">
           <div class="tb-card-heading"><span class="tb-step">02</span><div><h2>Payment method</h2><p>Choose how you’d like to pay.</p></div></div>
+          {% if wallet_balance > 0 %}<label class="tb-wallet-choice"><input type="checkbox" name="use_wallet" value="1" {% if wallet_opted %}checked{% endif %} onchange="window.location.href='/checkout?use_wallet='+(this.checked?'1':'0')"><span><strong>Use wallet balance · {{ wallet_balance|inr }}</strong><small>{% if wallet_used > 0 %}₹{{ '%.2f'|format(wallet_used) }} will be applied to this order.{% else %}Apply available gift-card balance to reduce your bill.{% endif %}</small></span></label>{% endif %}
           <label class="tb-payment-select">Payment option
             <select name="payment_method" id="payment-method" onchange="toggleUpiPayment()">
               <option value="COD">Cash on Delivery</option>
@@ -135,6 +136,7 @@
 .tb-qr-wrap{display:flex;align-items:center;justify-content:center;gap:20px;background:#fff;border:1px solid #e8eee8;border-radius:12px;padding:14px;margin-bottom:15px}
 .tb-qr-wrap img{width:145px;height:145px;object-fit:contain;padding:7px;border:1px solid #edf0ed;border-radius:9px}
 .tb-qr-wrap div>*{display:block}.tb-qr-amount{font:800 24px 'Manrope';color:#205d34}.tb-qr-wrap span{font-size:11px;font-weight:700;margin:5px 0}.tb-qr-wrap small,.tb-payment-footnote{font-size:10px;color:#829087}
+ .tb-wallet-choice{display:flex;align-items:flex-start;gap:10px;padding:13px;background:#f1f8f2;border:1px solid #dcebdd;border-radius:11px;margin:0 0 14px;font-size:11px;color:#526257}.tb-wallet-choice input{width:17px;height:17px;accent-color:#236b3d;margin-top:1px}.tb-wallet-choice strong,.tb-wallet-choice small{display:block}.tb-wallet-choice small{font-size:10px;color:#78867c;margin-top:3px}
 .tb-place-order{display:flex;align-items:center;justify-content:center;gap:12px;padding:16px;border-radius:12px;font-size:14px;box-shadow:0 9px 20px rgba(33,104,55,.14)}
 .tb-place-order span{font-size:20px}.tb-checkout-foot{text-align:center;font-size:10px;color:#879188;margin:-6px 0 0}
 .tb-checkout-side{display:grid;gap:15px;position:sticky;top:95px}
