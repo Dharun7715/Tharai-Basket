@@ -941,6 +941,7 @@ def create_app():
                     break
         reward_transactions = RewardTransaction.query.filter_by(user_id=current_user.id).order_by(RewardTransaction.created_at.desc()).all()
         reward_credits = sum(item.points for item in reward_transactions)
+        reward_credits += sum(item.points for item in LoyaltyPoint.query.filter_by(user_id=current_user.id).all())
         reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
         reward_points = max(0, reward_credits - int(reward_spent or 0))
         referral_count = Referral.query.filter_by(referrer_id=current_user.id).count()
@@ -1221,6 +1222,7 @@ def create_app():
         coupon, coupon_discount = active_cart_coupon(subtotal)
         active_combo, combo_discount = active_cart_combo(rows)
         reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
+            reward_credits += sum(item.points for item in LoyaltyPoint.query.filter_by(user_id=current_user.id).all())
         reward_credits += sum(item.points for item in LoyaltyPoint.query.filter_by(user_id=current_user.id).all())
         reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
         available_reward_points = max(0, reward_credits - int(reward_spent or 0))
