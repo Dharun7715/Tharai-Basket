@@ -902,12 +902,15 @@ def create_app():
             VipMembership.ends_at > datetime.utcnow()
         ).order_by(VipMembership.ends_at.desc()).first()
 
-    def calculate_delivery_fee(subtotal, membership=None):
-        threshold = Decimal(str(app.config['FREE_DELIVERY_THRESHOLD']))
+    def delivery_threshold_for_membership(membership=None):
         if membership and membership.tier == 'Platinum':
             return Decimal('0.00')
         if membership and membership.tier == 'Gold':
-            threshold = Decimal('200.00')
+            return Decimal('200.00')
+        return Decimal(str(app.config['FREE_DELIVERY_THRESHOLD']))
+
+    def calculate_delivery_fee(subtotal, membership=None):
+        threshold = delivery_threshold_for_membership(membership)
         return Decimal('0.00') if subtotal >= threshold else Decimal(str(app.config['DELIVERY_FEE']))
 
     def active_cart_coupon(subtotal):
@@ -959,8 +962,8 @@ def create_app():
             session.pop('coupon_code', None)
             return jsonify({'empty': True, 'redirect': url_for('cart')})
         applied_coupon_code = session.get('coupon_code')
-        threshold = app.config['FREE_DELIVERY_THRESHOLD']
         membership = current_vip_membership()
+        threshold = delivery_threshold_for_membership(membership)
         fee = calculate_delivery_fee(subtotal, membership)
         coupon, coupon_discount = active_cart_coupon(subtotal)
         active_combo, combo_discount = active_cart_combo(rows)
@@ -981,7 +984,7 @@ def create_app():
             'quantity': current_row['quantity'] if current_row else 0,
             'line_total': f"{current_row['line_total']:.2f}" if current_row else '0.00',
             'subtotal': f'{subtotal:.2f}', 'delivery_fee': f'{fee:.2f}',
-            'delivery_label': 'FREE' if fee == 0 else f'₹{fee:.2f}',
+            'delivery_label': 'FREE' if fee == 0 else f'₹{fee:.2f}',\n            'free_delivery_threshold': f'{delivery_threshold_for_membership(current_vip_membership()):.2f}',
             'discount': f'{discount:.2f}', 'coupon_discount': f'{coupon_discount:.2f}',
             'reward_discount': f'{reward_discount:.2f}', 'combo_discount': f'{combo_discount:.2f}',
             'combo_title': active_combo.title if active_combo else None, 'coupon_code': coupon.code if coupon else None,
