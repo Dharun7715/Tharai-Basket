@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
 .tb-home-search{display:flex;min-width:0;flex:1;height:42px}
 .tb-home-search input{flex:1;min-width:0;width:100%;border:1px solid #dce7dd;border-right:0;border-radius:9px 0 0 9px;padding:0 12px;background:#fbfdfb;font:500 13px 'DM Sans',sans-serif;outline:none}
 .tb-home-search input:focus{border-color:#65a978;box-shadow:0 0 0 3px #eaf5ec}
-.tb-home-search button{width:42px;flex:0 0 42px;border:0;border-radius:0 9px 9px 0;background:#236b3d;color:#fff;font-size:20px;cursor:pointer}
+.tb-home-search .tb-voice-search{width:44px;flex:0 0 44px;border:0;border-radius:0 9px 9px 0;background:#f0f7f1;color:#236b3d;display:grid;place-items:center;cursor:pointer}.tb-home-search .tb-voice-search svg{width:20px;height:20px}.tb-home-search .tb-voice-search.is-listening{background:#236b3d;color:#fff;animation:tb-mic-pulse 1s infinite alternate}@keyframes tb-mic-pulse{to{box-shadow:0 0 0 5px #d7eddd}}
 .tb-filter-toggle{width:43px;flex:0 0 43px;border:1px solid #dce7dd;border-radius:9px;background:#f5faf6;color:#236b3d;display:grid;place-items:center;cursor:pointer}
 .tb-filter-toggle svg{width:19px;height:19px}
 .tb-filter-panel{display:none;padding:10px 0 2px;border-top:1px solid #edf2ed;margin-top:2px}
@@ -413,13 +413,35 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
     <div class="tb-search-row">
       <form class="tb-home-search" method="get" action="{{ url_for('index') }}#shop" role="search">
         <span class="tb-search-glass" aria-hidden="true">⌕</span>
-        <input type="search" name="q" value="{{ search_query }}" placeholder="Search for groceries…" aria-label="Search products">
-        <button type="submit" aria-label="Search">Search</button>
+        <input type="search" id="tb-home-search-input" name="q" value="{{ search_query }}" placeholder="Search for groceries…" aria-label="Search products">
+        <button class="tb-voice-search" id="tb-home-voice" type="button" aria-label="Search by voice" title="Search by voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></svg></button>
       </form>
       <button class="tb-filter-toggle" type="button" aria-label="Show filters" aria-expanded="false" onclick="const p=document.getElementById('tb-filter-panel');const open=p.classList.toggle('is-open');this.setAttribute('aria-expanded',open?'true':'false');">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/></svg>
       </button>
     </div>
+    <script>
+    (function(){
+      const btn=document.getElementById('tb-home-voice');
+      const field=document.getElementById('tb-home-search-input');
+      if(!btn||!field)return;
+      const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
+      if(!Speech){btn.title='Voice search is not supported in this browser';btn.addEventListener('click',()=>{alert('Voice search is not supported in this browser. Try Chrome.');});return;}
+      const recognition=new Speech();
+      recognition.lang='en-IN';recognition.interimResults=false;recognition.maxAlternatives=1;
+      btn.addEventListener('click',()=>{
+        try{recognition.start();btn.classList.add('is-listening');btn.setAttribute('aria-label','Listening');}
+        catch(e){}
+      });
+      recognition.addEventListener('result',event=>{
+        const spoken=event.results[0][0].transcript;
+        field.value=spoken;
+        field.form.requestSubmit();
+      });
+      recognition.addEventListener('end',()=>{btn.classList.remove('is-listening');btn.setAttribute('aria-label','Search by voice');});
+      recognition.addEventListener('error',()=>{btn.classList.remove('is-listening');btn.setAttribute('aria-label','Search by voice');});
+    })();
+    </script>
     <form class="tb-filter-panel" id="tb-filter-panel" method="get" action="{{ url_for('index') }}#shop">
       <input type="hidden" name="q" value="{{ search_query }}">
       <label>Category<select name="category"><option value="">All categories</option>{% for category in categories %}<option value="{{ category.id }}" {% if selected_category_id == category.id %}selected{% endif %}>{{ category.name }}</option>{% endfor %}</select></label>
