@@ -721,7 +721,25 @@ def create_app():
                 if cats: rq = rq.filter(Product.category_id.in_(cats))
                 recommended_products = rq.order_by(Product.featured.desc(), Product.created_at.desc()).limit(4).all()
                 if not recommended_products:
-                    recommended_products = Product.query.filter(Product.active.is_(True), Product.stock > 0).order_by(Product.featured.desc()).limit(4).all()
+                    popular_ids = [row[0] for row in db.session.query(
+                        OrderItem.product_id
+                    ).join(Order, Order.id == OrderItem.order_id).filter(
+                        Order.status == 'Delivered',
+                        Order.created_at >= datetime.utcnow() - timedelta(days=30),
+                        OrderItem.product_id.isnot(None)
+                    ).group_by(OrderItem.product_id).order_by(
+                        db.func.sum(OrderItem.quantity).desc()
+                    ).limit(8).all()]
+                    popular_map = {p.id: p for p in Product.query.filter(
+                        Product.id.in_(popular_ids), Product.active.is_(True), Product.stock > 0
+                    ).all()} if popular_ids else {}
+                    recommended_products = [popular_map[pid] for pid in popular_ids if pid in popular_map][:4]
+                if len(recommended_products) < 4:
+                    existing_ids = [p.id for p in recommended_products]
+                    fill_query = Product.query.filter(Product.active.is_(True), Product.stock > 0)
+                    if existing_ids:
+                        fill_query = fill_query.filter(~Product.id.in_(existing_ids))
+                    recommended_products.extend(fill_query.order_by(Product.featured.desc(), Product.created_at.desc()).limit(4-len(recommended_products)).all())
                 vip_membership = VipMembership.query.filter_by(user_id=current_user.id, active=True).filter(
                     VipMembership.ends_at > datetime.utcnow()).order_by(VipMembership.ends_at.desc()).first()
             now_utc = datetime.utcnow()
