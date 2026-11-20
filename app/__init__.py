@@ -213,6 +213,49 @@ def create_app():
         user = db.relationship('User', foreign_keys=[user_id])
         reviewer = db.relationship('User', foreign_keys=[reviewed_by])
 
+    class ShoppingListItem(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False, index=True)
+        quantity = db.Column(db.Integer, nullable=False, default=1)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        user = db.relationship('User')
+        product = db.relationship('Product')
+        __table_args__ = (db.UniqueConstraint('user_id', 'product_id', name='uq_shopping_list_user_product'),)
+
+    class GrocerySubscription(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        title = db.Column(db.String(120), nullable=False, default='My grocery repeat')
+        items_json = db.Column(db.Text, nullable=False, default='{}')
+        frequency = db.Column(db.String(20), nullable=False, default='Weekly')
+        next_date = db.Column(db.String(10), nullable=False)
+        active = db.Column(db.Boolean, nullable=False, default=True)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        user = db.relationship('User')
+
+    class WalletTransaction(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        amount = db.Column(db.Numeric(10, 2), nullable=False)
+        kind = db.Column(db.String(20), nullable=False)
+        reference = db.Column(db.String(80), default='')
+        description = db.Column(db.String(180), nullable=False)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+        user = db.relationship('User')
+
+    class GiftCard(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        code = db.Column(db.String(32), unique=True, nullable=False, index=True)
+        amount = db.Column(db.Numeric(10, 2), nullable=False)
+        status = db.Column(db.String(20), nullable=False, default='Active')
+        created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+        redeemed_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+        created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+        redeemed_at = db.Column(db.DateTime)
+        creator = db.relationship('User', foreign_keys=[created_by])
+        redeemer = db.relationship('User', foreign_keys=[redeemed_by])
+
     class ProductReview(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
@@ -444,6 +487,151 @@ def create_app():
     def create_customer_notification(order, title, message, category='order'):
         db.session.add(Notification(user_id=order.user_id, order_id=order.id,
                                     title=title, message=message, category=category))
+
+    def wallet_balance(user_id):
+        credits = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter_by(user_id=user_id, kind='Credit').scalar()
+        debits = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter_by(user_id=user_id, kind='Debit').scalar()
+        return max(Decimal('0.00'), Decimal(str(credits or 0)) - Decimal(str(debits or 0))).quantize(Decimal('0.01'))
+
+    @app.get('/account/tools')
+    @login_required
+    def account_tools():
+        if current_user.role != 'customer':
+            abort(403)
+        items = ShoppingListItem.query.filter_by(user_id=current_user.id).order_by(ShoppingListItem.created_at.desc()).all()
+        subscriptions = GrocerySubscription.query.filter_by(user_id=current_user.id).order_by(GrocerySubscription.created_at.desc()).all()
+        transactions = WalletTransaction.query.filter_by(user_id=current_user.id).order_by(WalletTransaction.created_at.desc()).limit(30).all()
+        return render_template('account_tools.html', items=items, subscriptions=subscriptions,
+                               wallet_balance=wallet_balance(current_user.id), transactions=transactions)
+
+    @app.post('/account/shopping-list/add/<int:product_id>')
+    @login_required
+    def shopping_list_add(product_id):
+        if current_user.role != 'customer':
+            abort(403)
+        product = Product.query.filter_by(id=product_id, active=True).first_or_404()
+        qty = max(1, min(99, request.form.get('quantity', 1, type=int) or 1))
+        item = ShoppingListItem.query.filter_by(user_id=current_user.id, product_id=product.id).first()
+        if item:
+            item.quantity = min(99, item.quantity + qty)
+        else:
+            db.session.add(ShoppingListItem(user_id=current_user.id, product_id=product.id, quantity=qty))
+        db.session.commit()
+        flash(f'{product.name} saved to your shopping list.', 'success')
+        return redirect(request.referrer or url_for('account_tools'))
+
+    @app.post('/account/shopping-list/<int:item_id>/remove')
+    @login_required
+    def shopping_list_remove(item_id):
+        item = ShoppingListItem.query.filter_by(id=item_id, user_id=current_user.id).first_or_404()
+        db.session.delete(item)
+        db.session.commit()
+        flash('Item removed from your shopping list.', 'info')
+        return redirect(url_for('account_tools'))
+
+    @app.post('/account/shopping-list/add-all')
+    @login_required
+    def shopping_list_add_all():
+        if current_user.role != 'customer':
+            abort(403)
+        cart = session.get('cart', {})
+        added = 0
+        for item in ShoppingListItem.query.filter_by(user_id=current_user.id).all():
+            product = item.product
+            if product and product.active and product.stock > 0:
+                key = str(product.id)
+                before = int(cart.get(key, 0))
+                cart[key] = min(product.stock, before + item.quantity)
+                added += max(0, cart[key] - before)
+        session['cart'] = cart
+        save_customer_cart_snapshot()
+        flash(f'{added} item(s) from your shopping list added to the basket.', 'success' if added else 'warning')
+        return redirect(url_for('cart'))
+
+    @app.post('/account/subscriptions/create')
+    @login_required
+    def subscription_create():
+        if current_user.role != 'customer':
+            abort(403)
+        frequency = request.form.get('frequency', 'Weekly')
+        if frequency not in ['Weekly', 'Fortnightly', 'Monthly']:
+            abort(400)
+        cart = session.get('cart', {})
+        valid = {}
+        for pid, qty in cart.items():
+            product = Product.query.filter_by(id=int(pid), active=True).first()
+            if product and product.stock > 0:
+                valid[str(product.id)] = min(99, max(1, int(qty)))
+        if not valid:
+            flash('Add available products to your basket before creating a subscription.', 'warning')
+            return redirect(url_for('cart'))
+        local_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+        delta = {'Weekly': 7, 'Fortnightly': 14, 'Monthly': 30}[frequency]
+        title = request.form.get('title', '').strip()[:120] or f'{frequency} grocery basket'
+        db.session.add(GrocerySubscription(user_id=current_user.id, title=title, items_json=__import__('json').dumps(valid),
+                                           frequency=frequency, next_date=(local_today + timedelta(days=delta)).isoformat()))
+        db.session.commit()
+        flash('Repeat basket saved. We will remind you when it is due; no payment or order is created automatically.', 'success')
+        return redirect(url_for('account_tools'))
+
+    @app.post('/account/subscriptions/<int:subscription_id>/toggle')
+    @login_required
+    def subscription_toggle(subscription_id):
+        sub = GrocerySubscription.query.filter_by(id=subscription_id, user_id=current_user.id).first_or_404()
+        sub.active = not sub.active
+        db.session.commit()
+        return redirect(url_for('account_tools'))
+
+    @app.post('/account/subscriptions/<int:subscription_id>/add-to-cart')
+    @login_required
+    def subscription_add_to_cart(subscription_id):
+        sub = GrocerySubscription.query.filter_by(id=subscription_id, user_id=current_user.id, active=True).first_or_404()
+        cart = session.get('cart', {})
+        added = 0
+        try:
+            planned = __import__('json').loads(sub.items_json)
+        except (ValueError, TypeError):
+            planned = {}
+        for pid, qty in planned.items():
+            product = Product.query.filter_by(id=int(pid), active=True).first()
+            if product and product.stock > 0:
+                key = str(product.id)
+                before = int(cart.get(key, 0))
+                cart[key] = min(product.stock, before + int(qty))
+                added += max(0, cart[key] - before)
+        session['cart'] = cart
+        today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+        delta = {'Weekly': 7, 'Fortnightly': 14, 'Monthly': 30}.get(sub.frequency, 7)
+        try:
+            due = datetime.strptime(sub.next_date, '%Y-%m-%d').date()
+        except ValueError:
+            due = today
+        while due <= today:
+            due += timedelta(days=delta)
+        sub.next_date = due.isoformat()
+        db.session.commit()
+        save_customer_cart_snapshot()
+        flash(f'{added} subscription item(s) added to basket. Review quantities and checkout when ready.', 'success' if added else 'warning')
+        return redirect(url_for('cart'))
+
+    @app.post('/account/gift-cards/redeem')
+    @login_required
+    def gift_card_redeem():
+        if current_user.role != 'customer':
+            abort(403)
+        code = request.form.get('code', '').strip().upper()
+        card = GiftCard.query.filter_by(code=code, status='Active').with_for_update().first()
+        if not card:
+            flash('Gift card is invalid or has already been redeemed.', 'danger')
+            return redirect(url_for('account_tools'))
+        card.status = 'Redeemed'
+        card.redeemed_by = current_user.id
+        card.redeemed_at = datetime.utcnow()
+        db.session.add(WalletTransaction(user_id=current_user.id, amount=card.amount, kind='Credit',
+                                         reference=card.code, description='Gift card redeemed'))
+        db.session.commit()
+        flash(f'Gift card redeemed. ₹{card.amount:.2f} added to your wallet.', 'success')
+        return redirect(url_for('account_tools'))
 
     @app.get('/notifications')
     @login_required
@@ -1197,6 +1385,12 @@ def create_app():
                 reward_discount = min(Decimal(available_reward_points), subtotal) if session.get('use_rewards') else Decimal('0.00')
                 discount = min(subtotal, coupon_discount + reward_discount + combo_discount)
                 total = max(Decimal('0.00'), subtotal + fee - discount)
+                wallet_used = Decimal('0.00')
+                if request.form.get('use_wallet') == '1':
+                    wallet_used = min(wallet_balance(current_user.id), total)
+                    total = max(Decimal('0.00'), total - wallet_used)
+                if payment == 'UPI' and total == Decimal('0.00'):
+                    payment = 'COD'
                 order = Order(order_number=f"TB{datetime.utcnow():%y%m%d%H%M%S}{current_user.id}", user_id=current_user.id,
                               customer_name=name, phone=phone, address_text=address, subtotal=subtotal,
                               discount=discount, delivery_fee=fee, total=total, payment_method=payment,
@@ -1216,6 +1410,9 @@ def create_app():
                 if reward_discount > 0:
                     points_used = int(reward_discount)
                     db.session.add(RewardRedemption(user_id=current_user.id, order_id=order.id, points=points_used))
+                if wallet_used > 0:
+                    db.session.add(WalletTransaction(user_id=current_user.id, amount=wallet_used, kind='Debit',
+                                                     reference=order.order_number, description='Used for order payment'))
                 db.session.commit()
                 session['cart'] = {}
                 session.pop('combo_offer_id', None)
@@ -1232,6 +1429,7 @@ def create_app():
                                coupon=coupon, discount=discount, reward_discount=reward_discount,
                                membership=membership, combo=active_combo, combo_discount=combo_discount,
                                available_reward_points=available_reward_points, use_rewards=use_rewards,
+                               wallet_balance=wallet_balance(current_user.id),
                                saved_addresses=saved_addresses, upi_qr_data=upi_qr_data, upi_id='8838145515@sbi',
                                delivery_date=delivery_date, delivery_slots=delivery_slots, delivery_slot=delivery_slot,
                                min_delivery_date=local_today.strftime('%Y-%m-%d'),
@@ -1849,6 +2047,19 @@ def create_app():
                                           points=50, description='Referral reward for a friend’s first delivered order'))
         db.session.add(RewardTransaction(user_id=referral.referred_id, referral_id=referral.id,
                                           points=50, description='Welcome reward for your first delivered order'))
+
+    @app.post('/admin/gift-cards/create')
+    @admin_required
+    def admin_gift_card_create():
+        amount = money(request.form.get('amount'))
+        if amount < Decimal('10.00') or amount > Decimal('10000.00'):
+            flash('Gift card amount must be between ₹10 and ₹10,000.', 'warning')
+            return redirect(url_for('admin_growth_tools'))
+        code = 'TB-' + secrets.token_hex(5).upper()
+        db.session.add(GiftCard(code=code, amount=amount, created_by=current_user.id))
+        db.session.commit()
+        flash(f'Gift card created: {code} · ₹{amount:.2f}. Share this code with the recipient.', 'success')
+        return redirect(url_for('admin_growth_tools'))
 
     @app.route('/admin/orders', methods=['GET', 'POST'])
     @admin_required
