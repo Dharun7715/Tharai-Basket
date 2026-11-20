@@ -1,49 +1,65 @@
 {% extends 'base.html' %}
 {% block title %}Tharai Basket | Groceries at your doorstep<script>
 (function(){
- const select=document.getElementById('tb-delivery-slot');
+ const open=document.getElementById('tb-delivery-open');
+ const modal=document.getElementById('tb-delivery-modal');
+ const close=document.getElementById('tb-delivery-close');
+ const slotsBox=document.getElementById('tb-delivery-slots');
  const caption=document.getElementById('tb-schedule-caption');
- if(!select||!caption)return;
- const now=new Date();
- const slots=[
-  {day:0,start:8,end:11,label:'8 AM – 11 AM'},
-  {day:0,start:11,end:14,label:'11 AM – 2 PM'},
-  {day:0,start:14,end:17,label:'2 PM – 5 PM'},
-  {day:0,start:17,end:20,label:'5 PM – 8 PM'},
-  {day:1,start:8,end:11,label:'8 AM – 11 AM'},
-  {day:1,start:11,end:14,label:'11 AM – 2 PM'},
-  {day:1,start:14,end:17,label:'2 PM – 5 PM'},
-  {day:1,start:17,end:20,label:'5 PM – 8 PM'}
- ];
+ if(!open||!modal||!slotsBox||!caption)return;
  const pad=n=>String(n).padStart(2,'0');
  const dateKey=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
- const today=dateKey(now);
- const tomorrow=new Date(now);tomorrow.setDate(tomorrow.getDate()+1);
- const available=slots.filter(s=>{
-  if(s.day===0)return now.getHours()<s.end-1;
-  return true;
- });
- const saved=localStorage.getItem('tb_delivery_slot')||'asap';
- select.innerHTML='<option value="asap">As soon as possible</option>';
- available.forEach((s,i)=>{
-  const d=s.day===0?now:tomorrow;
-  const date=dateKey(d);
-  const name=s.day===0?'Today':'Tomorrow';
-  const value=date+'|'+s.label;
-  const option=document.createElement('option');
-  option.value=value;option.textContent=name+' · '+s.label;
-  select.appendChild(option);
- });
- if([...select.options].some(o=>o.value===saved))select.value=saved;
- function updateCaption(){
-  const opt=select.options[select.selectedIndex];
-  caption.textContent=select.value==='asap'?'Fastest available delivery':opt.textContent;
+ const timeLabel=d=>{let h=d.getHours(),m=d.getMinutes(),ampm=h>=12?'PM':'AM';h=h%12||12;return h+':'+pad(m)+' '+ampm;};
+ const saved=localStorage.getItem('tb_delivery_slot')||'';
+ function buildSlots(){
+  slotsBox.innerHTML='';
+  const now=new Date();
+  const first=new Date(now.getTime()+120*60000);
+  first.setSeconds(0,0);
+  const mins=first.getMinutes();
+  first.setMinutes(mins===0?0:(mins<=30?30:60));
+  const last=new Date(now);last.setDate(last.getDate()+1);last.setHours(21,0,0,0);
+  const groups=new Map();
+  for(let t=new Date(first);t<=last;t=new Date(t.getTime()+30*60000)){
+   if(t.getHours()<8||t.getHours()>=21)continue;
+   const key=dateKey(t);
+   if(!groups.has(key))groups.set(key,[]);
+   groups.get(key).push(new Date(t));
+  }
+  if(!groups.size){
+   const tomorrow=new Date(now);tomorrow.setDate(tomorrow.getDate()+1);tomorrow.setHours(8,0,0,0);
+   groups.set(dateKey(tomorrow),[tomorrow]);
+  }
+  groups.forEach((times,date)=>{
+   const day=document.createElement('div');day.className='tb-delivery-day';
+   const d=new Date(date+'T00:00:00');
+   const title=document.createElement('strong');
+   title.className='tb-delivery-day-title';
+   title.textContent=dateKey(now)===date?'Today':(dateKey(new Date(now.getTime()+86400000))===date?'Tomorrow':d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short'}));
+   day.appendChild(title);
+   const grid=document.createElement('div');grid.className='tb-delivery-slots';
+   times.forEach(t=>{
+    const value=date+'|'+pad(t.getHours())+':'+pad(t.getMinutes());
+    const btn=document.createElement('button');btn.type='button';btn.className='tb-delivery-slot-option'+(value===saved?' is-selected':'');btn.textContent=timeLabel(t);
+    btn.addEventListener('click',()=>{
+     localStorage.setItem('tb_delivery_slot',value);
+     caption.textContent=title.textContent+' · '+timeLabel(t);
+     modal.hidden=true;document.body.classList.remove('tb-delivery-modal-open');
+    });
+    grid.appendChild(btn);
+   });
+   day.appendChild(grid);slotsBox.appendChild(day);
+  });
  }
- select.addEventListener('change',()=>{
-  localStorage.setItem('tb_delivery_slot',select.value);
-  updateCaption();
- });
- updateCaption();
+ function show(){buildSlots();modal.hidden=false;document.body.classList.add('tb-delivery-modal-open');}
+ function hide(){modal.hidden=true;document.body.classList.remove('tb-delivery-modal-open');}
+ open.addEventListener('click',show);close.addEventListener('click',hide);
+ modal.addEventListener('click',e=>{if(e.target===modal)hide();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')hide();});
+ if(saved){
+  const parts=saved.split('|');
+  if(parts.length===2){const d=new Date(parts[0]+'T00:00:00');caption.textContent=(dateKey(new Date())===parts[0]?'Today':(dateKey(new Date(Date.now()+86400000))===parts[0]?'Tomorrow':d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'}))+' · '+timeLabel(new Date(parts[0]+'T'+parts[1]+':00'));}
+ }
 })();
 </script>
 {% endblock %}
@@ -218,6 +234,24 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
 .tb-delivery-schedule small{display:block;margin-top:2px;color:#78857b;font-size:10px}
 .tb-delivery-schedule select{max-width:58%;min-width:145px;height:36px;padding:0 26px 0 9px;border:1px solid #d7e5d9;border-radius:8px;background:#fff;color:#235b35;font:700 11px 'DM Sans',sans-serif}
 
+.tb-delivery-schedule{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border:1px solid #e3ece4;border-radius:11px;background:#f7fbf7;color:#244b30;text-align:left;cursor:pointer}
+.tb-delivery-schedule .tb-schedule-copy{display:flex;align-items:center;gap:9px;min-width:0}
+.tb-delivery-schedule .tb-schedule-icon{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:10px;background:#e7f3e9;font-size:18px}
+.tb-delivery-schedule strong{display:block;font-size:12px;line-height:1.3}
+.tb-delivery-schedule small{display:block;margin-top:2px;color:#78857b;font-size:10px}
+.tb-schedule-action{flex:0 0 auto;color:#176b39;font-size:11px;font-weight:800}
+.tb-schedule-action span{font-size:18px;vertical-align:-1px;margin-left:3px}
+.tb-delivery-modal{position:fixed;inset:0;z-index:10050;background:rgba(12,25,15,.48);display:flex;align-items:flex-end;justify-content:center;padding:16px}
+.tb-delivery-modal[hidden]{display:none}
+.tb-delivery-dialog{width:min(100%,460px);max-height:min(78vh,650px);overflow:auto;background:#fff;border-radius:20px 20px 14px 14px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.22)}
+.tb-delivery-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:15px}
+.tb-delivery-dialog-head strong{display:block;font-size:17px;color:#203d29}
+.tb-delivery-dialog-head small{display:block;margin-top:4px;font-size:11px;color:#758278}
+.tb-delivery-dialog-head button{width:32px;height:32px;border:0;border-radius:50%;background:#f1f5f1;color:#304d37;font-size:22px;cursor:pointer}
+.tb-delivery-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tb-delivery-slot-option{min-height:44px;border:1px solid #dfe9e0;border-radius:10px;background:#fff;color:#344d39;font-size:12px;font-weight:700;cursor:pointer}
+.tb-delivery-slot-option.is-selected{border-color:#267342;background:#edf7ef;color:#176b39;box-shadow:inset 0 0 0 1px #267342}
+.tb-delivery-note{font-size:10px;color:#7b887e;margin:13px 0 0;line-height:1.5}
 .tb-home-location{display:flex;align-items:center;gap:6px;min-width:0;color:#355c40;font-size:12px;font-weight:700;line-height:1.2}
 .tb-home-location small{display:inline;color:#7b887e;font-size:10px;font-weight:500;margin-left:5px}
 .tb-search-row{display:flex;gap:7px;min-width:0}
@@ -255,6 +289,12 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
  .tb-delivery-schedule strong{font-size:11px}
  .tb-delivery-schedule small{font-size:9px}
  .tb-delivery-schedule select{min-width:128px;max-width:55%;height:34px;font-size:10px}
+ .tb-delivery-schedule{padding:8px}
+ .tb-delivery-schedule .tb-schedule-icon{width:30px;height:30px;flex-basis:30px;font-size:16px}
+ .tb-delivery-schedule strong{font-size:11px}
+ .tb-delivery-schedule small{font-size:9px}
+ .tb-schedule-action{font-size:10px}
+ .tb-delivery-dialog{padding:16px;border-radius:18px 18px 12px 12px}
  .tb-home-location{font-size:11px}
  .tb-home-location small{font-size:9px}
  .tb-search-row{gap:6px}
@@ -278,14 +318,22 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
 </style>
 <div class="container">
   <div class="tb-home-toolbar">
-    <div class="tb-delivery-schedule">
-      <div class="tb-schedule-copy">
+    <button class="tb-delivery-schedule" id="tb-delivery-open" type="button" aria-haspopup="dialog" aria-controls="tb-delivery-modal">
+      <span class="tb-schedule-copy">
         <span class="tb-schedule-icon" aria-hidden="true">🕒</span>
-        <span><strong>Schedule delivery</strong><small id="tb-schedule-caption">Choose a convenient delivery time</small></span>
-      </div>
-      <select id="tb-delivery-slot" aria-label="Choose delivery time">
-        <option value="asap">As soon as possible</option>
-      </select>
+        <span><strong>Scheduled delivery</strong><small id="tb-schedule-caption">Choose your preferred delivery time</small></span>
+      </span>
+      <span class="tb-schedule-action">Select time <span aria-hidden="true">›</span></span>
+    </button>
+    <div class="tb-delivery-modal" id="tb-delivery-modal" hidden>
+      <section class="tb-delivery-dialog" role="dialog" aria-modal="true" aria-labelledby="tb-delivery-title">
+        <div class="tb-delivery-dialog-head">
+          <div><strong id="tb-delivery-title">Choose delivery time</strong><small>Available from 2 hours after placing your order</small></div>
+          <button type="button" id="tb-delivery-close" aria-label="Close">×</button>
+        </div>
+        <div class="tb-delivery-slots" id="tb-delivery-slots"></div>
+        <p class="tb-delivery-note">Time slots are offered every 30 minutes. Your selected time will be shown here.</p>
+      </section>
     </div>
     <div class="tb-home-location">
       <span aria-hidden="true">📍</span>
