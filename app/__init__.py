@@ -943,11 +943,12 @@ def create_app():
         threshold = app.config['FREE_DELIVERY_THRESHOLD']
         fee = Decimal('0.00') if subtotal >= threshold else app.config['DELIVERY_FEE']
         coupon, coupon_discount = active_cart_coupon(subtotal)
+        active_combo, combo_discount = active_cart_combo(rows)
         reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
         reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
         available_reward_points = max(0, reward_credits - int(reward_spent or 0))
         reward_discount = min(Decimal(available_reward_points), subtotal) if session.get('use_rewards') else Decimal('0.00')
-        discount = min(subtotal, coupon_discount + reward_discount)
+        discount = min(subtotal, coupon_discount + reward_discount + combo_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
         upi_params = {'pa': '8838145515@sbi', 'pn': 'DHARUN M', 'am': f'{total:.2f}',
                       'cu': 'INR', 'tn': 'Tharai Basket order payment'}
@@ -962,7 +963,7 @@ def create_app():
             'subtotal': f'{subtotal:.2f}', 'delivery_fee': f'{fee:.2f}',
             'delivery_label': 'FREE' if fee == 0 else f'₹{fee:.2f}',
             'discount': f'{discount:.2f}', 'coupon_discount': f'{coupon_discount:.2f}',
-            'reward_discount': f'{reward_discount:.2f}', 'coupon_code': coupon.code if coupon else None,
+            'reward_discount': f'{reward_discount:.2f}', 'combo_discount': f'{combo_discount:.2f}',\n            'combo_title': active_combo.title if active_combo else None, 'coupon_code': coupon.code if coupon else None,
             'total': f'{total:.2f}', 'upi_qr_data': qr_data,
             'item_count': sum(int(value) for value in session.get('cart', {}).values()),
             'coupon_message': 'Coupon removed: basket value is below its minimum.' if applied_coupon_code and not coupon else None
@@ -1009,8 +1010,10 @@ def create_app():
         reward_discount = min(Decimal(available_reward_points), subtotal) if use_rewards else Decimal('0.00')
         discount = min(subtotal, coupon_discount + reward_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
+        active_combo, combo_discount = active_cart_combo(rows)
         return render_template('cart.html', rows=rows, subtotal=subtotal, delivery_fee=fee,
-                               total=total, threshold=threshold, coupon=coupon, discount=discount)
+                               total=total, threshold=threshold, coupon=coupon, discount=discount,
+                               combo=active_combo, combo_discount=combo_discount)
 
     @app.get('/api/delivery-check')
     def delivery_check():
@@ -1161,7 +1164,7 @@ def create_app():
                 for row in rows:
                     p = row['product']
                     db.session.add(OrderItem(order_id=order.id, product_id=p.id, product_name=p.name,
-                                             unit=p.unit, quantity=row['quantity'], unit_price=p.price))
+                                             unit=p.unit, quantity=row['quantity'], unit_price=row['unit_price']))
                     p.stock -= row['quantity']
                 db.session.flush()
                 if reward_discount > 0:
@@ -1169,6 +1172,7 @@ def create_app():
                     db.session.add(RewardRedemption(user_id=current_user.id, order_id=order.id, points=points_used))
                 db.session.commit()
                 session['cart'] = {}
+                session.pop('combo_offer_id', None)
                 abandoned_record = AbandonedCart.query.filter_by(user_id=current_user.id, recovered_at=None).first()
                 if abandoned_record:
                     abandoned_record.recovered_at = datetime.utcnow()
@@ -1177,8 +1181,10 @@ def create_app():
                 flash(f'Order {order.order_number} placed successfully. UPI payment will be verified by our team.' if payment == 'UPI' else f'Order {order.order_number} placed successfully. Our team will confirm it shortly.', 'success')
                 return redirect(url_for('my_orders'))
         saved_addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.id.desc()).all()
+        active_combo, combo_discount = active_cart_combo(rows)
         return render_template('checkout.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=total,
                                coupon=coupon, discount=discount, reward_discount=reward_discount,
+                               combo=active_combo, combo_discount=combo_discount,
                                available_reward_points=available_reward_points, use_rewards=use_rewards,
                                saved_addresses=saved_addresses, upi_qr_data=upi_qr_data, upi_id='8838145515@sbi',
                                delivery_date=delivery_date, delivery_slots=delivery_slots, delivery_slot=delivery_slot,
