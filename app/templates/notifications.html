@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Notifications | Tharai Basket{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container narrow">
+    <span class="eyebrow">STAY IN THE LOOP</span>
+    <h1>Your <em>notifications.</em></h1>
+    <p class="muted">Updates about your orders, delivery partner and delivery progress.</p>
+    <div style="display:grid;gap:12px;margin-top:24px">
+      {% for item in notifications %}
+      <article class="summary-card" style="padding:18px;border-left:4px solid {% if item.category == 'order' %}#25804a{% else %}#d5a23b{% endif %}">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+          <div>
+            <strong>{{ item.title }}</strong>
+            <p style="margin:7px 0;color:#647268">{{ item.message }}</p>
+            {% if item.order %}
+            <a class="table-action" href="{{ url_for('order_detail', order_id=item.order_id) }}">View order {{ item.order.order_number }} →</a>
+            {% endif %}
+          </div>
+          <small class="muted" style="white-space:nowrap">{{ item.created_at.strftime('%d %b, %I:%M %p') }}</small>
+        </div>
+      </article>
+      {% else %}
+      <div class="empty-panel"><div>🔔</div><h3>You're all caught up.</h3><p>New order updates will appear here.</p><a class="btn" href="{{ url_for('my_orders') }}">View my orders</a></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}
