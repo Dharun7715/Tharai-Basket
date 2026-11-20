@@ -230,3 +230,69 @@ body.tb-vip-theme .membership-pay-box{border-color:#e5cc80;background:#fff9e8}
 body.tb-vip-theme .membership-plan .eyebrow{color:#a77a0b}
 body.tb-vip-theme .membership-pending{border-color:#e5cc80;background:#fff8df}
 body.tb-vip-platinum{--forest:#765000;--green:#b8860b}
+
+/* Platinum members: exclusive black-and-gold luxury storefront. */
+body.tb-vip-platinum{
+ --forest:#090909;
+ --green:#c99a28;
+ --leaf:#30250d;
+ --mint:#17140e;
+ --ink:#f6edcf;
+ --muted:#c0b48f;
+ --line:#5b471b;
+ --shadow:0 18px 50px rgba(0,0,0,.28);
+ background:#100f0c;
+ color:#f6edcf;
+}
+body.tb-vip-platinum h1,body.tb-vip-platinum h2,body.tb-vip-platinum h3,
+body.tb-vip-platinum h4{color:#f8edca}
+body.tb-vip-platinum h1 em,body.tb-vip-platinum h2 em{color:#e0b84f}
+body.tb-vip-platinum .site-header{background:rgba(12,11,9,.97);border-bottom-color:#5b471b;color:#f8edca}
+body.tb-vip-platinum .brand,body.tb-vip-platinum .nav-actions,
+body.tb-vip-platinum .nav-link{color:#f5e7bd}
+body.tb-vip-platinum .brand small{color:#c7b98f}
+body.tb-vip-platinum .brand-mark{background:linear-gradient(145deg,#8d6714,#e5c15b);color:#17120a}
+body.tb-vip-platinum .nav-icon,body.tb-vip-platinum .tb-profile-icon,
+body.tb-vip-platinum .tb-header-cart{background:#19160f!important;border-color:#806324!important;color:#e5bd53!important}
+body.tb-vip-platinum .tb-view-cart-bar{background:linear-gradient(110deg,#090909,#4b3810 55%,#b18527);border:1px solid #8c6b20;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+body.tb-vip-platinum .tb-view-cart-inner a{background:#e0b84f;color:#17120a}
+body.tb-vip-platinum .btn:not(.btn-outline),body.tb-vip-platinum .add-btn,
+body.tb-vip-platinum .tb-filter-panel button{background:linear-gradient(135deg,#8b6518,#e4bd55);border-color:#d5ad46;color:#17120a}
+body.tb-vip-platinum .btn.btn-outline{background:transparent;color:#e5bd53;border-color:#a17b28}
+body.tb-vip-platinum .tb-home-toolbar,body.tb-vip-platinum .product-card,
+body.tb-vip-platinum .summary-card,body.tb-vip-platinum .admin-panel,
+body.tb-vip-platinum .card,body.tb-vip-platinum .membership-plan{
+ background:#191710;border-color:#65501f;color:#f4e9c8;box-shadow:0 12px 32px rgba(0,0,0,.22)
+}
+body.tb-vip-platinum .product-info h3,body.tb-vip-platinum .product-info small,
+body.tb-vip-platinum .product-price,body.tb-vip-platinum .muted,
+body.tb-vip-platinum .tb-products-heading p{color:#d5c69f}
+body.tb-vip-platinum .tb-delivery-schedule,body.tb-vip-platinum .tb-filter-toggle{
+ background:#1c190f;border-color:#70571f;color:#e5bd53
+}
+body.tb-vip-platinum .tb-home-search input,body.tb-vip-platinum .tb-filter-panel select,
+body.tb-vip-platinum .tb-filter-panel input,body.tb-vip-platinum input,
+body.tb-vip-platinum select,body.tb-vip-platinum textarea{
+ background:#100f0c;border-color:#65501f;color:#f6edcf
+}
+body.tb-vip-platinum .tb-home-search input::placeholder,
+body.tb-vip-platinum input::placeholder{color:#a99a73}
+body.tb-vip-platinum .tb-filter-panel{border-top-color:#514018}
+body.tb-vip-platinum .tb-bottom-nav{background:#0c0b09;border-top:1px solid #66501d}
+body.tb-vip-platinum .tb-bottom-nav a{color:#c8b98f}
+body.tb-vip-platinum .tb-bottom-nav a.is-active,
+body.tb-vip-platinum .tb-bottom-nav a[aria-label="VIP"]{color:#edc75e}
+body.tb-vip-platinum .tb-bottom-nav a svg{stroke:currentColor}
+body.tb-vip-platinum .tb-menu-head{background:linear-gradient(135deg,#211b0d,#0d0c09);border-bottom:1px solid #66501d;color:#f4e8c5}
+body.tb-vip-platinum .tb-menu-head strong{color:#e7c45d}
+body.tb-vip-platinum .tb-menu-links>a{color:#eee2c1}
+body.tb-vip-platinum .tb-menu-links>a:hover{background:#2a220f;color:#f1ca61}
+body.tb-vip-platinum .tb-menu-links>a>span,body.tb-vip-platinum .tb-menu-label{color:#d7ad45}
+body.tb-vip-platinum .membership-plan{background:linear-gradient(145deg,#211b0d,#12110d);border-color:#92702a}
+body.tb-vip-platinum .membership-pay-box{background:#17140d;border-color:#806324}
+body.tb-vip-platinum .membership-pay-box h2,body.tb-vip-platinum .membership-plan .eyebrow{color:#e5bd53}
+body.tb-vip-platinum .membership-plan p,body.tb-vip-platinum .membership-plan small{color:#c9ba91}
+body.tb-vip-platinum .membership-pending{background:#211b0d;border-color:#806324;color:#f2e4bc}
+body.tb-vip-platinum .empty-state{background:#191710;border-color:#65501f;color:#e9dbb7}
+body.tb-vip-platinum .tb-recent-tag{background:#211b0d;border-color:#806324;color:#edc75e}
+body.tb-vip-platinum .discount-tag{background:#e4bd55;color:#17120a}
