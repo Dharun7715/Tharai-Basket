@@ -44,12 +44,12 @@
  if(!tier || !months) return;
  const plans = {
    Gold: {
-     1: {amount:'300', qr: "{{ plans['Gold'][1]['qr']|tojson }}"},
-     3: {amount:'800', qr: "{{ plans['Gold'][3]['qr']|tojson }}"}
+     1: {amount:'300', qr: {{ plans['Gold'][1]['qr']|tojson }}},
+     3: {amount:'800', qr: {{ plans['Gold'][3]['qr']|tojson }}}
    },
    Platinum: {
-     1: {amount:'500', qr: "{{ plans['Platinum'][1]['qr']|tojson }}"},
-     3: {amount:'1300', qr: "{{ plans['Platinum'][3]['qr']|tojson }}"}
+     1: {amount:'500', qr: {{ plans['Platinum'][1]['qr']|tojson }}},
+     3: {amount:'1300', qr: {{ plans['Platinum'][3]['qr']|tojson }}}
    }
  };
  function update(){
