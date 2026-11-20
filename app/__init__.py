@@ -2370,7 +2370,7 @@ def create_app():
             'Personal Care': [
                 ('Bath Soap', '1 bar'), ('Shampoo', '180 ml'), ('Toothpaste', '150 g'),
                 ('Toothbrush', '1 unit'), ('Hair Oil', '100 ml'), ('Face Wash', '100 ml'),
-                ('Sanitary Napkins', '1 pack'), ('Hand Wash', ' refill pack')
+                ('Sanitary Napkins', '1 pack'), ('Hand Wash', '1 refill pack')
             ],
             'Home Cleaning': [
                 ('Washing Powder', '1 kg'), ('Dishwash Bar', '1 bar'), ('Dishwash Liquid', '500 ml'),
