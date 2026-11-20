@@ -1437,7 +1437,6 @@ def create_app():
                                membership=membership, combo=active_combo, combo_discount=combo_discount,
                                available_reward_points=available_reward_points, use_rewards=use_rewards,
                                wallet_balance=wallet_available, wallet_opted=wallet_opted, wallet_used=wallet_preview,
-                               wallet_balance=wallet_balance(current_user.id),
                                saved_addresses=saved_addresses, upi_qr_data=upi_qr_data, upi_id='8838145515@sbi',
                                delivery_date=delivery_date, delivery_slots=delivery_slots, delivery_slot=delivery_slot,
                                min_delivery_date=local_today.strftime('%Y-%m-%d'),
