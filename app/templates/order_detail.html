@@ -1,1 +1,57 @@
-{% extends 'base.html' %}{% block title %}Order {{ order.order_number }} | Tharai Basket{% endblock %}{% block content %}<section class="section"><div class="container narrow"><span class="eyebrow">ORDER DETAILS</span><h1>{{ order.order_number }}</h1><p><span class="status-pill">{{ order.status }}</span></p><div class="summary-card"><h3>Items</h3>{% for item in order.items %}<div class="summary-line"><span>{{ item.product_name }} × {{ item.quantity }}</span><strong>{{ (item.unit_price * item.quantity)|inr }}</strong></div>{% endfor %}<div class="summary-line"><span>Subtotal</span><strong>{{ order.subtotal|inr }}</strong></div><div class="summary-line"><span>Delivery</span><strong>{{ order.delivery_fee|inr }}</strong></div><div class="summary-total"><span>Total</span><strong>{{ order.total|inr }}</strong></div></div><div class="form-card"><h3>Delivery address</h3><p>{{ order.customer_name }} · {{ order.phone }}</p><p>{{ order.address_text }}</p><p>Payment: {{ order.payment_method }} · {{ order.payment_status }}</p></div></div></section>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Track Order {{ order.order_number }} | Tharai Basket{% endblock %}
+{% block content %}
+{% set tracking_steps = ['Pending', 'Confirmed', 'Purchase Required', 'Purchased', 'Packing', 'Ready for Pickup', 'Out for Delivery', 'Delivered'] %}
+{% set current_step = tracking_steps.index(order.status) if order.status in tracking_steps else -1 %}
+<section class="section">
+  <div class="container narrow">
+    <span class="eyebrow">ORDER TRACKING</span>
+    <h1>{{ order.order_number }}</h1>
+    <p><span class="status-pill">{{ order.status }}</span></p>
+
+    <div class="summary-card" style="margin:22px 0;padding:clamp(18px,3vw,28px)">
+      <h3 style="margin-top:0">Your order progress</h3>
+      {% if order.status == 'Cancelled' %}
+        <p class="muted">This order has been cancelled. Please contact our team if you need help.</p>
+      {% else %}
+        <div style="display:grid;gap:0;margin-top:18px">
+          {% for step in tracking_steps %}
+          <div style="display:grid;grid-template-columns:28px 1fr;gap:12px;min-height:54px">
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <span style="width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:{% if current_step >= loop.index0 %}#24834a{% else %}#e6ebe6{% endif %};color:{% if current_step >= loop.index0 %}white{% else %}#657565{% endif %};font-size:12px">{% if current_step >= loop.index0 %}✓{% else %}{{ loop.index }}{% endif %}</span>
+              {% if not loop.last %}<span style="width:2px;flex:1;min-height:28px;background:{% if current_step > loop.index0 %}#24834a{% else %}#e2e8e2{% endif %}"></span>{% endif %}
+            </div>
+            <div style="padding:1px 0 18px">
+              <strong style="color:{% if current_step >= loop.index0 %}#176b39{% else %}#687568{% endif %}">{{ step }}</strong>
+              {% if order.status == step %}<div class="muted tiny">Current order status</div>{% endif %}
+              {% if step == 'Out for Delivery' and order.status == step and order.delivery_partner %}<div class="muted tiny">Delivery partner: {{ order.delivery_partner.name }}{% if order.delivery_partner.phone %} · {{ order.delivery_partner.phone }}{% endif %}</div>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% if current_step == -1 %}
+        <p class="muted">Your order status will be updated by our team.</p>
+        {% endif %}
+      {% endif %}
+      <p class="muted tiny">Status updates appear here when the Tharai Basket team updates your order.</p>
+    </div>
+
+    <div class="summary-card">
+      <h3>Items</h3>
+      {% for item in order.items %}
+      <div class="summary-line"><span>{{ item.product_name }} × {{ item.quantity }}</span><strong>{{ (item.unit_price * item.quantity)|inr }}</strong></div>
+      {% endfor %}
+      <div class="summary-line"><span>Subtotal</span><strong>{{ order.subtotal|inr }}</strong></div>
+      <div class="summary-line"><span>Delivery</span><strong>{{ order.delivery_fee|inr }}</strong></div>
+      <div class="summary-total"><span>Total</span><strong>{{ order.total|inr }}</strong></div>
+    </div>
+    <div class="form-card" style="margin-top:18px">
+      <h3>Delivery details</h3>
+      <p>{{ order.customer_name }} · {{ order.phone }}</p>
+      <p>{{ order.address_text }}</p>
+      <p>Payment: {{ order.payment_method }} · {{ order.payment_status }}</p>
+      <p class="muted tiny">Ordered on {{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</p>
+    </div>
+  </div>
+</section>
+{% endblock %}
