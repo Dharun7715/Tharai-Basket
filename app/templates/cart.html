@@ -42,7 +42,7 @@
           <div class="tb-coupon-code"><strong>THARAI50</strong><span>COUPON CODE</span></div>
           <div id="tb-coupon-state">
           {% if coupon and coupon.code == 'THARAI50' %}
-            <div class="tb-coupon-success">✓ THARAI50 applied — you saved {{ discount|inr }}</div>
+            <div class="tb-coupon-success">✓ THARAI50 applied — you saved {{ coupon_discount|inr }}</div>
           {% elif subtotal < 500 %}
             <div class="tb-coupon-progress"><div class="tb-coupon-track"><span id="tb-coupon-progress-fill" style="width:{{ [((subtotal / 500) * 100), 100]|min }}%"></span></div><small id="tb-coupon-progress-text">Add <strong>{{ (500 - subtotal)|inr }}</strong> more to unlock this offer.</small></div>
           {% else %}
