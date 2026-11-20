@@ -110,7 +110,7 @@
 <div class="tb-view-cart-bar" role="region" aria-label="Basket summary">
   <div class="tb-view-cart-inner">
     <span class="tb-view-cart-count">{{ cart_count }} item{% if cart_count|int != 1 %}s{% endif %} in your basket</span>
-    <a href="{{ url_for('cart') }}">View basket <span aria-hidden="true">›</span></a>
+    <a href="{{ url_for('cart') }}">View cart <span aria-hidden="true">›</span></a>
   </div>
 </div>
 {% endif %}
