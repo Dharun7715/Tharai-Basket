@@ -21,8 +21,10 @@
  <div><span>Customers</span><strong>{{ customer_count }}</strong></div><div><span>Active products</span><strong>{{ product_count }}</strong></div><div><span>Pending workflow</span><strong>{{ pending_count }}</strong></div><div><span>Low stock alerts</span><strong class="{% if low_stock %}an-warning{% endif %}">{{ low_stock }}</strong></div>
 </div>
 <div class="an-stat-strip an-review-summary">
+ <div><span>Customer reviews</span><strong>{{ review_count }}</strong></div>
  <div><span>Average rating</span><strong>{% if review_count %}{{ average_review_rating }}/5 ★{% else %}—{% endif %}</strong></div>
  <div><span>Cashback issued</span><strong>{{ wallet_cashback_total|inr }}</strong></div>
+ <div><span>Order tracking</span><strong>Live status</strong></div>
 </div>
 
 
