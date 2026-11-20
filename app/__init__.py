@@ -90,7 +90,7 @@ def create_app():
         @wraps(fn)
         @login_required
         def wrapped(*args, **kwargs):
-            if current_user.role != 'delivery':
+            if current_user.role != 'delivery' or not current_user.active:
                 abort(403)
             return fn(*args, **kwargs)
         return wrapped
