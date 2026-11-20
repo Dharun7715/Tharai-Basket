@@ -1,1 +1,32 @@
-{% extends 'base.html' %}{% block title %}{{ product.name }} | Tharai Basket{% endblock %}{% block content %}<section class="section"><div class="container detail-grid"><div class="detail-image">{% if product.image %}<img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}">{% else %}<div class="product-placeholder">🛍️</div>{% endif %}</div><div class="detail-copy"><span class="eyebrow">{{ product.category.name if product.category else 'DAILY ESSENTIAL' }}</span><h1>{{ product.name }}</h1><p class="muted">{{ product.description or 'A daily essential selected for your home.' }}</p><div class="product-price detail-price"><strong>{{ product.price|inr }}</strong>{% if product.mrp > product.price %}<del>{{ product.mrp|inr }}</del><span class="discount-tag">{{ product.discount_percent }}% OFF</span>{% endif %}</div><p>{{ product.unit }} · {% if product.stock > 0 %}<span class="stock-good">Available</span>{% else %}<span class="stock-out">Out of stock</span>{% endif %}</p><form method="post" action="{{ url_for('cart_add', product_id=product.id) }}" class="add-detail"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}"><button class="btn" {% if product.stock <= 0 %}disabled{% endif %}>Add to basket</button></form><p class="muted tiny">Availability is confirmed before your order is prepared.</p></div></div></section>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} | Tharai Basket{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container detail-grid">
+    <div class="detail-image">
+      {% if product.image %}<img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}">{% else %}<div class="product-placeholder">🛍️</div>{% endif %}
+    </div>
+    <div class="detail-copy">
+      <span class="eyebrow">{{ product.category.name if product.category else 'DAILY ESSENTIAL' }}</span>
+      <h1>{{ product.name }}</h1>
+      <p class="muted">{{ product.description or 'A daily essential selected for your home.' }}</p>
+      <div class="product-price detail-price"><strong>{{ product.price|inr }}</strong>{% if product.mrp > product.price %}<del>{{ product.mrp|inr }}</del><span class="discount-tag">{{ product.discount_percent }}% OFF</span>{% endif %}</div>
+      <p>{{ product.unit }} · {% if product.stock > 0 %}<span class="stock-good">Available</span>{% else %}<span class="stock-out">Out of stock</span>{% endif %}</p>
+      {% if current_user.is_authenticated and current_user.role == 'customer' %}
+      <form method="post" action="{{ url_for('wishlist_toggle', product_id=product.id) }}" style="margin:14px 0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-outline" type="submit">{% if is_wishlisted %}♥ Remove from wishlist{% else %}♡ Add to wishlist{% endif %}</button>
+      </form>
+      {% elif not current_user.is_authenticated %}
+      <p class="muted tiny"><a href="{{ url_for('login') }}">Login</a> to save this product to your wishlist.</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('cart_add', product_id=product.id) }}" class="add-detail">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}">
+        <button class="btn" {% if product.stock <= 0 %}disabled{% endif %}>Add to basket</button>
+      </form>
+      <p class="muted tiny">Availability is confirmed before your order is prepared.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}
