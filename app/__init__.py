@@ -514,9 +514,10 @@ def create_app():
         if current_user.role != 'customer':
             abort(403)
         items = ShoppingListItem.query.filter_by(user_id=current_user.id).order_by(ShoppingListItem.created_at.desc()).all()
-        subscriptions = GrocerySubscription.query.filter_by(user_id=current_user.id).order_by(GrocerySubscription.created_at.desc()).all()
+        subscriptions = GrocerySubscription.query.filter_by(user_id=current_user.id).order_by(GrocerySubscription.next_date.asc()).all()
         transactions = WalletTransaction.query.filter_by(user_id=current_user.id).order_by(WalletTransaction.created_at.desc()).limit(30).all()
-        return render_template('account_tools.html', items=items, subscriptions=subscriptions,
+        today_date = datetime.now(ZoneInfo('Asia/Kolkata')).date().isoformat()
+        return render_template('account_tools.html', items=items, subscriptions=subscriptions, today_date=today_date,
                                wallet_balance=wallet_balance(current_user.id), transactions=transactions)
 
     @app.post('/account/shopping-list/add/<int:product_id>')
@@ -1507,6 +1508,40 @@ def create_app():
             flash('No available items found in this order.', 'warning')
         return redirect(url_for('cart'))
 
+    @app.post('/order/<int:order_id>/add-item')
+    @login_required
+    def order_add_item(order_id):
+        if current_user.role != 'customer':
+            abort(403)
+        order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
+        if order.status not in ['Pending', 'Confirmed'] or order.delivery_partner_id is not None or order.payment_method != 'COD' or order.payment_status != 'Pending':
+            flash('Items can only be added to an early-stage COD order before store processing begins.', 'warning')
+            return redirect(url_for('order_detail', order_id=order.id))
+        product = Product.query.filter_by(id=request.form.get('product_id', type=int), active=True).first_or_404()
+        quantity = max(1, min(10, request.form.get('quantity', 1, type=int) or 1))
+        if product.stock < quantity:
+            flash(f'Only {product.stock} unit(s) of {product.name} are currently available.', 'warning')
+            return redirect(url_for('order_detail', order_id=order.id))
+        existing = next((line for line in order.items if line.product_id == product.id), None)
+        if existing:
+            existing.quantity += quantity
+        else:
+            db.session.add(OrderItem(order_id=order.id, product_id=product.id, product_name=product.name, unit=product.unit, quantity=quantity, unit_price=product.price))
+        product.stock -= quantity
+        remaining_to_allocate = quantity
+        batches = StockBatch.query.filter(StockBatch.product_id == product.id, StockBatch.remaining_quantity > 0).order_by(StockBatch.expiry_date.asc(), StockBatch.id.asc()).all()
+        for batch in batches:
+            if remaining_to_allocate <= 0: break
+            used = min(int(batch.remaining_quantity), remaining_to_allocate)
+            batch.remaining_quantity -= used
+            remaining_to_allocate -= used
+        order.subtotal = Decimal(str(order.subtotal or 0)) + Decimal(str(product.price)) * quantity
+        order.delivery_fee = calculate_delivery_fee(order.subtotal, current_vip_membership())
+        order.total = max(Decimal('0.00'), Decimal(str(order.subtotal)) + Decimal(str(order.delivery_fee or 0)) - Decimal(str(order.discount or 0)))
+        create_customer_notification(order, 'Items added to your order', f'{quantity} × {product.name} was added. Your updated order total is ₹{order.total:.2f}.')
+        db.session.commit()
+        flash(f'{quantity} × {product.name} added. Updated total: ₹{order.total:.2f}.', 'success')
+        return redirect(url_for('order_detail', order_id=order.id))
     @app.post('/order/<int:order_id>/cancel')
     @login_required
     def cancel_order(order_id):
@@ -1547,7 +1582,10 @@ def create_app():
         order = Order.query.get_or_404(order_id)
         if current_user.role != 'admin' and order.user_id != current_user.id and order.delivery_partner_id != current_user.id:
             abort(403)
-        return render_template('order_detail.html', order=order)
+        addable_products = []
+        if current_user.role == 'customer' and order.user_id == current_user.id and order.status in ['Pending', 'Confirmed'] and order.delivery_partner_id is None and order.payment_method == 'COD' and order.payment_status == 'Pending':
+            addable_products = Product.query.filter(Product.active.is_(True), Product.stock > 0).order_by(Product.name.asc()).limit(150).all()
+        return render_template('order_detail.html', order=order, addable_products=addable_products)
 
     @app.get('/order/<int:order_id>/invoice')
     @login_required
