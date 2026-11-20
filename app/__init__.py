@@ -471,6 +471,7 @@ def create_app():
         if not rows:
             session.pop('coupon_code', None)
             return jsonify({'empty': True, 'redirect': url_for('cart')})
+        applied_coupon_code = session.get('coupon_code')
         threshold = app.config['FREE_DELIVERY_THRESHOLD']
         fee = Decimal('0.00') if subtotal >= threshold else app.config['DELIVERY_FEE']
         coupon, discount = active_cart_coupon(subtotal)
@@ -490,7 +491,7 @@ def create_app():
             'discount': f'{discount:.2f}', 'coupon_code': coupon.code if coupon else None,
             'total': f'{total:.2f}', 'upi_qr_data': qr_data,
             'item_count': sum(int(value) for value in session.get('cart', {}).values()),
-            'coupon_message': 'Coupon removed: basket value is below its minimum.' if not coupon and session.get('coupon_code') is None else None
+            'coupon_message': 'Coupon removed: basket value is below its minimum.' if applied_coupon_code and not coupon else None
         })
 
     @app.post('/coupon/apply')
