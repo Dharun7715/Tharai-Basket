@@ -159,6 +159,18 @@ def create_app():
 
         __table_args__ = (db.UniqueConstraint('user_id', 'product_id', name='uq_wishlist_user_product'),)
 
+    class ProductReview(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False, index=True)
+        rating = db.Column(db.Integer, nullable=False)
+        comment = db.Column(db.Text, default='')
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        user = db.relationship('User')
+        product = db.relationship('Product')
+
+        __table_args__ = (db.UniqueConstraint('user_id', 'product_id', name='uq_review_user_product'),)
+
     class Supplier(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         name = db.Column(db.String(150), nullable=False)
@@ -274,7 +286,51 @@ def create_app():
         is_wishlisted = False
         if current_user.is_authenticated and current_user.role == 'customer':
             is_wishlisted = WishlistItem.query.filter_by(user_id=current_user.id, product_id=product.id).first() is not None
-        return render_template('product.html', product=product, is_wishlisted=is_wishlisted)
+        reviews = ProductReview.query.filter_by(product_id=product.id).order_by(ProductReview.created_at.desc()).all()
+        review_count = len(reviews)
+        average_rating = round(sum(r.rating for r in reviews) / review_count, 1) if review_count else 0
+        can_review = False
+        existing_review = None
+        if current_user.is_authenticated and current_user.role == 'customer':
+            can_review = (Order.query.join(OrderItem, OrderItem.order_id == Order.id)
+                          .filter(Order.user_id == current_user.id,
+                                  OrderItem.product_id == product.id,
+                                  Order.status == 'Delivered').first()) is not None
+            existing_review = ProductReview.query.filter_by(user_id=current_user.id, product_id=product.id).first()
+        return render_template('product.html', product=product, is_wishlisted=is_wishlisted,
+                               reviews=reviews, review_count=review_count, average_rating=average_rating,
+                               can_review=can_review, existing_review=existing_review)
+
+    @app.post('/product/<int:product_id>/review')
+    @login_required
+    def product_review(product_id):
+        if current_user.role != 'customer':
+            abort(403)
+        product = Product.query.filter_by(id=product_id, active=True).first_or_404()
+        eligible = (Order.query.join(OrderItem, OrderItem.order_id == Order.id)
+                    .filter(Order.user_id == current_user.id,
+                            OrderItem.product_id == product.id,
+                            Order.status == 'Delivered').first())
+        if not eligible:
+            flash('Only customers who received this product can submit a review.', 'warning')
+            return redirect(url_for('product_detail', product_id=product.id))
+        rating = request.form.get('rating', type=int)
+        comment = request.form.get('comment', '').strip()
+        if rating not in [1, 2, 3, 4, 5] or len(comment) > 1000:
+            flash('Choose a rating from 1 to 5. Review text must be under 1000 characters.', 'danger')
+            return redirect(url_for('product_detail', product_id=product.id))
+        review = ProductReview.query.filter_by(user_id=current_user.id, product_id=product.id).first()
+        if review:
+            review.rating = rating
+            review.comment = comment
+            review.created_at = datetime.utcnow()
+            flash('Your review has been updated.', 'success')
+        else:
+            db.session.add(ProductReview(user_id=current_user.id, product_id=product.id,
+                                         rating=rating, comment=comment))
+            flash('Thanks! Your review has been submitted.', 'success')
+        db.session.commit()
+        return redirect(url_for('product_detail', product_id=product.id) + '#reviews')
 
     @app.get('/wishlist')
     @login_required
