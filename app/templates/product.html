@@ -51,12 +51,18 @@
   </div>
 </section>
 
+<style>.product-gallery{height:100%;display:flex;flex-direction:column;gap:10px;padding:12px}.product-gallery-main{flex:1;min-height:0;overflow:hidden;border-radius:14px}.product-gallery-main img{width:100%;height:100%;object-fit:contain}.product-gallery-thumbs{display:flex;gap:8px;overflow:auto}.product-gallery-thumb{width:64px;height:64px;flex:0 0 64px;border:1px solid #dce8de;background:#fff;border-radius:9px;padding:4px;cursor:pointer}.product-gallery-thumb img{width:100%;height:100%;object-fit:cover;border-radius:5px}</style>
 {% endblock %}
 {% block content %}
 <section class="section">
   <div class="container detail-grid">
     <div class="detail-image">
-      {% if product.image %}<img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}">{% else %}<div class="product-placeholder">🛍️</div>{% endif %}
+      {% if gallery_images %}
+      <div class="product-gallery">
+        <div class="product-gallery-main"><img id="product-gallery-main" src="{{ url_for('static', filename=gallery_images[0].image_path) }}" alt="{{ gallery_images[0].alt_text or product.name }}"></div>
+        <div class="product-gallery-thumbs">{% for image in gallery_images %}<button type="button" class="product-gallery-thumb" onclick="document.getElementById('product-gallery-main').src=this.dataset.src" data-src="{{ url_for('static', filename=image.image_path) }}" aria-label="View image {{ loop.index }}"><img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ image.alt_text or product.name }}"></button>{% endfor %}</div>
+      </div>
+      {% elif product.image %}<img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}">{% else %}<div class="product-placeholder">🛍️</div>{% endif %}
     </div>
     <div class="detail-copy">
       <span class="eyebrow">{{ product.category.name if product.category else 'DAILY ESSENTIAL' }}</span>
