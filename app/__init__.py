@@ -257,6 +257,20 @@ def create_app():
         created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
         order = db.relationship('Order', backref=db.backref('delivery_schedule', uselist=False))
 
+    class DeliverySlotSetting(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        capacity = db.Column(db.Integer, nullable=False, default=5)
+        updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    class StoreExpense(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        title = db.Column(db.String(180), nullable=False)
+        category = db.Column(db.String(80), nullable=False, default='Other')
+        amount = db.Column(db.Numeric(10, 2), nullable=False)
+        expense_date = db.Column(db.String(10), nullable=False)
+        notes = db.Column(db.Text, default='')
+        created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
     class Notification(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
@@ -323,7 +337,7 @@ def create_app():
     SupplierModel, SupplierProductModel, OrderModel, OrderItemModel = Supplier, SupplierProduct, Order, OrderItem
     PurchaseModel, PurchaseItemModel, CouponModel, DeliveryEarningModel = Purchase, PurchaseItem, Coupon, DeliveryEarning
 
-    def available_delivery_slots(date_value):
+    def available_delivery_slots(date_value, order_time=None):
         local_now = datetime.now(ZoneInfo('Asia/Kolkata'))
         try:
             selected_date = datetime.strptime(date_value, '%Y-%m-%d').date()
@@ -333,7 +347,9 @@ def create_app():
         if selected_date < today or selected_date > today + timedelta(days=7):
             return []
         if selected_date == today:
-            first = local_now.replace(tzinfo=None) + timedelta(hours=2)
+            base_time = order_time or local_now.replace(tzinfo=None)
+            first = base_time + timedelta(hours=2)
+            # Round UP to the next half-hour boundary, never earlier than +2 hours.
             minute_remainder = first.minute % 30
             if minute_remainder or first.second or first.microsecond:
                 first += timedelta(minutes=(30 - minute_remainder) if minute_remainder else 30)
@@ -341,10 +357,15 @@ def create_app():
         else:
             first = datetime.combine(selected_date, datetime.strptime('08:00', '%H:%M').time())
         end = datetime.combine(selected_date, datetime.strptime('22:00', '%H:%M').time())
+        setting = DeliverySlotSetting.query.first()
+        capacity = max(1, int(setting.capacity if setting else 5))
         slots = []
         cursor = first
         while cursor.date() == selected_date and cursor <= end:
-            slots.append(cursor.strftime('%I:%M %p'))
+            slot = cursor.strftime('%I:%M %p')
+            booked = DeliverySchedule.query.filter_by(delivery_date=date_value, delivery_slot=slot).count()
+            if booked < capacity:
+                slots.append(slot)
             cursor += timedelta(minutes=30)
         return slots
 
@@ -354,7 +375,8 @@ def create_app():
         if current_user.role != 'customer':
             abort(403)
         date_value = request.args.get('date', '')
-        return jsonify({'date': date_value, 'slots': available_delivery_slots(date_value)})
+        return jsonify({'date': date_value, 'slots': available_delivery_slots(date_value),
+                        'capacity_per_slot': max(1, int((DeliverySlotSetting.query.first() or DeliverySlotSetting(capacity=5)).capacity))})
 
     def create_customer_notification(order, title, message, category='order'):
         db.session.add(Notification(user_id=order.user_id, order_id=order.id,
@@ -1248,6 +1270,65 @@ def create_app():
         db.session.commit()
         flash(f'Stock updated for {product.name}: {stock} unit(s).', 'success')
         return redirect(url_for('admin_inventory'))
+
+    @app.route('/admin/delivery-slots', methods=['GET', 'POST'])
+    @admin_required
+    def admin_delivery_slot_settings():
+        setting = DeliverySlotSetting.query.first()
+        if not setting:
+            setting = DeliverySlotSetting(capacity=5)
+            db.session.add(setting)
+            db.session.commit()
+        if request.method == 'POST':
+            capacity = request.form.get('capacity', type=int)
+            if capacity is None or capacity < 1 or capacity > 100:
+                flash('Slot capacity must be between 1 and 100 orders.', 'danger')
+            else:
+                setting.capacity = capacity
+                db.session.commit()
+                flash('Delivery slot capacity updated.', 'success')
+            return redirect(url_for('admin_delivery_slot_settings'))
+        upcoming = DeliverySchedule.query.join(Order).filter(
+            DeliverySchedule.delivery_date >= datetime.now(ZoneInfo('Asia/Kolkata')).date().strftime('%Y-%m-%d'),
+            Order.status != 'Cancelled'
+        ).order_by(DeliverySchedule.delivery_date, DeliverySchedule.delivery_slot).all()
+        return render_template('admin/delivery_slots.html', setting=setting, schedules=upcoming)
+
+    @app.route('/admin/expenses', methods=['GET', 'POST'])
+    @admin_required
+    def admin_expenses():
+        if request.method == 'POST':
+            title = request.form.get('title', '').strip()
+            category = request.form.get('category', 'Other').strip() or 'Other'
+            date_value = request.form.get('expense_date', '')
+            amount = money(request.form.get('amount'))
+            try:
+                datetime.strptime(date_value, '%Y-%m-%d')
+            except (TypeError, ValueError):
+                date_value = ''
+            if not title or not date_value or amount <= 0:
+                flash('Enter a title, valid date and amount greater than zero.', 'danger')
+            else:
+                db.session.add(StoreExpense(title=title, category=category, amount=amount,
+                                            expense_date=date_value, notes=request.form.get('notes', '').strip()))
+                db.session.commit()
+                flash('Expense recorded.', 'success')
+            return redirect(url_for('admin_expenses'))
+        expenses = StoreExpense.query.order_by(StoreExpense.expense_date.desc(), StoreExpense.id.desc()).limit(200).all()
+        today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+        month_start = today.replace(day=1).strftime('%Y-%m-%d')
+        month_expenses = db.session.query(db.func.coalesce(db.func.sum(StoreExpense.amount), 0)).filter(StoreExpense.expense_date >= month_start).scalar()
+        month_revenue = db.session.query(db.func.coalesce(db.func.sum(Order.total), 0)).filter(
+            Order.status == 'Delivered', Order.created_at >= datetime.combine(today.replace(day=1), datetime.min.time())).scalar()
+        return render_template('admin/expenses.html', expenses=expenses, month_expenses=month_expenses,
+                               month_revenue=month_revenue, month_profit=Decimal(str(month_revenue or 0))-Decimal(str(month_expenses or 0)),
+                               today=today.strftime('%Y-%m-%d'))
+
+    @app.get('/admin/abandoned-carts')
+    @admin_required
+    def admin_abandoned_carts():
+        carts = AbandonedCart.query.order_by(AbandonedCart.updated_at.desc()).limit(200).all()
+        return render_template('admin/abandoned_carts.html', carts=carts)
 
     @app.route('/admin/products', methods=['GET', 'POST'])
     @admin_required
