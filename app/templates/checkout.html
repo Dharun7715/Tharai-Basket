@@ -38,7 +38,7 @@
           </label>
           <div id="upi-payment-panel" class="tb-upi-panel" style="display:none">
             <div><h3>Pay using any UPI app</h3><p>Scan the QR using Google Pay, PhonePe, Paytm or BHIM.</p></div>
-            <div class="tb-qr-wrap"><img src="{{ upi_qr_data }}" alt="Dynamic UPI payment QR for ₹{{ '%.2f'|format(total) }}"><div><strong class="tb-qr-amount">₹{{ '%.2f'|format(total) }}</strong><span>{{ upi_id }}</span><small>Exact payable amount</small></div></div>
+            <div class="tb-qr-wrap"><img id="checkout-upi-qr" src="{{ upi_qr_data }}" alt="Dynamic UPI payment QR for ₹{{ '%.2f'|format(total) }}"><div><strong class="tb-qr-amount" id="checkout-upi-amount">₹{{ '%.2f'|format(total) }}</strong><span>{{ upi_id }}</span><small>Exact payable amount</small></div></div>
             <label>UPI transaction reference / UTR<input name="upi_reference" id="upi-reference" placeholder="Enter UTR after payment" autocomplete="off"></label>
             <small class="tb-payment-footnote">Your order will remain awaiting UPI verification until the store confirms the payment.</small>
           </div>
@@ -58,13 +58,14 @@
 
         <section class="tb-order-card">
           <div class="tb-order-title"><div><span class="eyebrow">YOUR BASKET</span><h2>Order summary</h2></div><span class="tb-item-count">{{ rows|length }} items</span></div>
-          <div class="tb-order-items">
-            {% for row in rows %}<div class="tb-order-item"><div class="tb-item-image">{% if row.product.image %}<img src="{{ url_for('static', filename=row.product.image) }}" alt="">{% else %}🛍️{% endif %}</div><div class="tb-item-name"><strong>{{ row.product.name }}</strong><small>{{ row.product.unit }} · Qty {{ row.quantity }}</small></div><strong>{{ row.line_total|inr }}</strong></div>{% endfor %}
+          <div class="tb-order-items" id="checkout-order-items">
+            {% for row in rows %}<div class="tb-order-item" id="checkout-item-{{ row.product.id }}"><div class="tb-item-image">{% if row.product.image %}<img src="{{ url_for('static', filename=row.product.image) }}" alt="">{% else %}🛍️{% endif %}</div><div class="tb-item-name"><strong>{{ row.product.name }}</strong><small>{{ row.product.unit }} · Qty <span id="checkout-qty-{{ row.product.id }}">{{ row.quantity }}</span></small><div class="tb-qty-controls"><button type="button" aria-label="Decrease {{ row.product.name }}" onclick="changeCheckoutQuantity({{ row.product.id }}, -1)">−</button><span id="checkout-qty-control-{{ row.product.id }}">{{ row.quantity }}</span><button type="button" aria-label="Increase {{ row.product.name }}" onclick="changeCheckoutQuantity({{ row.product.id }}, 1)">+</button></div></div><strong id="checkout-line-{{ row.product.id }}">{{ row.line_total|inr }}</strong></div>{% endfor %}
           </div>
-          <div class="tb-price-lines"><div><span>Subtotal</span><strong>{{ subtotal|inr }}</strong></div><div><span>Delivery</span><strong>{{ 'FREE' if delivery_fee == 0 else delivery_fee|inr }}</strong></div>
-            {% if coupon and discount > 0 %}<div class="tb-discount-line"><span>Coupon · {{ coupon.code }}</span><strong>-{{ discount|inr }}</strong></div>{% endif %}
+          <p id="checkout-update-status" class="tb-update-status" role="status" aria-live="polite"></p>
+          <div class="tb-price-lines"><div><span>Subtotal</span><strong id="checkout-subtotal">{{ subtotal|inr }}</strong></div><div><span>Delivery</span><strong id="checkout-delivery">{{ 'FREE' if delivery_fee == 0 else delivery_fee|inr }}</strong></div>
+            <div class="tb-discount-line" id="checkout-discount-row" {% if not coupon or discount <= 0 %}hidden{% endif %}><span>Coupon · <span id="checkout-coupon-code">{{ coupon.code if coupon else '' }}</span></span><strong id="checkout-discount">-{{ discount|inr }}</strong></div>
           </div>
-          <div class="tb-grand-total"><span>Total payable</span><strong>{{ total|inr }}</strong></div>
+          <div class="tb-grand-total"><span>Total payable</span><strong id="checkout-total">{{ total|inr }}</strong></div>
           <div class="tb-delivery-note">🚚 Free delivery on orders of ₹300 or more. Otherwise, delivery is ₹25 within Tharamangalam.</div>
         </section>
         <div class="tb-trust-row"><span>✓ Fresh everyday essentials</span><span>✓ Local delivery in Tharamangalam</span></div>
@@ -118,7 +119,8 @@
 .tb-order-card{padding:21px}
 .tb-order-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
 .tb-order-title h2{margin-top:4px}.tb-item-count{font-size:10px;background:#f0f5f0;color:#657469;padding:6px 9px;border-radius:20px}
-.tb-order-items{max-height:270px;overflow:auto}
+.tb-order-items{max-height:340px;overflow:auto}
+.tb-qty-controls{display:inline-flex;align-items:center;gap:9px;margin-top:7px;padding:3px;border:1px solid #e1ebe2;border-radius:8px;background:#f8fbf8}.tb-qty-controls button{width:24px;height:24px;border:0;border-radius:6px;background:#e7f2e9;color:#205d34;font-size:17px;line-height:1;cursor:pointer;font-weight:800}.tb-qty-controls button:disabled{opacity:.4;cursor:not-allowed}.tb-qty-controls span{font-size:10px;font-weight:800;min-width:10px;text-align:center}.tb-update-status{font-size:10px;color:#a04432;min-height:0;margin:4px 0}.tb-update-status:empty{display:none}.tb-order-item.is-updating{opacity:.55;pointer-events:none}
 .tb-order-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #edf1ed}
 .tb-item-image{width:43px;height:43px;border-radius:9px;background:#f0f6f1;display:grid;place-items:center;overflow:hidden;flex-shrink:0}.tb-item-image img{width:100%;height:100%;object-fit:cover}
 .tb-item-name{flex:1;min-width:0}.tb-item-name strong,.tb-item-name small{display:block}.tb-item-name strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tb-item-name small{font-size:9px;color:#89948b;margin-top:3px}.tb-order-item>strong{font-size:11px;white-space:nowrap}
@@ -130,6 +132,51 @@
 @media(max-width:620px){.tb-checkout{padding-top:28px}.tb-checkout-heading{align-items:flex-start;flex-direction:column}.tb-secure-note{align-self:flex-start}.tb-checkout-card,.tb-order-card{padding:17px}.tb-fields-grid{grid-template-columns:1fr}.tb-full-field{grid-column:auto}.tb-location-box{align-items:flex-start;flex-wrap:wrap}.tb-location-copy{min-width:calc(100% - 60px)}.tb-location-button{margin-left:51px}.tb-qr-wrap{gap:10px}.tb-qr-wrap img{width:120px;height:120px}.tb-qr-amount{font-size:20px}.tb-offer-main strong{font-size:29px}}
 </style>
 <script>
+async function changeCheckoutQuantity(productId, change) {
+  const item = document.getElementById('checkout-item-' + productId);
+  const status = document.getElementById('checkout-update-status');
+  const csrf = document.querySelector('input[name="csrf_token"]').value;
+  if (!item) return;
+  item.classList.add('is-updating');
+  status.textContent = 'Updating your basket…';
+  try {
+    const response = await fetch('/api/checkout/quantity/' + productId, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf},
+      body: new URLSearchParams({change: String(change)})
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not update this item.');
+    if (data.empty) { window.location.href = data.redirect || '/cart'; return; }
+    document.getElementById('checkout-qty-' + productId).textContent = data.quantity;
+    document.getElementById('checkout-qty-control-' + productId).textContent = data.quantity;
+    document.getElementById('checkout-line-' + productId).textContent = '₹' + Number(data.line_total).toFixed(2);
+    document.getElementById('checkout-subtotal').textContent = '₹' + Number(data.subtotal).toFixed(2);
+    document.getElementById('checkout-delivery').textContent = data.delivery_label;
+    document.getElementById('checkout-total').textContent = '₹' + Number(data.total).toFixed(2);
+    document.getElementById('checkout-item-count').textContent = data.item_count + ' items';
+    const discountRow = document.getElementById('checkout-discount-row');
+    if (Number(data.discount) > 0 && data.coupon_code) {
+      discountRow.hidden = false;
+      document.getElementById('checkout-coupon-code').textContent = data.coupon_code;
+      document.getElementById('checkout-discount').textContent = '-₹' + Number(data.discount).toFixed(2);
+    } else {
+      discountRow.hidden = true;
+    }
+    const qr = document.getElementById('checkout-upi-qr');
+    if (qr) qr.src = data.upi_qr_data;
+    const qrAmount = document.getElementById('checkout-upi-amount');
+    if (qrAmount) qrAmount.textContent = '₹' + Number(data.total).toFixed(2);
+    if (data.coupon_message) status.textContent = data.coupon_message;
+    else status.textContent = 'Basket updated. Total recalculated.';
+    setTimeout(() => { if (status.textContent === 'Basket updated. Total recalculated.') status.textContent = ''; }, 2200);
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    item.classList.remove('is-updating');
+  }
+}
+
 function detectDeliveryLocation() {
   const button = document.getElementById('get-location-btn');
   const status = document.getElementById('location-status');
