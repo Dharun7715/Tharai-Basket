@@ -62,7 +62,8 @@
           {% endif %}
         </div>
         <div class="tb-summary-row tb-discount-row" id="tb-cart-discount-row" {% if discount <= 0 %}hidden{% endif %}><span>Offers & discounts</span><strong id="tb-cart-discount">-{{ discount|inr }}</strong></div>
-        {% if combo and combo_discount > 0 %}<div class="tb-summary-row"><span>Combo saving · {{ combo.title }}</span><strong style="color:#168348">-{{ combo_discount|inr }}</strong></div>{% endif %}\n        <div class="tb-cart-total"><span>Total payable</span><strong id="tb-cart-total">{{ total|inr }}</strong></div>
+        {% if combo and combo_discount > 0 %}<div class="tb-summary-row"><span>Combo saving · {{ combo.title }}</span><strong style="color:#168348">-{{ combo_discount|inr }}</strong></div>{% endif %}
+        <div class="tb-cart-total"><span>Total payable</span><strong id="tb-cart-total">{{ total|inr }}</strong></div>
         <a class="tb-checkout-button" href="{{ url_for('checkout') }}">Continue to checkout <span>→</span></a>
         <p class="tb-summary-footnote">Secure checkout · Fresh local delivery</p>
       </aside>
