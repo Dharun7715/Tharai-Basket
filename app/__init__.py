@@ -1872,7 +1872,10 @@ def create_app():
         payment = MembershipPayment.query.filter_by(id=payment_id, status='Pending').first_or_404()
         existing_membership = VipMembership.query.filter_by(user_id=payment.user_id, active=True).filter(
             VipMembership.ends_at > datetime.utcnow()).order_by(VipMembership.ends_at.desc()).first()
-        if payment.months == 0 and payment.tier == 'Platinum' and existing_membership and existing_membership.tier == 'Gold':
+        if payment.months == 0 and payment.tier == 'Platinum':
+            if not existing_membership or existing_membership.tier != 'Gold':
+                flash('This Gold membership is no longer active. Reject this upgrade request; ask the customer to purchase a full Platinum plan.', 'warning')
+                return redirect(url_for('admin_growth_tools'))
             existing_membership.tier = 'Platinum'
         else:
             VipMembership.query.filter_by(user_id=payment.user_id, active=True).update({'active': False})
