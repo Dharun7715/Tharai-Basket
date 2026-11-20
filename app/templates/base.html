@@ -35,11 +35,12 @@ body{padding-bottom:82px!important}.tb-bottom-nav.has-cart-bar{bottom:55px!impor
 @media(min-width:900px){.tb-bottom-nav{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(560px,calc(100% - 32px))!important;border:1px solid #dce8de!important;border-bottom:0!important;border-radius:18px 18px 0 0!important}.tb-bottom-nav.has-cart-bar{bottom:55px!important}}
 </style>
 <style>
-/* Desktop: keep the quick tabs mobile-only; show a compact floating cart action instead. */
+/* Responsive quick navigation: visible on both mobile and desktop. */
 @media(min-width:900px){
-  .tb-bottom-nav{display:none!important;visibility:hidden!important}
-  body{padding-bottom:0!important}
-  .tb-view-cart-bar{position:fixed!important;left:auto!important;right:32px!important;bottom:28px!important;top:auto!important;transform:none!important;width:min(520px,calc(100% - 64px))!important;max-width:520px!important;border-radius:18px!important;padding:12px 14px!important;z-index:1000!important}
+  .tb-bottom-nav{display:grid!important;visibility:visible!important;opacity:1!important;position:fixed!important;left:0!important;right:0!important;bottom:0!important;transform:none!important;width:100%!important;max-width:none!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;min-height:68px!important;height:68px!important;padding:7px 8px!important;border:0!important;border-top:1px solid #dce8de!important;border-radius:0!important;background:#fff!important;z-index:99999!important}
+  .tb-bottom-nav a{min-height:52px!important}
+  body{padding-bottom:82px!important}
+  .tb-view-cart-bar{position:fixed!important;left:auto!important;right:28px!important;bottom:84px!important;top:auto!important;transform:none!important;width:min(520px,calc(100% - 56px))!important;max-width:520px!important;border-radius:16px!important;padding:10px 14px!important;z-index:1000!important}
   .tb-view-cart-inner{width:100%!important;max-width:none!important;margin:0!important}
 }
 </style>
