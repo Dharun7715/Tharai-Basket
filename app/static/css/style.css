@@ -117,3 +117,13 @@ body.tb-menu-open{overflow:hidden}
 .tb-profile-icon:hover{background:#176b39;color:#fff}
 .tb-profile-icon svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 @media(max-width:620px){.tb-profile-icon{width:32px;height:32px;flex-basis:32px;margin-left:2px}.tb-profile-icon svg{width:19px;height:19px}}
+
+
+/* Language switcher inside the account drawer */
+.tb-language-toggle{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:#35473a;padding:11px 12px;border-radius:10px;font-size:13px;font-weight:700;text-align:left;cursor:pointer}
+.tb-language-toggle:hover{background:#f0f8f1;color:#176b39}
+.tb-language-toggle>span:first-child{width:20px;text-align:center;font-size:17px}
+.goog-te-banner-frame,.goog-te-balloon-frame{display:none!important}
+body{top:0!important}
+.goog-te-gadget{font-size:0!important}
+.goog-te-gadget .goog-te-combo{display:none!important}
