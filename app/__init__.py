@@ -502,7 +502,7 @@ def create_app():
         subscriptions = GrocerySubscription.query.filter_by(user_id=current_user.id).order_by(GrocerySubscription.created_at.desc()).all()
         transactions = WalletTransaction.query.filter_by(user_id=current_user.id).order_by(WalletTransaction.created_at.desc()).limit(30).all()
         return render_template('account_tools.html', items=items, subscriptions=subscriptions,
-                               wallet_balance=wallet_available, wallet_opted=wallet_opted, wallet_used=wallet_preview, transactions=transactions)
+                               wallet_balance=wallet_balance(current_user.id), transactions=transactions)
 
     @app.post('/account/shopping-list/add/<int:product_id>')
     @login_required
@@ -1431,6 +1431,7 @@ def create_app():
                                coupon=coupon, discount=discount, reward_discount=reward_discount,
                                membership=membership, combo=active_combo, combo_discount=combo_discount,
                                available_reward_points=available_reward_points, use_rewards=use_rewards,
+                               wallet_balance=wallet_available, wallet_opted=wallet_opted, wallet_used=wallet_preview,
                                wallet_balance=wallet_balance(current_user.id),
                                saved_addresses=saved_addresses, upi_qr_data=upi_qr_data, upi_id='8838145515@sbi',
                                delivery_date=delivery_date, delivery_slots=delivery_slots, delivery_slot=delivery_slot,
