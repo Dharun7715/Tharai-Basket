@@ -1801,8 +1801,18 @@ def create_app():
             'Platinum': {1: {'amount': Decimal('500.00'), 'qr': membership_qr_data(Decimal('500.00'), 'Platinum', 1)},
                          3: {'amount': Decimal('1300.00'), 'qr': membership_qr_data(Decimal('1300.00'), 'Platinum', 3)}},
         }
+        upgrade_amount = None
+        upgrade_qr = None
+        if membership and membership.tier == 'Gold':
+            total_seconds = max((membership.ends_at - membership.starts_at).total_seconds(), 1)
+            remaining_seconds = max((membership.ends_at - datetime.utcnow()).total_seconds(), 0)
+            base_gold = Decimal('800.00') if total_seconds > 45 * 86400 else Decimal('300.00')
+            base_platinum = Decimal('1300.00') if total_seconds > 45 * 86400 else Decimal('500.00')
+            upgrade_amount = ((base_platinum - base_gold) * Decimal(str(remaining_seconds / total_seconds))).quantize(Decimal('0.01'))
+            upgrade_qr = membership_qr_data(upgrade_amount, 'Platinum Upgrade', 0) if upgrade_amount > 0 else None
         return render_template('membership.html', membership=membership, pending_request=pending_request,
-                               plans=plans, upi_id='8838145515@sbi')
+                               plans=plans, upi_id='8838145515@sbi',
+                               upgrade_amount=upgrade_amount, upgrade_qr=upgrade_qr)
 
     @app.post('/account/membership/request')
     @login_required
