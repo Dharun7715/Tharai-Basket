@@ -1814,10 +1814,16 @@ def create_app():
         amount = membership_plan_amount(tier, months)
         if amount is None:
             flash('Choose a valid Gold or Platinum membership plan.', 'danger')
-        elif not upi_reference or len(upi_reference) < 6 or len(upi_reference) > 100:
+        elif amount > 0 and (not upi_reference or len(upi_reference) < 6 or len(upi_reference) > 100):
             flash('Enter the UPI transaction reference / UTR after payment.', 'warning')
-        elif MembershipPayment.query.filter_by(user_id=current_user.id, status='Pending').first():
+        elif amount > 0 and MembershipPayment.query.filter_by(user_id=current_user.id, status='Pending').first():
             flash('You already have a membership payment waiting for verification.', 'info')
+        elif amount == 0:
+            VipMembership.query.filter_by(user_id=current_user.id, active=True).update({'active': False})
+            db.session.add(VipMembership(user_id=current_user.id, tier=tier, starts_at=datetime.utcnow(),
+                ends_at=datetime.utcnow() + timedelta(days=30 * months), active=True))
+            db.session.commit()
+            flash(f'Free {tier} testing membership activated for {months} month(s)!', 'success')
         else:
             db.session.add(MembershipPayment(user_id=current_user.id, tier=tier, months=months,
                                              amount=amount, upi_reference=upi_reference[:100]))
