@@ -368,3 +368,13 @@ body.tb-vip-theme .tb-language-toggle:hover,
 body.tb-vip-platinum .tb-language-toggle:hover{background:#f1f1f1!important;color:#000!important}
 body.tb-vip-theme .tb-menu-links>a small,
 body.tb-vip-platinum .tb-menu-links>a small{background:#e9f2eb;color:#171717}
+
+
+/* HOTFIX v10: keep the four-tab bottom navigation visible and readable. */
+.tb-bottom-nav{display:grid!important;visibility:visible!important;opacity:1!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;position:fixed!important;left:0!important;right:0!important;bottom:0!important;z-index:99999!important;min-height:64px!important;background:#fff!important}
+.tb-bottom-nav a{display:flex!important;visibility:visible!important;opacity:1!important;align-items:center!important;justify-content:center!important;flex-direction:column!important;min-height:48px!important;color:#68776c!important}
+.tb-bottom-nav a svg{display:block!important;width:22px!important;height:22px!important}
+.tb-bottom-nav a.tb-vip-nav{color:#a87912!important;font-weight:900!important}
+.tb-bottom-nav a.tb-vip-nav svg{stroke:#c69219!important;fill:rgba(198,146,25,.18)!important;stroke-width:2.2!important}
+body{padding-bottom:82px!important}
+@media(max-width:620px){.tb-bottom-nav{height:64px!important;padding-bottom:calc(7px + env(safe-area-inset-bottom))!important}.tb-bottom-nav.has-cart-bar{bottom:0!important}}
