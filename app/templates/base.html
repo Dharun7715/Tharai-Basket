@@ -138,7 +138,7 @@
     <span>Order Again</span>
   </a>
   <a href="{{ url_for('account_membership') if current_user.is_authenticated and current_user.role == 'customer' else url_for('login') }}" aria-label="VIP membership" class="{% if request.endpoint == 'account_membership' %}is-active{% endif %}">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.2 1 5.9L12 16.5l-5.2 2.8 1-5.9L3.5 9.2l5.9-.9z"/><path d="M8.5 21h7"/></svg>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 4.2 4L12 4l4.8 7L21 7l-2 12H5L3 7Z"/><path d="M5 22h14M7 16h10"/></svg>
     <span>VIP</span>
   </a>
 </nav>
