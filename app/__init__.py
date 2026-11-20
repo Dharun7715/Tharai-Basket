@@ -502,7 +502,7 @@ def create_app():
         subscriptions = GrocerySubscription.query.filter_by(user_id=current_user.id).order_by(GrocerySubscription.created_at.desc()).all()
         transactions = WalletTransaction.query.filter_by(user_id=current_user.id).order_by(WalletTransaction.created_at.desc()).limit(30).all()
         return render_template('account_tools.html', items=items, subscriptions=subscriptions,
-                               wallet_balance=wallet_balance(current_user.id), transactions=transactions)
+                               wallet_balance=wallet_available, wallet_opted=wallet_opted, wallet_used=wallet_preview, transactions=transactions)
 
     @app.post('/account/shopping-list/add/<int:product_id>')
     @login_required
@@ -1318,6 +1318,10 @@ def create_app():
         reward_discount = min(Decimal(available_reward_points), subtotal) if use_rewards else Decimal('0.00')
         discount = min(subtotal, coupon_discount + reward_discount + combo_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
+        wallet_opted = request.values.get('use_wallet') == '1'
+        wallet_available = wallet_balance(current_user.id)
+        wallet_preview = min(wallet_available, total) if wallet_opted else Decimal('0.00')
+        total = max(Decimal('0.00'), total - wallet_preview)
         local_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
         delivery_date = request.values.get('delivery_date') or local_today.strftime('%Y-%m-%d')
         delivery_slots = available_delivery_slots(delivery_date)
@@ -1385,10 +1389,8 @@ def create_app():
                 reward_discount = min(Decimal(available_reward_points), subtotal) if session.get('use_rewards') else Decimal('0.00')
                 discount = min(subtotal, coupon_discount + reward_discount + combo_discount)
                 total = max(Decimal('0.00'), subtotal + fee - discount)
-                wallet_used = Decimal('0.00')
-                if request.form.get('use_wallet') == '1':
-                    wallet_used = min(wallet_balance(current_user.id), total)
-                    total = max(Decimal('0.00'), total - wallet_used)
+                wallet_used = min(wallet_balance(current_user.id), total) if request.form.get('use_wallet') == '1' else Decimal('0.00')
+                total = max(Decimal('0.00'), total - wallet_used)
                 if payment == 'UPI' and total == Decimal('0.00'):
                     payment = 'COD'
                 order = Order(order_number=f"TB{datetime.utcnow():%y%m%d%H%M%S}{current_user.id}", user_id=current_user.id,
