@@ -1,10 +1,11 @@
-const CACHE='tharai-basket-shell-v8';
+const CACHE='tharai-basket-shell-v9';
 const SHELL=[
  '/static/css/style.css',
  '/static/js/app.js',
  '/static/manifest.json',
  '/static/images/tharai-basket-app-icon.svg',
- '/static/images/tharai-basket-logo.webp'
+ '/static/images/tharai-basket-logo.webp',
+ '/static/offline.html'
 ];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
@@ -18,7 +19,15 @@ self.addEventListener('fetch',event=>{
  const request=event.request;
  if(request.method!=='GET') return;
  const url=new URL(request.url);
- if(url.origin!==self.location.origin||!url.pathname.startsWith('/static/')) return;
+ if(url.origin!==self.location.origin) return;
+ if(request.mode==='navigate'){
+  event.respondWith(fetch(request).catch(async()=>{
+   const cache=await caches.open(CACHE);
+   return (await cache.match('/static/offline.html'))||new Response('You are offline.',{status:503,headers:{'Content-Type':'text/plain'}});
+  }));
+  return;
+ }
+ if(!url.pathname.startsWith('/static/')) return;
  event.respondWith(caches.open(CACHE).then(async cache=>{
   const cached=await cache.match(request);
   if(cached){
