@@ -1000,5 +1000,11 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        # Ensure the launch offer exists without changing existing customer/order data.
+        default_coupon = Coupon.query.filter_by(code='THARAI50').first()
+        if not default_coupon:
+            db.session.add(Coupon(code='THARAI50', discount_type='fixed', value=Decimal('50.00'),
+                                  min_order=Decimal('500.00'), active=True))
+            db.session.commit()
 
     return app
