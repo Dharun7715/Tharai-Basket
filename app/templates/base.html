@@ -33,7 +33,17 @@
 .tb-bottom-nav a.tb-vip-nav svg{stroke:#c69219!important;fill:none!important;filter:drop-shadow(0 1px 1px rgba(198,146,25,.18))}
 body{padding-bottom:82px!important}.tb-bottom-nav.has-cart-bar{bottom:55px!important}
 @media(min-width:900px){.tb-bottom-nav{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(560px,calc(100% - 32px))!important;border:1px solid #dce8de!important;border-bottom:0!important;border-radius:18px 18px 0 0!important}.tb-bottom-nav.has-cart-bar{bottom:55px!important}}
-</style></head>
+</style>
+<style>
+/* Desktop: keep the quick tabs mobile-only; show a compact floating cart action instead. */
+@media(min-width:900px){
+  .tb-bottom-nav{display:none!important;visibility:hidden!important}
+  body{padding-bottom:0!important}
+  .tb-view-cart-bar{position:fixed!important;left:auto!important;right:32px!important;bottom:28px!important;top:auto!important;transform:none!important;width:min(520px,calc(100% - 64px))!important;max-width:520px!important;border-radius:18px!important;padding:12px 14px!important;z-index:1000!important}
+  .tb-view-cart-inner{width:100%!important;max-width:none!important;margin:0!important}
+}
+</style>
+</head>
 <body{% if vip_theme_tier %} class="tb-vip-theme tb-vip-{{ vip_theme_tier|lower }}"{% endif %}>
 
 <header class="site-header"><div class="container nav-wrap">
@@ -134,7 +144,7 @@ body{padding-bottom:82px!important}.tb-bottom-nav.has-cart-bar{bottom:55px!impor
   </div>
 </div>
 {% endif %}
-<nav class="tb-bottom-nav{% if cart_count|int > 0 and request.endpoint != 'cart' %} has-cart-bar{% endif %}" aria-label="Quick navigation" style="display:grid!important;visibility:visible!important;opacity:1!important;position:fixed!important;left:0!important;right:0!important;bottom:0!important;z-index:2147483000!important;width:100%!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;min-height:66px!important;height:auto!important;padding:7px 8px calc(7px + env(safe-area-inset-bottom))!important;background:#fff!important;border-top:1px solid #dce8de!important;box-shadow:0 -6px 22px rgba(25,65,38,.12)!important;">
+<nav class="tb-bottom-nav{% if cart_count|int > 0 and request.endpoint != 'cart' %} has-cart-bar{% endif %}" aria-label="Quick navigation">
   <a href="{{ url_for('index') }}" aria-label="Home" class="{% if request.endpoint == 'index' %}is-active{% endif %}" style="display:flex!important;visibility:visible!important;opacity:1!important;min-width:0!important;min-height:50px!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important;color:#176b39!important;text-decoration:none!important;font-size:10px!important;font-weight:700!important;">
     <svg viewBox="0 0 24 24" aria-hidden="true" style="display:block!important;width:22px!important;height:22px!important;fill:none!important;stroke:currentColor!important;stroke-width:1.9!important;stroke-linecap:round!important;stroke-linejoin:round!important"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span style="display:block!important;color:inherit!important">Home</span>
   </a>
