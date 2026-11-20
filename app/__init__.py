@@ -840,6 +840,32 @@ def create_app():
         flash(f'Coupon {coupon.code} is now {"active" if coupon.active else "inactive"}.', 'success')
         return redirect(url_for('admin_coupons'))
 
+    @app.get('/admin/inventory')
+    @admin_required
+    def admin_inventory():
+        products = Product.query.filter_by(active=True).filter(Product.stock <= 5).order_by(Product.stock.asc(), Product.name.asc()).all()
+        out_of_stock_count = Product.query.filter_by(active=True, stock=0).count()
+        low_stock_count = Product.query.filter(Product.active.is_(True), Product.stock.between(1, 5)).count()
+        return render_template('admin/inventory.html', products=products,
+                               out_of_stock_count=out_of_stock_count, low_stock_count=low_stock_count)
+
+    @app.post('/admin/inventory/<int:product_id>/stock')
+    @admin_required
+    def admin_inventory_update_stock(product_id):
+        product = Product.query.get_or_404(product_id)
+        try:
+            stock = int(request.form.get('stock', ''))
+        except (TypeError, ValueError):
+            flash('Enter a valid whole-number stock quantity.', 'danger')
+            return redirect(url_for('admin_inventory'))
+        if stock < 0 or stock > 1000000:
+            flash('Stock must be between 0 and 1,000,000.', 'danger')
+            return redirect(url_for('admin_inventory'))
+        product.stock = stock
+        db.session.commit()
+        flash(f'Stock updated for {product.name}: {stock} unit(s).', 'success')
+        return redirect(url_for('admin_inventory'))
+
     @app.route('/admin/products', methods=['GET', 'POST'])
     @admin_required
     def admin_products():
