@@ -54,6 +54,7 @@
     </div>
     <div class="form-card" style="margin-top:18px">
       <h3>Delivery details</h3>
+      {% if order.delivery_schedule %}<p><strong>Scheduled delivery:</strong> {{ order.delivery_schedule.delivery_date }} · {{ order.delivery_schedule.delivery_slot }}</p>{% endif %}
       <p>{{ order.customer_name }} · {{ order.phone }}</p>
       <p>{{ order.address_text }}</p>
       <p>Payment: {{ order.payment_method }} · {{ order.payment_status }}</p>
