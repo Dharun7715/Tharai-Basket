@@ -14,7 +14,7 @@
   <script>if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}").catch(() => {}));</script>
 </head>
 <body>
-<div class="tb-app-splash" id="tb-app-splash" aria-label="Tharai Basket loading"><img src="{{ url_for('static', filename='images/tharai-basket-app-icon.svg') }}?v=7" alt="Tharai Basket"></div>
+
 <header class="site-header"><div class="container nav-wrap">
   <a class="brand" href="{{ url_for('index') }}" aria-label="Tharai Basket home"><img class="brand-logo" src="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}?v=6" alt="Tharai Basket"></a>
   <nav class="desktop-nav"><a href="{{ url_for('index') }}">Home</a><a href="{{ url_for('index') }}#categories">Categories</a><a href="{{ url_for('index') }}#deals">Today's deals</a></nav>
