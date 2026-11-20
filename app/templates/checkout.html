@@ -24,6 +24,21 @@
           {% if saved_addresses %}<label class="tb-saved-address-select">Use a saved address
             <select id="saved-address-select" onchange="fillSavedAddress(this)"><option value="">Enter a new address</option>{% for address in saved_addresses %}<option value="{{ address.id }}" data-recipient="{{ address.recipient }}" data-phone="{{ address.phone }}" data-address="{{ address.line1 }}{% if address.landmark %}, {{ address.landmark }}{% endif %}{% if address.pincode %}, {{ address.pincode }}{% endif %}">{{ address.label }} — {{ address.line1 }}</option>{% endfor %}</select>
           </label>{% endif %}
+          <div class="tb-schedule-box">
+            <div class="tb-schedule-heading"><span>🕒</span><div><strong>Schedule your delivery</strong><small>First slot starts 2 hours from now; slots are 30 minutes apart.</small></div></div>
+            <div class="tb-schedule-fields">
+              <label>Delivery date
+                <input type="date" id="delivery-date" name="delivery_date" value="{{ delivery_date }}" min="{{ min_delivery_date }}" max="{{ max_delivery_date }}" required>
+              </label>
+              <label>Delivery time slot
+                <select id="delivery-slot" name="delivery_slot" required>
+                  {% for slot in delivery_slots %}<option value="{{ slot }}" {% if delivery_slot == slot %}selected{% endif %}>{{ slot }}</option>{% endfor %}
+                  {% if not delivery_slots %}<option value="">No slots available</option>{% endif %}
+                </select>
+              </label>
+            </div>
+            <small id="delivery-slot-help" role="status">Choose a date to see available 30-minute slots.</small>
+          </div>
           <div class="tb-fields-grid">
             <label>Recipient name<input id="checkout-recipient" name="name" value="{{ current_user.name }}" required placeholder="Your full name"></label>
             <label>Phone number<input id="checkout-phone" name="phone" value="{{ current_user.phone }}" required placeholder="Mobile number" inputmode="tel"></label>
@@ -109,7 +124,7 @@
 .tb-location-copy{flex:1;min-width:0}.tb-location-copy strong{font-size:12px}.tb-location-copy p{font-size:10px;color:#7d8a80;margin:3px 0}.tb-location-copy span{font-size:10px;color:#728176}
 .tb-location-button{white-space:nowrap;padding:10px 13px;font-size:11px}
 .tb-saved-address-select{display:grid;gap:7px;margin:-4px 0 15px;font-size:11px;font-weight:700;color:#526257}.tb-saved-address-select select{width:100%;border:1px solid #dfe8e0;border-radius:10px;padding:12px 13px;background:#fff;font:400 12px 'DM Sans';color:#24372a}
-.tb-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.tb-schedule-box{margin:0 0 18px;padding:15px;background:#f5faf6;border:1px solid #e1ece2;border-radius:13px}.tb-schedule-heading{display:flex;align-items:center;gap:10px;margin-bottom:13px}.tb-schedule-heading>span{width:35px;height:35px;border-radius:10px;background:#e5f2e7;display:grid;place-items:center;font-size:19px}.tb-schedule-heading strong,.tb-schedule-heading small{display:block}.tb-schedule-heading strong{font-size:12px;color:#263b2c}.tb-schedule-heading small{font-size:10px;color:#7d8a80;margin-top:3px}.tb-schedule-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tb-schedule-fields label{display:grid;gap:7px;font-size:11px;font-weight:700;color:#526257}.tb-schedule-fields input,.tb-schedule-fields select{width:100%;border:1px solid #dfe8e0;border-radius:10px;padding:12px 13px;background:#fff;color:#24372a;font:400 12px 'DM Sans',sans-serif}.tb-schedule-box>small{display:block;color:#78867c;font-size:10px;margin-top:9px}..tb-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
 .tb-fields-grid label,.tb-payment-select,.tb-upi-panel label{display:grid;gap:7px;font-size:11px;font-weight:700;color:#526257}
 .tb-fields-grid input,.tb-fields-grid textarea,.tb-payment-select select,.tb-upi-panel input{width:100%;border:1px solid #dfe8e0;border-radius:10px;padding:12px 13px;font:400 12px 'DM Sans',sans-serif;color:#24372a;background:#fff;outline:none;transition:.2s}
 .tb-fields-grid input:focus,.tb-fields-grid textarea:focus,.tb-payment-select select:focus,.tb-upi-panel input:focus{border-color:#65a978;box-shadow:0 0 0 3px #eaf5ec}
@@ -145,7 +160,7 @@
 .tb-delivery-note{margin-top:13px;padding:10px;background:#f1f8f2;border-radius:9px;font-size:10px;color:#52705a;line-height:1.5}
 .tb-trust-row{display:flex;flex-wrap:wrap;gap:8px 14px;color:#7b897e;font-size:9px;padding:0 4px}
 @media(max-width:900px){.tb-checkout-grid{grid-template-columns:1fr}.tb-checkout-side{position:static;grid-row:1}.tb-checkout-form{grid-row:2}}
-@media(max-width:620px){.tb-checkout{padding-top:28px}.tb-checkout-heading{align-items:flex-start;flex-direction:column}.tb-secure-note{align-self:flex-start}.tb-checkout-card,.tb-order-card{padding:17px}.tb-fields-grid{grid-template-columns:1fr}.tb-full-field{grid-column:auto}.tb-location-box{align-items:flex-start;flex-wrap:wrap}.tb-location-copy{min-width:calc(100% - 60px)}.tb-location-button{margin-left:51px}.tb-qr-wrap{gap:10px}.tb-qr-wrap img{width:120px;height:120px}.tb-qr-amount{font-size:20px}.tb-offer-main strong{font-size:29px}}
+@media(max-width:620px){.tb-schedule-fields{grid-template-columns:1fr}.tb-checkout{padding-top:28px}.tb-checkout-heading{align-items:flex-start;flex-direction:column}.tb-secure-note{align-self:flex-start}.tb-checkout-card,.tb-order-card{padding:17px}.tb-fields-grid{grid-template-columns:1fr}.tb-full-field{grid-column:auto}.tb-location-box{align-items:flex-start;flex-wrap:wrap}.tb-location-copy{min-width:calc(100% - 60px)}.tb-location-button{margin-left:51px}.tb-qr-wrap{gap:10px}.tb-qr-wrap img{width:120px;height:120px}.tb-qr-amount{font-size:20px}.tb-offer-main strong{font-size:29px}}
 </style>
 <script>
 async function changeCheckoutQuantity(productId, change) {
@@ -225,6 +240,32 @@ function detectDeliveryLocation() {
     status.textContent = error.code === 1 ? 'Location permission denied. Allow location access and try again.' : 'Could not get location. Enable GPS and try again.';
     button.disabled = false;
   }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+}
+const deliveryDateInput = document.getElementById('delivery-date');
+const deliverySlotSelect = document.getElementById('delivery-slot');
+const deliverySlotHelp = document.getElementById('delivery-slot-help');
+if (deliveryDateInput && deliverySlotSelect) {
+  deliveryDateInput.addEventListener('change', async () => {
+    deliverySlotSelect.disabled = true;
+    deliverySlotHelp.textContent = 'Loading available delivery slots…';
+    try {
+      const response = await fetch('/api/delivery-slots?date=' + encodeURIComponent(deliveryDateInput.value));
+      const data = await response.json();
+      deliverySlotSelect.innerHTML = '';
+      if (!response.ok || !data.slots || !data.slots.length) {
+        const option = new Option('No slots available for this date', '');
+        deliverySlotSelect.add(option);
+        deliverySlotHelp.textContent = 'Please choose another date.';
+      } else {
+        data.slots.forEach(slot => deliverySlotSelect.add(new Option(slot, slot)));
+        deliverySlotHelp.textContent = data.slots.length + ' available slots. Choose the time that suits you.';
+      }
+    } catch (error) {
+      deliverySlotHelp.textContent = 'Could not load slots. Please refresh and try again.';
+    } finally {
+      deliverySlotSelect.disabled = false;
+    }
+  });
 }
 function fillSavedAddress(select) {
   const option = select.options[select.selectedIndex];
