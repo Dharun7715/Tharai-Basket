@@ -2321,6 +2321,106 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+
+        # Idempotently prepare an editable starter grocery catalogue.
+        # Starter items are hidden and have placeholder prices/zero stock until the admin reviews them.
+        starter_catalog = {
+            'Rice & Grains': [
+                ('Ponni Boiled Rice', '1 kg'), ('Idli Rice', '1 kg'), ('Raw Rice', '1 kg'),
+                ('Basmati Rice', '1 kg'), ('Wheat Flour / Atta', '1 kg'), ('Maida', '1 kg'),
+                ('Rava / Sooji', '500 g'), ('Rice Flour', '500 g'), ('Wheat Rava', '500 g'),
+                ('Poha / Aval', '500 g'), ('Vermicelli / Semiya', '200 g')
+            ],
+            'Dals & Pulses': [
+                ('Toor Dal', '1 kg'), ('Urad Dal', '500 g'), ('Moong Dal', '500 g'),
+                ('Chana Dal', '500 g'), ('Masoor Dal', '500 g'), ('Whole Green Gram', '500 g'),
+                ('White Chickpeas', '500 g'), ('Black Chickpeas', '500 g'), ('Rajma', '500 g')
+            ],
+            'Cooking Oils & Ghee': [
+                ('Sunflower Oil', '1 L'), ('Groundnut Oil', '1 L'), ('Gingelly Oil', '500 ml'),
+                ('Coconut Oil', '500 ml'), ('Rice Bran Oil', '1 L'), ('Refined Palm Oil', '1 L'),
+                ('Ghee', '200 ml')
+            ],
+            'Spices & Masalas': [
+                ('Chilli Powder', '100 g'), ('Turmeric Powder', '100 g'), ('Coriander Powder', '100 g'),
+                ('Cumin Seeds', '100 g'), ('Mustard Seeds', '100 g'), ('Black Pepper', '50 g'),
+                ('Fenugreek Seeds', '100 g'), ('Fennel Seeds', '100 g'), ('Jeera Powder', '100 g'),
+                ('Sambar Powder', '100 g'), ('Rasam Powder', '100 g'), ('Garam Masala', '100 g'),
+                ('Biryani Masala', '100 g'), ('Chicken Masala', '100 g'), ('Asafoetida / Hing', '50 g')
+            ],
+            'Salt, Sugar & Sweeteners': [
+                ('White Sugar', '1 kg'), ('Jaggery', '500 g'), ('Iodised Salt', '1 kg'),
+                ('Rock Salt', '500 g'), ('Crystal Salt', '1 kg')
+            ],
+            'Dairy & Bakery': [
+                ('Milk', '500 ml'), ('Curd', '500 g'), ('Butter', '100 g'),
+                ('Paneer', '200 g'), ('Cheese Slices', '200 g'), ('Bread', '1 pack'),
+                ('Rusk', '200 g')
+            ],
+            'Beverages': [
+                ('Tea Powder', '250 g'), ('Coffee Powder', '100 g'), ('Instant Coffee', '50 g'),
+                ('Health Drink', '500 g'), ('Drinking Water', '1 L'), ('Fruit Drink', '1 L')
+            ],
+            'Snacks & Packaged Foods': [
+                ('Mixture', '200 g'), ('Potato Chips', '1 pack'), ('Biscuits', '1 pack'),
+                ('Cookies', '1 pack'), ('Papad', '200 g'), ('Appalam', '100 g'),
+                ('Peanuts', '250 g'), ('Roasted Gram', '250 g'), ('Noodles', '1 pack'),
+                ('Pasta', '500 g'), ('Tomato Ketchup', '500 g'), ('Pickle', '300 g')
+            ],
+            'Personal Care': [
+                ('Bath Soap', '1 bar'), ('Shampoo', '180 ml'), ('Toothpaste', '150 g'),
+                ('Toothbrush', '1 unit'), ('Hair Oil', '100 ml'), ('Face Wash', '100 ml'),
+                ('Sanitary Napkins', '1 pack'), ('Hand Wash', ' refill pack')
+            ],
+            'Home Cleaning': [
+                ('Washing Powder', '1 kg'), ('Dishwash Bar', '1 bar'), ('Dishwash Liquid', '500 ml'),
+                ('Floor Cleaner', '1 L'), ('Toilet Cleaner', '500 ml'), ('Phenyl', '1 L'),
+                ('Scrub Pad', '1 unit'), ('Garbage Bags', '1 pack')
+            ],
+            'Household & Pooja Essentials': [
+                ('Matchbox', '1 pack'), ('Candles', '1 pack'), ('Agarbathi', '1 pack'),
+                ('Camphor', '1 pack'), ('Cotton Wicks', '1 pack'), ('Aluminium Foil', '1 roll'),
+                ('Tissue Paper', '1 pack')
+            ],
+            'Baby Care': [
+                ('Baby Soap', '1 bar'), ('Baby Shampoo', '100 ml'), ('Baby Wipes', '1 pack'),
+                ('Baby Diapers', '1 pack')
+            ]
+        }
+        existing_categories = {c.name: c for c in Category.query.all()}
+        for category_name in starter_catalog:
+            if category_name not in existing_categories:
+                slug = '-'.join(category_name.lower().split())
+                category = Category(name=category_name, slug=slug, active=True)
+                db.session.add(category)
+                existing_categories[category_name] = category
+        db.session.flush()
+
+        existing_product_names = {p.name.strip().casefold() for p in Product.query.all()}
+        added_grocery_count = 0
+        for category_name, items in starter_catalog.items():
+            category = existing_categories[category_name]
+            for product_name, unit in items:
+                if product_name.casefold() in existing_product_names:
+                    continue
+                db.session.add(Product(
+                    name=product_name,
+                    brand='',
+                    description='Starter catalogue item — admin to confirm brand, price and stock.',
+                    unit=unit,
+                    category=category,
+                    mrp=Decimal('1.00'),
+                    price=Decimal('1.00'),
+                    stock=0,
+                    active=False,
+                    featured=False
+                ))
+                existing_product_names.add(product_name.casefold())
+                added_grocery_count += 1
+        if added_grocery_count:
+            db.session.commit()
+            app.logger.info("Added %s hidden starter grocery products for admin review.", added_grocery_count)
+
         # Ensure the launch offer exists without changing existing customer/order data.
         default_coupon = Coupon.query.filter_by(code='THARAI50').first()
         if not default_coupon:
