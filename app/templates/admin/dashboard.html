@@ -15,6 +15,8 @@
  <article class="an-kpi"><span>This month's revenue</span><strong>{{ monthly_revenue|inr }}</strong><small>Delivered orders this month</small></article>
  <article class="an-kpi"><span>Today's revenue</span><strong>{{ today_revenue|inr }}</strong><small>Delivered orders today</small></article>
  <article class="an-kpi"><span>Total orders</span><strong>{{ order_count }}</strong><small>{{ delivered_count }} delivered</small></article>
+ <article class="an-kpi"><span>Gross product profit · Delivered</span><strong>{{ gross_profit|inr }}</strong><small>Sales less recorded item purchase cost</small></article>
+ <article class="an-kpi"><span>Estimated net after expenses</span><strong>{{ estimated_net|inr }}</strong><small>Gross product profit less recorded store expenses</small></article>
 </div>
 
 <div class="an-stat-strip">
