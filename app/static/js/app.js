@@ -142,3 +142,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 420);
   }, 1450);
 });
+
+ 
+// Tharai Basket side navigation drawer.
+document.addEventListener('DOMContentLoaded', () => {
+  const trigger = document.getElementById('tb-menu-trigger');
+  const drawer = document.getElementById('tb-side-menu');
+  const overlay = document.getElementById('tb-menu-overlay');
+  const close = document.getElementById('tb-menu-close');
+  if (!trigger || !drawer || !overlay || !close) return;
+  const openMenu = () => {
+    drawer.classList.add('is-open');
+    drawer.setAttribute('aria-hidden', 'false');
+    trigger.setAttribute('aria-expanded', 'true');
+    overlay.hidden = false;
+    document.body.classList.add('tb-menu-open');
+    close.focus();
+  };
+  const closeMenu = () => {
+    drawer.classList.remove('is-open');
+    drawer.setAttribute('aria-hidden', 'true');
+    trigger.setAttribute('aria-expanded', 'false');
+    overlay.hidden = true;
+    document.body.classList.remove('tb-menu-open');
+  };
+  trigger.addEventListener('click', openMenu);
+  close.addEventListener('click', closeMenu);
+  overlay.addEventListener('click', closeMenu);
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenu(); });
+  drawer.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu));
+});

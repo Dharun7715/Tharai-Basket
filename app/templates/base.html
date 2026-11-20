@@ -16,11 +16,60 @@
 <body>
 <div class="tb-app-splash" id="tb-app-splash" aria-label="Tharai Basket loading"><img src="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}" alt="Tharai Basket"><span class="tb-splash-loader"></span></div>
 <header class="site-header"><div class="container nav-wrap">
+  <button class="tb-menu-trigger" id="tb-menu-trigger" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="tb-side-menu">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
   <a class="brand" href="{{ url_for('index') }}" aria-label="Tharai Basket home"><img class="brand-logo" src="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}" alt="Tharai Basket"></a>
   <nav class="desktop-nav"><a href="{{ url_for('index') }}">Home</a><a href="{{ url_for('index') }}#categories">Categories</a><a href="{{ url_for('index') }}#deals">Today's deals</a></nav>
   <div class="nav-actions"><a class="nav-icon" href="{{ url_for('cart') }}">Basket <span class="count-pill">{{ cart_count }}</span></a>
   {% if current_user.is_authenticated %}{% if current_user.role == 'customer' %}<a class="nav-link" href="{{ url_for('wishlist') }}">Wishlist</a><a class="nav-link" href="{{ url_for('my_orders') }}">My orders</a><a class="nav-link" href="{{ url_for('account_tools') }}">My tools</a><a class="nav-link" href="{{ url_for('notifications') }}">Notifications{% if unread_notifications %} <span class="count-pill">{{ unread_notifications }}</span>{% endif %}</a><a class="nav-link" href="{{ url_for('account') }}">My account</a><a class="nav-link" href="{{ url_for('account_membership') }}">VIP</a>{% else %}<a class="nav-link" href="{{ url_for('admin_dashboard') if current_user.role == 'admin' else url_for('delivery_dashboard') }}">{{ current_user.name.split(' ')[0] }}</a>{% endif %}<a class="nav-link" href="{{ url_for('logout') }}">Logout</a>{% else %}<a class="btn btn-small auth-nav-btn auth-login-btn" href="{{ url_for('login') }}">Login</a><a class="btn btn-small auth-nav-btn auth-signup-btn" href="{{ url_for('register') }}">Sign up</a>{% endif %}</div>
 </div></header>
+<div class="tb-menu-overlay" id="tb-menu-overlay" hidden></div>
+<aside class="tb-side-menu" id="tb-side-menu" aria-label="Main menu" aria-hidden="true">
+  <div class="tb-menu-head">
+    <div>
+      <strong>{% if current_user.is_authenticated %}Hello, {{ current_user.name.split(' ')[0] }}{% else %}Welcome to Tharai Basket{% endif %}</strong>
+      <small>{% if current_user.is_authenticated %}Your account & shopping{% else %}Daily essentials · Home delivery{% endif %}</small>
+    </div>
+    <button class="tb-menu-close" id="tb-menu-close" type="button" aria-label="Close menu">×</button>
+  </div>
+  <nav class="tb-menu-links">
+    <a href="{{ url_for('index') }}"><span>⌂</span> Home</a>
+    <a href="{{ url_for('index') }}#categories"><span>▦</span> Categories</a>
+    <a href="{{ url_for('index') }}#shop"><span>🛍</span> Shop groceries</a>
+    <a href="{{ url_for('cart') }}"><span>🛒</span> My basket <small>{{ cart_count }}</small></a>
+    {% if current_user.is_authenticated %}
+      {% if current_user.role == 'customer' %}
+      <div class="tb-menu-label">MY ACCOUNT</div>
+      <a href="{{ url_for('account') }}"><span>👤</span> My profile</a>
+      <a href="{{ url_for('my_orders') }}"><span>📦</span> My orders</a>
+      <a href="{{ url_for('wishlist') }}"><span>♡</span> Wishlist</a>
+      <a href="{{ url_for('account_membership') }}"><span>✦</span> VIP membership</a>
+      <a href="{{ url_for('account_tools') }}"><span>✧</span> My tools</a>
+      <a href="{{ url_for('notifications') }}"><span>🔔</span> Notifications {% if unread_notifications %}<small>{{ unread_notifications }}</small>{% endif %}</a>
+      {% elif current_user.role == 'admin' %}
+      <div class="tb-menu-label">ADMIN</div>
+      <a href="{{ url_for('admin_dashboard') }}"><span>▤</span> Admin dashboard</a>
+      {% else %}
+      <div class="tb-menu-label">DELIVERY</div>
+      <a href="{{ url_for('delivery_dashboard') }}"><span>🚚</span> Delivery dashboard</a>
+      {% endif %}
+      <a href="{{ url_for('logout') }}"><span>↪</span> Logout</a>
+    {% else %}
+      <div class="tb-menu-label">GET STARTED</div>
+      <a href="{{ url_for('login') }}"><span>↪</span> Login</a>
+      <a href="{{ url_for('register') }}"><span>＋</span> Create account</a>
+    {% endif %}
+    <div class="tb-menu-label">DELIVERY</div>
+    {% if session.get('delivery_location') %}
+      <a href="{{ url_for('clear_delivery_location') }}"><span>📍</span> Change delivery location</a>
+    {% else %}
+      <a href="{{ url_for('index', choose_location=1) }}"><span>📍</span> Choose delivery location</a>
+    {% endif %}
+    <a href="{{ url_for('index') }}#deals"><span>％</span> Today's deals</a>
+  </nav>
+  <div class="tb-menu-footer">Tharai Basket · Everyday essentials, closer to home</div>
+</aside>
 <main>
 {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="container flash-stack">{% for category, message in messages %}<div class="flash flash-{{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}
 {% block content %}{% endblock %}
