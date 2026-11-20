@@ -20,6 +20,7 @@
       {% if current_user.is_authenticated and current_user.role == 'customer' %}
       <form method="post" action="{{ url_for('wishlist_toggle', product_id=product.id) }}" style="margin:14px 0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline" type="submit">{% if is_wishlisted %}♥ Remove from wishlist{% else %}♡ Add to wishlist{% endif %}</button></form>
       {% elif not current_user.is_authenticated %}<p class="muted tiny"><a href="{{ url_for('login') }}">Login</a> to save this product.</p>{% endif %}
+      <form method="post" action="{{ url_for('shopping_list_add', product_id=product.id) }}" style="margin:10px 0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline" type="submit">＋ Save to shopping list</button></form>
       <form method="post" action="{{ url_for('cart_add', product_id=product.id) }}" class="add-detail"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}"><button class="btn" {% if product.stock <= 0 %}disabled{% endif %}>Add to basket</button></form>
       <p class="muted tiny">Availability is confirmed before your order is prepared.</p>
     </div>
