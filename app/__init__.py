@@ -58,7 +58,13 @@ def create_app():
     @app.context_processor
     def inject_globals():
         unread_notifications = Notification.query.filter_by(user_id=current_user.id, is_read=False).count() if current_user.is_authenticated and current_user.role == 'customer' else 0
-        return {'now': datetime.utcnow(), 'cart_count': sum(int(v) for v in session.get('cart', {}).values()), 'site_name': 'Tharai Basket', 'unread_notifications': unread_notifications}
+        vip_theme_tier = None
+        if current_user.is_authenticated and current_user.role == 'customer':
+            active_theme_membership = VipMembership.query.filter_by(user_id=current_user.id, active=True).filter(
+                VipMembership.ends_at > datetime.utcnow()
+            ).order_by(VipMembership.ends_at.desc()).first()
+            vip_theme_tier = active_theme_membership.tier if active_theme_membership and active_theme_membership.tier in ('Gold', 'Platinum') else None
+        return {'now': datetime.utcnow(), 'cart_count': sum(int(v) for v in session.get('cart', {}).values()), 'site_name': 'Tharai Basket', 'unread_notifications': unread_notifications, 'vip_theme_tier': vip_theme_tier}
 
     @app.template_filter('inr')
     def inr(value):
