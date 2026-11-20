@@ -1771,10 +1771,10 @@ def create_app():
 
     def membership_plan_amount(tier, months):
         prices = {
-            ('Gold', 1): Decimal('300.00'),
-            ('Gold', 3): Decimal('800.00'),
-            ('Platinum', 1): Decimal('500.00'),
-            ('Platinum', 3): Decimal('1300.00'),
+            ('Gold', 1): Decimal('0.00'),
+            ('Gold', 3): Decimal('0.00'),
+            ('Platinum', 1): Decimal('0.00'),
+            ('Platinum', 3): Decimal('0.00'),
         }
         return prices.get((tier, months))
 
@@ -1796,10 +1796,10 @@ def create_app():
         pending_request = MembershipPayment.query.filter_by(user_id=current_user.id, status='Pending').order_by(
             MembershipPayment.created_at.desc()).first()
         plans = {
-            'Gold': {1: {'amount': Decimal('300.00'), 'qr': membership_qr_data(Decimal('300.00'), 'Gold', 1)},
-                     3: {'amount': Decimal('800.00'), 'qr': membership_qr_data(Decimal('800.00'), 'Gold', 3)}},
-            'Platinum': {1: {'amount': Decimal('500.00'), 'qr': membership_qr_data(Decimal('500.00'), 'Platinum', 1)},
-                         3: {'amount': Decimal('1300.00'), 'qr': membership_qr_data(Decimal('1300.00'), 'Platinum', 3)}},
+            'Gold': {1: {'amount': Decimal('0.00'), 'qr': membership_qr_data(Decimal('0.00'), 'Gold', 1)},
+                     3: {'amount': Decimal('0.00'), 'qr': membership_qr_data(Decimal('0.00'), 'Gold', 3)}},
+            'Platinum': {1: {'amount': Decimal('0.00'), 'qr': membership_qr_data(Decimal('0.00'), 'Platinum', 1)},
+                         3: {'amount': Decimal('0.00'), 'qr': membership_qr_data(Decimal('0.00'), 'Platinum', 3)}},
         }
         return render_template('membership.html', membership=membership, pending_request=pending_request,
                                plans=plans, upi_id='8838145515@sbi')
