@@ -106,6 +106,14 @@
 </main>
 <footer class="site-footer"><div class="container footer-grid"><div><a class="brand brand-footer" href="{{ url_for('index') }}" aria-label="Tharai Basket home"><img class="brand-logo" src="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}?v=6" alt="Tharai Basket"></a><p>Everyday essentials, closer to home. Serving Tharamangalam with care.</p></div><div><h4>Explore</h4><a href="{{ url_for('index') }}#categories">Categories</a><a href="{{ url_for('cart') }}">Your basket</a><a href="{{ url_for('my_orders') if current_user.is_authenticated and current_user.role == 'customer' else url_for('login') }}">My orders</a></div><div><h4>Need help?</h4><p>Tharamangalam, Salem District<br>Tamil Nadu, India</p><p>WhatsApp ordering support<br><strong>Contact number to be configured</strong></p></div></div><div class="container footer-bottom">© {{ now.year }} Tharai Basket. Made for our town.</div></footer>
 
+{% if cart_count|int > 0 and request.endpoint != 'cart' %}
+<div class="tb-view-cart-bar" role="region" aria-label="Basket summary">
+  <div class="tb-view-cart-inner">
+    <span class="tb-view-cart-count">{{ cart_count }} item{% if cart_count|int != 1 %}s{% endif %} in your basket</span>
+    <a href="{{ url_for('cart') }}">View basket <span aria-hidden="true">›</span></a>
+  </div>
+</div>
+{% endif %}
 <nav class="tb-bottom-nav" aria-label="Quick navigation">
   <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}is-active{% endif %}" aria-label="Home">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
