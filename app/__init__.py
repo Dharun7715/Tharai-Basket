@@ -1646,6 +1646,10 @@ def create_app():
         recent_reviews = ProductReview.query.order_by(ProductReview.created_at.desc()).limit(8).all()
         review_count = ProductReview.query.count()
         average_review_rating = db.session.query(db.func.avg(ProductReview.rating)).scalar() or 0
+        wallet_cashback_total = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter(
+            WalletTransaction.kind == 'Credit',
+            WalletTransaction.reference.like('ORDER-CASHBACK-%')
+        ).scalar() or 0
         return render_template('admin/dashboard.html',
             order_count=Order.query.count(), customer_count=User.query.filter_by(role='customer').count(),
             product_count=Product.query.filter_by(active=True).count(),
@@ -1655,7 +1659,8 @@ def create_app():
             daily_sales=daily_sales, max_daily_sales=max_daily_sales, top_products=top_products,
             status_breakdown=status_breakdown, payment_breakdown=payment_breakdown, orders=recent_orders,
             low_stock_products=low_stock_products, recent_reviews=recent_reviews,
-            review_count=review_count, average_review_rating=round(float(average_review_rating), 1))
+            review_count=review_count, average_review_rating=round(float(average_review_rating), 1),
+            wallet_cashback_total=wallet_cashback_total)
 
     @app.route('/admin/coupons', methods=['GET', 'POST'])
     @admin_required
