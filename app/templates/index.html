@@ -102,7 +102,7 @@
  .product-info .add-btn{font-size:11px;padding:10px 6px}
  .discount-tag{top:8px;left:8px;font-size:9px;padding:4px 7px}
 }
-</style>
+.tb-seasonal-wrap{padding:14px 0 8px}.tb-seasonal-card{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:174px;padding:clamp(20px,4vw,34px);border-radius:22px;background:linear-gradient(115deg,#143f2a,#267044 72%,#438b55);color:#fff;box-shadow:0 14px 34px rgba(24,75,43,.14)}.tb-seasonal-copy{position:relative;z-index:1;max-width:510px}.tb-seasonal-copy>span{font-size:9px;font-weight:800;letter-spacing:1.5px;color:#d8eedc}.tb-seasonal-copy h2{font:800 clamp(21px,3vw,29px) 'Manrope',sans-serif;line-height:1.15;letter-spacing:-.7px;margin:10px 0 7px;color:#fff}.tb-seasonal-copy p{font-size:12px;line-height:1.6;color:#e1f0e4;margin:0 0 14px}.tb-seasonal-copy a{display:inline-flex;align-items:center;gap:12px;padding:10px 14px;border-radius:9px;background:#fff;color:#1b6035;text-decoration:none;font-size:11px;font-weight:800}.tb-seasonal-art{display:flex;align-items:center;gap:7px;font-size:clamp(30px,5vw,52px);transform:rotate(-7deg);padding-right:12px}.tb-seasonal-art span{display:grid;place-items:center;width:clamp(48px,7vw,76px);height:clamp(48px,7vw,76px);border:1px solid rgba(255,255,255,.3);border-radius:18px;background:rgba(255,255,255,.12)}@media(max-width:560px){.tb-seasonal-card{min-height:0;padding:19px}.tb-seasonal-art{gap:4px;padding:0}.tb-seasonal-art span{width:39px;height:45px;border-radius:12px;font-size:25px}.tb-seasonal-copy p{max-width:260px}}</style>
 {% if show_location_picker %}
 <section class="section tb-location-section">
   <div class="container" style="max-width:900px">
@@ -480,6 +480,12 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
       {% endfor %}
     </div>
   </section>
+  {% endif %}
+  {% if location_verified %}
+  <section class="tb-seasonal-wrap" aria-label="Seasonal grocery picks"><div class="tb-seasonal-card">
+   <div class="tb-seasonal-copy"><span>THARAI BASKET · SEASONAL EDIT</span><h2>Make every celebration feel closer.</h2><p>Build your family’s festival and everyday essentials basket in one place.</p><a href="#shop">Explore grocery essentials <b>→</b></a></div>
+   <div class="tb-seasonal-art" aria-hidden="true"><span>🌾</span><span>🪔</span><span>🛍️</span></div>
+  </div></section>
   {% endif %}
   <section class="tb-products" id="shop">
     <div class="tb-products-heading">
