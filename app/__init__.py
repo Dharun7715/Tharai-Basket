@@ -936,6 +936,25 @@ def create_app():
             flash('No available items found in this order.', 'warning')
         return redirect(url_for('cart'))
 
+    @app.post('/order/<int:order_id>/cancel')
+    @login_required
+    def cancel_order(order_id):
+        if current_user.role != 'customer':
+            abort(403)
+        order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
+        if order.status != 'Pending':
+            flash('This order can no longer be cancelled online. Please contact the store team for help.', 'warning')
+            return redirect(url_for('order_detail', order_id=order.id))
+        for item in order.items:
+            if item.product_id:
+                product = Product.query.get(item.product_id)
+                if product:
+                    product.stock = int(product.stock or 0) + int(item.quantity or 0)
+        order.status = 'Cancelled'
+        db.session.commit()
+        flash(f'Order {order.order_number} was cancelled. Item quantities have been returned to stock.', 'success')
+        return redirect(url_for('order_detail', order_id=order.id))
+
     @app.get('/my-orders')
     @login_required
     def my_orders():
