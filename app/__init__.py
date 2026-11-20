@@ -952,6 +952,89 @@ def create_app():
             abort(403)
         return render_template('order_detail.html', order=order)
 
+    @app.get('/order/<int:order_id>/invoice')
+    @login_required
+    def order_invoice(order_id):
+        from io import BytesIO
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_RIGHT
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
+        order = Order.query.get_or_404(order_id)
+        if current_user.role != 'admin' and order.user_id != current_user.id:
+            abort(403)
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=18*mm, leftMargin=18*mm,
+                                topMargin=18*mm, bottomMargin=18*mm)
+        styles = getSampleStyleSheet()
+        styles.add(ParagraphStyle(name='StoreTitle', parent=styles['Title'], textColor=colors.HexColor('#176b39'),
+                                  fontName='Helvetica-Bold', fontSize=22, spaceAfter=4))
+        styles.add(ParagraphStyle(name='RightSmall', parent=styles['Normal'], alignment=TA_RIGHT, fontSize=9))
+        story = [
+            Paragraph('THARAI BASKET', styles['StoreTitle']),
+            Paragraph('Everyday essentials, closer to home · Tharamangalam, Salem District, Tamil Nadu, India',
+                      styles['Normal']),
+            Spacer(1, 8*mm),
+            Paragraph('TAX INVOICE / ORDER RECEIPT', styles['Heading2']),
+        ]
+        details = [
+            ['Order number', order.order_number, 'Order date', order.created_at.strftime('%d %b %Y, %I:%M %p')],
+            ['Customer', order.customer_name, 'Phone', order.phone or '—'],
+            ['Delivery address', Paragraph((order.address_text or '—').replace('&','&amp;').replace('<','&lt;').replace('>','&gt;').replace('\n','<br/>'), styles['Normal']), 'Status', order.status],
+            ['Payment method', order.payment_method or '—', 'Payment status', order.payment_status or '—'],
+        ]
+        info = Table(details, colWidths=[28*mm, 62*mm, 28*mm, 55*mm])
+        info.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(0,-1),colors.HexColor('#f0f6f1')),
+            ('BACKGROUND',(2,0),(2,-1),colors.HexColor('#f0f6f1')),
+            ('TEXTCOLOR',(0,0),(0,-1),colors.HexColor('#42634a')),
+            ('TEXTCOLOR',(2,0),(2,-1),colors.HexColor('#42634a')),
+            ('FONTNAME',(0,0),(0,-1),'Helvetica-Bold'),('FONTNAME',(2,0),(2,-1),'Helvetica-Bold'),
+            ('FONTSIZE',(0,0),(-1,-1),8),('GRID',(0,0),(-1,-1),.35,colors.HexColor('#dce7dd')),
+            ('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(0,0),(-1,-1),7),
+            ('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7),
+        ]))
+        story.extend([info, Spacer(1, 8*mm)])
+        rows = [['Item', 'Unit', 'Qty', 'Unit price', 'Amount']]
+        for item in order.items:
+            rows.append([item.product_name, item.unit or '—', str(item.quantity),
+                         f'INR {Decimal(str(item.unit_price or 0)):.2f}',
+                         f'INR {Decimal(str(item.unit_price or 0))*int(item.quantity or 0):.2f}'])
+        items_table = Table(rows, colWidths=[67*mm, 28*mm, 14*mm, 35*mm, 35*mm], repeatRows=1)
+        items_table.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#176b39')),('TEXTCOLOR',(0,0),(-1,0),colors.white),
+            ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('FONTSIZE',(0,0),(-1,-1),8),
+            ('GRID',(0,0),(-1,-1),.35,colors.HexColor('#dce7dd')),('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+            ('ALIGN',(2,1),(-1,-1),'RIGHT'),('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor('#f8fbf8')]),
+            ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),
+        ]))
+        story.extend([items_table, Spacer(1, 6*mm)])
+        summary = [
+            ['Subtotal', f'INR {Decimal(str(order.subtotal or 0)):.2f}'],
+            ['Discount', f'- INR {Decimal(str(order.discount or 0)):.2f}'],
+            ['Delivery fee', f'INR {Decimal(str(order.delivery_fee or 0)):.2f}'],
+            ['Grand total', f'INR {Decimal(str(order.total or 0)):.2f}'],
+        ]
+        totals = Table(summary, colWidths=[145*mm, 34*mm], hAlign='RIGHT')
+        totals.setStyle(TableStyle([
+            ('ALIGN',(1,0),(1,-1),'RIGHT'),('FONTNAME',(0,0),(-1,-2),'Helvetica'),
+            ('FONTNAME',(0,-1),(-1,-1),'Helvetica-Bold'),('FONTSIZE',(0,0),(-1,-1),9),
+            ('TEXTCOLOR',(0,-1),(-1,-1),colors.HexColor('#176b39')),
+            ('LINEABOVE',(0,-1),(-1,-1),1,colors.HexColor('#176b39')),
+            ('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6),
+        ]))
+        story.extend([totals, Spacer(1, 12*mm),
+                      Paragraph('Thank you for shopping with Tharai Basket!', styles['Heading3']),
+                      Paragraph('This is a computer-generated invoice / order receipt.', styles['RightSmall'])])
+        doc.build(story)
+        buffer.seek(0)
+        return app.response_class(buffer.getvalue(), mimetype='application/pdf',
+                                  headers={'Content-Disposition': f'attachment; filename=Tharai-Basket-{order.order_number}.pdf'})
+
     @app.get('/admin')
     @admin_required
     def admin_dashboard():
