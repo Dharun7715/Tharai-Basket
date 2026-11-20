@@ -257,6 +257,14 @@ def create_app():
         created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
         order = db.relationship('Order', backref=db.backref('delivery_schedule', uselist=False))
 
+    class AbandonedCart(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        cart_data = db.Column(db.Text, nullable=False, default='{}')
+        updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+        recovered_at = db.Column(db.DateTime)
+        user = db.relationship('User', backref='abandoned_carts')
+
     class DeliverySlotSetting(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         capacity = db.Column(db.Integer, nullable=False, default=5)
@@ -689,6 +697,7 @@ def create_app():
         key = str(product_id)
         cart[key] = min(int(cart.get(key, 0)) + max(1, int(request.form.get('quantity', 1))), product.stock)
         session['cart'] = cart
+        save_customer_cart_snapshot()
         flash(f'{product.name} added to your basket.', 'success')
         return redirect(request.referrer or url_for('index'))
 
@@ -702,6 +711,7 @@ def create_app():
         else:
             cart[str(product_id)] = min(qty, product.stock)
         session['cart'] = cart
+        save_customer_cart_snapshot()
         return redirect(url_for('cart'))
 
     @app.get('/cart/remove/<int:product_id>')
@@ -709,7 +719,22 @@ def create_app():
         cart = session.get('cart', {})
         cart.pop(str(product_id), None)
         session['cart'] = cart
+        save_customer_cart_snapshot()
         return redirect(url_for('cart'))
+
+    def save_customer_cart_snapshot():
+        if current_user.is_authenticated and current_user.role == 'customer':
+            cart = session.get('cart', {})
+            record = AbandonedCart.query.filter_by(user_id=current_user.id, recovered_at=None).first()
+            if cart:
+                if not record:
+                    record = AbandonedCart(user_id=current_user.id)
+                    db.session.add(record)
+                record.cart_data = __import__('json').dumps(cart)
+                record.updated_at = datetime.utcnow()
+            elif record:
+                db.session.delete(record)
+            db.session.commit()
 
     def cart_data():
         cart = session.get('cart', {})
@@ -1001,6 +1026,9 @@ def create_app():
                     db.session.add(RewardRedemption(user_id=current_user.id, order_id=order.id, points=points_used))
                 db.session.commit()
                 session['cart'] = {}
+                abandoned_record = AbandonedCart.query.filter_by(user_id=current_user.id, recovered_at=None).first()
+                if abandoned_record:
+                    abandoned_record.recovered_at = datetime.utcnow()
                 session.pop('coupon_code', None)
                 session.pop('use_rewards', None)
                 flash(f'Order {order.order_number} placed successfully. UPI payment will be verified by our team.' if payment == 'UPI' else f'Order {order.order_number} placed successfully. Our team will confirm it shortly.', 'success')
