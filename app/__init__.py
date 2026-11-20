@@ -538,9 +538,16 @@ def create_app():
         loyalty_points = sum(row.points for row in LoyaltyPoint.query.filter_by(user_id=current_user.id).all())
         referral_points = sum(row.points for row in RewardTransaction.query.filter_by(user_id=current_user.id).all())
         redeemed_points = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar() or 0
+        available_points = max(0, loyalty_points + referral_points - int(redeemed_points))
+        delivered_orders_count = Order.query.filter_by(user_id=current_user.id, status='Delivered').count()
+        next_milestone = next((target for target in (100, 250, 500, 1000) if target > available_points), None)
+        milestone_progress = min(100, round(available_points * 100 / next_milestone)) if next_milestone else 100
         return render_template('account_tools.html', items=items, subscriptions=subscriptions, today_date=today_date,
                                wallet_balance=wallet_balance(current_user.id), transactions=transactions,
-                               loyalty_points=max(0, loyalty_points + referral_points - int(redeemed_points)))
+                               loyalty_points=available_points, loyalty_earned=loyalty_points,
+                               referral_points=referral_points, redeemed_points=int(redeemed_points),
+                               delivered_orders_count=delivered_orders_count,
+                               next_milestone=next_milestone, milestone_progress=milestone_progress)
 
     @app.post('/account/shopping-list/add/<int:product_id>')
     @login_required
@@ -802,6 +809,32 @@ def create_app():
         reviews = ProductReview.query.filter_by(product_id=product.id).order_by(ProductReview.created_at.desc()).all()
         review_count = len(reviews)
         average_rating = round(sum(r.rating for r in reviews) / review_count, 1) if review_count else 0
+        rating_breakdown = {rating: sum(1 for review in reviews if review.rating == rating) for rating in range(5, 0, -1)}
+        rating_distribution = [{'rating': rating, 'count': rating_breakdown[rating],
+                                'percent': round(rating_breakdown[rating] * 100 / review_count) if review_count else 0}
+                               for rating in range(5, 0, -1)]
+        co_order_ids = db.session.query(OrderItem.order_id).join(
+            Order, Order.id == OrderItem.order_id
+        ).filter(Order.status == 'Delivered', OrderItem.product_id == product.id).subquery()
+        co_product_rows = db.session.query(
+            OrderItem.product_id, db.func.sum(OrderItem.quantity).label('pair_count')
+        ).filter(OrderItem.order_id.in_(co_order_ids), OrderItem.product_id.isnot(None),
+                 OrderItem.product_id != product.id).group_by(OrderItem.product_id).order_by(
+                     db.desc('pair_count')).limit(8).all()
+        co_product_ids = [row.product_id for row in co_product_rows]
+        co_product_map = {item.id: item for item in Product.query.filter(
+            Product.id.in_(co_product_ids), Product.active.is_(True), Product.stock > 0
+        ).all()} if co_product_ids else {}
+        frequently_bought_together = [co_product_map[pid] for pid in co_product_ids if pid in co_product_map][:4]
+        if len(frequently_bought_together) < 4:
+            extra_query = Product.query.filter(Product.active.is_(True), Product.stock > 0, Product.id != product.id)
+            if product.category_id:
+                extra_query = extra_query.filter(Product.category_id == product.category_id)
+            if co_product_ids:
+                extra_query = extra_query.filter(~Product.id.in_(co_product_ids))
+            frequently_bought_together.extend(extra_query.order_by(
+                Product.featured.desc(), Product.created_at.desc()
+            ).limit(4 - len(frequently_bought_together)).all())
         can_review = False
         existing_review = None
         if current_user.is_authenticated and current_user.role == 'customer':
@@ -812,6 +845,8 @@ def create_app():
             existing_review = ProductReview.query.filter_by(user_id=current_user.id, product_id=product.id).first()
         return render_template('product.html', product=product, is_wishlisted=is_wishlisted,
                                reviews=reviews, review_count=review_count, average_rating=average_rating,
+                               rating_distribution=rating_distribution,
+                               frequently_bought_together=frequently_bought_together,
                                can_review=can_review, existing_review=existing_review, gallery_images=gallery_images)
 
     @app.post('/product/<int:product_id>/review')
@@ -1765,6 +1800,15 @@ def create_app():
         recorded_expenses = db.session.query(db.func.coalesce(db.func.sum(StoreExpense.amount), 0)).scalar() or 0
         estimated_net = gross_profit - Decimal(str(recorded_expenses or 0))
         latest_order_id = db.session.query(db.func.coalesce(db.func.max(Order.id), 0)).scalar() or 0
+        delivered_order_count = delivered_query.count()
+        average_order_value = (Decimal(str(total_sales or 0)) / delivered_order_count) if delivered_order_count else Decimal('0.00')
+        repeat_customer_count = db.session.query(Order.user_id).filter(
+            Order.status == 'Delivered'
+        ).group_by(Order.user_id).having(db.func.count(Order.id) >= 2).count()
+        delivered_customer_count = db.session.query(Order.user_id).filter(
+            Order.status == 'Delivered'
+        ).distinct().count()
+        repeat_customer_rate = round(repeat_customer_count * 100 / delivered_customer_count, 1) if delivered_customer_count else 0
         return render_template('admin/dashboard.html',
             order_count=Order.query.count(), customer_count=User.query.filter_by(role='customer').count(),
             product_count=Product.query.filter_by(active=True).count(),
@@ -1777,6 +1821,9 @@ def create_app():
             review_count=review_count, average_review_rating=round(float(average_review_rating), 1),
             wallet_cashback_total=wallet_cashback_total, gross_profit=gross_profit,
             recorded_expenses=recorded_expenses, estimated_net=estimated_net,
+            average_order_value=average_order_value,
+            repeat_customer_count=repeat_customer_count,
+            repeat_customer_rate=repeat_customer_rate,
             latest_order_id=latest_order_id)
 
     @app.get('/admin/orders/poll')
