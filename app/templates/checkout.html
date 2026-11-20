@@ -59,6 +59,18 @@
           {% if coupon and coupon.code == 'THARAI50' %}<small class="tb-offer-applied">✓ Coupon applied successfully</small>{% else %}<small class="tb-offer-hint">Apply now — you’ll return to your basket to review the discount.</small>{% endif %}
         </section>
 
+        <section class="tb-order-card" style="padding:17px">
+          <div class="tb-card-heading" style="margin-bottom:12px"><span class="tb-step">🎁</span><div><h2>Referral rewards</h2><p>Use your earned points on this order.</p></div></div>
+          {% if available_reward_points > 0 %}
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:11px;color:#526257">
+            <input type="checkbox" id="use-rewards-toggle" {% if use_rewards %}checked{% endif %} onchange="window.location.href='/checkout?use_rewards='+(this.checked?'1':'0')" style="width:17px;height:17px;accent-color:#236b3d;margin-top:1px">
+            <span><strong style="color:#205d34">Use {{ available_reward_points }} reward points</strong><br><small>Get ₹{{ '%.2f'|format(reward_discount) }} off this order. 1 point = ₹1.</small></span>
+          </label>
+          {% else %}
+          <p class="muted" style="font-size:11px;margin:0">You don't have reward points yet. Refer a friend and earn 50 points when their first order is delivered.</p>
+          {% endif %}
+        </section>
+
         <section class="tb-order-card">
           <div class="tb-order-title"><div><span class="eyebrow">YOUR BASKET</span><h2>Order summary</h2></div><span class="tb-item-count">{{ rows|length }} items</span></div>
           <div class="tb-order-items" id="checkout-order-items">
@@ -66,7 +78,7 @@
           </div>
           <p id="checkout-update-status" class="tb-update-status" role="status" aria-live="polite"></p>
           <div class="tb-price-lines"><div><span>Subtotal</span><strong id="checkout-subtotal">{{ subtotal|inr }}</strong></div><div><span>Delivery</span><strong id="checkout-delivery">{{ 'FREE' if delivery_fee == 0 else delivery_fee|inr }}</strong></div>
-            <div class="tb-discount-line" id="checkout-discount-row" {% if not coupon or discount <= 0 %}hidden{% endif %}><span>Coupon · <span id="checkout-coupon-code">{{ coupon.code if coupon else '' }}</span></span><strong id="checkout-discount">-{{ discount|inr }}</strong></div>
+            <div class="tb-discount-line" id="checkout-discount-row" {% if discount <= 0 %}hidden{% endif %}><span>Discount{% if coupon %} · {{ coupon.code }}{% endif %}{% if reward_discount > 0 %} + Rewards{% endif %}</span><strong id="checkout-discount">-{{ discount|inr }}</strong></div>
           </div>
           <div class="tb-grand-total"><span>Total payable</span><strong id="checkout-total">{{ total|inr }}</strong></div>
           <div class="tb-delivery-note">🚚 Free delivery on orders of ₹300 or more. Otherwise, delivery is ₹25 within Tharamangalam.</div>
