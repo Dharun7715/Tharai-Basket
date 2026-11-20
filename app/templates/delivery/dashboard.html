@@ -4,6 +4,7 @@
 <section class="section tb-rider">
  <div class="container">
   <div class="tb-rider-head"><div><span class="eyebrow">THARAI BASKET / DELIVERY PARTNER</span><h1>Your delivery <em>hub.</em></h1><p>Manage assigned orders, reach customers and update delivery progress.</p></div><div class="tb-rider-profile"><span>🚴</span><div><strong>{{ current_user.name }}</strong><small>Delivery partner</small></div></div></div>
+  <div style="margin:12px 0 18px"><a class="btn btn-small" href="{{ url_for('delivery_route') }}">Open my delivery route ↗</a></div>
   <div class="tb-rider-stats">
    <article><span>Active deliveries</span><strong>{{ active_orders|length }}</strong><small>Pickup, transit or delivery</small></article>
    <article><span>Completed orders</span><strong>{{ completed_orders|length }}</strong><small>Successfully delivered</small></article>
