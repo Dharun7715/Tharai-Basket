@@ -3,7 +3,7 @@ import hmac
 import base64
 import io
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 from pathlib import Path
@@ -771,7 +771,7 @@ def create_app():
     def admin_dashboard():
         today = datetime.utcnow().date()
         month_start = today.replace(day=1)
-        week_start = datetime.combine(today - __import__('datetime').timedelta(days=6), datetime.min.time())
+        week_start = datetime.combine(today - timedelta(days=6), datetime.min.time())
         delivered_query = Order.query.filter_by(status='Delivered')
         total_sales = db.session.query(db.func.coalesce(db.func.sum(Order.total), 0)).filter(Order.status == 'Delivered').scalar()
         monthly_revenue = db.session.query(db.func.coalesce(db.func.sum(Order.total), 0)).filter(
@@ -781,7 +781,7 @@ def create_app():
         week_orders = Order.query.filter(Order.created_at >= week_start).all()
         daily_sales = []
         for offset in range(6, -1, -1):
-            day = today - __import__('datetime').timedelta(days=offset)
+            day = today - timedelta(days=offset)
             amount = sum((Decimal(str(order.total or 0)) for order in week_orders
                           if order.status == 'Delivered' and order.created_at.date() == day), Decimal('0.00'))
             daily_sales.append({'label': day.strftime('%a'), 'date': day.strftime('%d %b'), 'amount': float(amount)})
