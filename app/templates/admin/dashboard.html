@@ -1,1 +1,55 @@
-{% extends 'admin/base_admin.html' %}{% block title %}Admin Overview | Tharai Basket{% endblock %}{% block admin_content %}<div class="admin-top"><div><span class="eyebrow">THARAI BASKET / OVERVIEW</span><h1>Good day, {{ current_user.name.split(' ')[0] }}.</h1><p class="muted">Here's what's happening with your store.</p></div><a class="btn" href="{{ url_for('admin_products') }}">+ Add product</a></div><div class="stats-grid"><div class="stat-card"><small>Total orders</small><strong>{{ order_count }}</strong><span>All time</span></div><div class="stat-card"><small>Customers</small><strong>{{ customer_count }}</strong><span>Registered accounts</span></div><div class="stat-card"><small>Active products</small><strong>{{ product_count }}</strong><span>Catalogue items</span></div><div class="stat-card"><small>Pending workflow</small><strong>{{ pending_count }}</strong><span>Need attention</span></div><div class="stat-card"><small>Delivered sales</small><strong>{{ total_sales|inr }}</strong><span>Delivered orders</span></div><div class="stat-card"><small>Low stock</small><strong>{{ low_stock }}</strong><span>5 units or less</span></div></div><div class="admin-panel"><div class="panel-heading"><div><h2>Recent orders</h2><p>Latest customer activity</p></div><a class="text-link" href="{{ url_for('admin_orders') }}">View all →</a></div><div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Total</th><th>Status</th></tr></thead><tbody>{% for order in orders %}<tr><td><strong>{{ order.order_number }}</strong></td><td>{{ order.customer_name }}</td><td>{{ order.created_at.strftime('%d %b, %I:%M %p') }}</td><td>{{ order.total|inr }}</td><td><span class="status-pill">{{ order.status }}</span></td></tr>{% else %}<tr><td colspan="5">No orders yet.</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}
+{% extends 'admin/base_admin.html' %}
+{% block title %}Sales Analytics | Tharai Basket{% endblock %}
+{% block admin_content %}
+<div class="an-head"><div><span class="eyebrow">THARAI BASKET / BUSINESS INTELLIGENCE</span><h1>Sales <em>analytics.</em></h1><p>Live overview based on your store's order records.</p></div><a class="an-add-btn" href="{{ url_for('admin_products') }}">＋ Add product</a></div>
+
+<div class="an-kpi-grid">
+ <article class="an-kpi an-kpi-primary"><span>Delivered revenue · All time</span><strong>{{ total_sales|inr }}</strong><small>Revenue from delivered orders</small><i>₹</i></article>
+ <article class="an-kpi"><span>This month's revenue</span><strong>{{ monthly_revenue|inr }}</strong><small>Delivered orders this month</small></article>
+ <article class="an-kpi"><span>Today's revenue</span><strong>{{ today_revenue|inr }}</strong><small>Delivered orders today</small></article>
+ <article class="an-kpi"><span>Total orders</span><strong>{{ order_count }}</strong><small>{{ delivered_count }} delivered</small></article>
+</div>
+
+<div class="an-stat-strip">
+ <div><span>Customers</span><strong>{{ customer_count }}</strong></div><div><span>Active products</span><strong>{{ product_count }}</strong></div><div><span>Pending workflow</span><strong>{{ pending_count }}</strong></div><div><span>Low stock alerts</span><strong class="{% if low_stock %}an-warning{% endif %}">{{ low_stock }}</strong></div>
+</div>
+
+<div class="an-main-grid">
+ <section class="an-panel">
+  <div class="an-panel-head"><div><h2>Daily delivered sales</h2><p>Last 7 days · Revenue only</p></div><span class="an-tag">7 DAYS</span></div>
+  <div class="an-chart">
+   {% for day in daily_sales %}<div class="an-chart-col"><strong>{{ day.amount|inr }}</strong><div class="an-bar-track"><div class="an-bar" style="height:{{ (day.amount / max_daily_sales * 100) if day.amount else 2 }}%"></div></div><b>{{ day.label }}</b><small>{{ day.date }}</small></div>{% endfor %}
+  </div>
+ </section>
+ <section class="an-panel">
+  <div class="an-panel-head"><div><h2>Order status</h2><p>All-time order distribution</p></div></div>
+  {% if status_breakdown %}<div class="an-breakdown">{% for item in status_breakdown %}<div class="an-break-row"><span>{{ item.label }}</span><strong>{{ item.count }}</strong></div>{% endfor %}</div>{% else %}<div class="an-empty">No order data yet.</div>{% endif %}
+ </section>
+</div>
+
+<div class="an-main-grid an-lower-grid">
+ <section class="an-panel">
+  <div class="an-panel-head"><div><h2>Top-selling products</h2><p>Based on delivered order quantities</p></div></div>
+  {% if top_products %}<div class="an-products">{% for item in top_products %}<div class="an-product-row"><div class="an-product-rank">{{ loop.index }}</div><div class="an-product-info"><strong>{{ item.name }}</strong><small>{{ item.quantity }} units sold</small></div><strong>{{ item.revenue|inr }}</strong></div>{% endfor %}</div>{% else %}<div class="an-empty">Delivered product sales will appear here.</div>{% endif %}
+ </section>
+ <section class="an-panel">
+  <div class="an-panel-head"><div><h2>Payment methods</h2><p>Order count by payment type</p></div></div>
+  {% if payment_breakdown %}<div class="an-payment-list">{% for item in payment_breakdown %}<div class="an-payment-row"><span class="an-payment-icon">{% if item.label == 'UPI' %}▣{% else %}₹{% endif %}</span><div><strong>{{ item.label }}</strong><small>{{ item.count }} orders</small></div></div>{% endfor %}</div>{% else %}<div class="an-empty">No payment data yet.</div>{% endif %}
+ </section>
+</div>
+
+<section class="an-panel an-recent-panel">
+ <div class="an-panel-head"><div><h2>Recent orders</h2><p>Latest customer activity</p></div><a href="{{ url_for('admin_orders') }}">View all →</a></div>
+ <div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Total</th><th>Status</th></tr></thead><tbody>{% for order in orders %}<tr><td><strong>{{ order.order_number }}</strong></td><td>{{ order.customer_name }}</td><td>{{ order.created_at.strftime('%d %b, %I:%M %p') }}</td><td>{{ order.total|inr }}</td><td><span class="status-pill">{{ order.status }}</span></td></tr>{% else %}<tr><td colspan="5">No orders yet.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+<style>
+.an-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:23px}.an-head h1{font:800 clamp(28px,3vw,38px) 'Manrope';letter-spacing:-1.3px;margin:6px 0}.an-head h1 em{font-style:normal;color:#25804a}.an-head p{font-size:11px;color:#7b897e;margin:0}.an-add-btn{background:#155b34;color:#fff;text-decoration:none;padding:11px 15px;border-radius:9px;font-size:11px;font-weight:800;white-space:nowrap}
+.an-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.an-kpi{position:relative;overflow:hidden;background:#fff;border:1px solid #e4ece5;border-radius:14px;padding:17px;min-width:0}.an-kpi>span{display:block;font-size:10px;color:#718076;font-weight:700}.an-kpi>strong{display:block;font:800 clamp(19px,2vw,25px) 'Manrope';color:#203629;margin:10px 0 4px;white-space:nowrap}.an-kpi>small{font-size:9px;color:#89958c}.an-kpi-primary{background:linear-gradient(125deg,#17472e,#287347);border-color:#287347}.an-kpi-primary>span,.an-kpi-primary>small{color:#d9ebdd}.an-kpi-primary>strong{color:#fff}.an-kpi-primary>i{position:absolute;right:15px;top:6px;font:800 65px 'Manrope';font-style:normal;color:rgba(255,255,255,.08)}
+.an-stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:#fff;border:1px solid #e4ece5;border-radius:13px;padding:14px 17px;margin:14px 0 18px}.an-stat-strip div{display:flex;justify-content:space-between;align-items:center;gap:8px}.an-stat-strip span{font-size:10px;color:#718076}.an-stat-strip strong{font:800 15px 'Manrope';color:#26392c}.an-stat-strip .an-warning{color:#c45c32}
+.an-main-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,.8fr);gap:15px;margin-bottom:15px}.an-panel{background:#fff;border:1px solid #e4ece5;border-radius:15px;padding:18px;min-width:0}.an-panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}.an-panel-head h2{font:800 15px 'Manrope';color:#21362a;margin:0}.an-panel-head p{font-size:9px;color:#89958c;margin:4px 0 0}.an-panel-head>a{font-size:10px;font-weight:800;color:#1c6a3b;text-decoration:none}.an-tag{font-size:8px;letter-spacing:.8px;color:#286d40;background:#edf6ef;padding:6px 8px;border-radius:20px;font-weight:800}
+.an-chart{height:205px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;align-items:end;padding-top:12px}.an-chart-col{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;min-width:0}.an-chart-col>strong{font-size:8px;color:#65766a;white-space:nowrap}.an-bar-track{height:125px;width:100%;max-width:32px;border-radius:7px;background:#f0f5f0;display:flex;align-items:flex-end;overflow:hidden}.an-bar{width:100%;min-height:2px;background:linear-gradient(180deg,#55a66e,#1e6739);border-radius:7px 7px 3px 3px}.an-chart-col>b{font-size:9px;color:#526257}.an-chart-col>small{font-size:8px;color:#98a198}
+.an-breakdown{display:grid;gap:10px;max-height:230px;overflow:auto}.an-break-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:#f7faf7;font-size:10px;color:#68766c}.an-break-row strong{color:#23372a}.an-products{display:grid}.an-product-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #edf1ed}.an-product-row:last-child{border-bottom:0}.an-product-rank{width:26px;height:26px;border-radius:8px;background:#edf6ef;color:#21683b;display:grid;place-items:center;font-size:10px;font-weight:800}.an-product-info{flex:1;min-width:0}.an-product-info strong,.an-product-info small{display:block}.an-product-info strong{font-size:10px;color:#26392c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.an-product-info small{font-size:9px;color:#89958c;margin-top:3px}.an-product-row>strong{font-size:10px;color:#293b2f;white-space:nowrap}.an-payment-list{display:grid;gap:12px}.an-payment-row{display:flex;align-items:center;gap:10px;padding:10px;background:#f8fbf8;border-radius:9px}.an-payment-icon{width:30px;height:30px;border-radius:9px;background:#e8f3ea;color:#21683b;display:grid;place-items:center;font-weight:800}.an-payment-row strong,.an-payment-row small{display:block}.an-payment-row strong{font-size:10px;color:#293b2f}.an-payment-row small{font-size:9px;color:#89958c;margin-top:3px}.an-empty{font-size:10px;color:#8a968d;padding:18px 4px}.an-recent-panel{margin-bottom:10px}
+@media(max-width:1000px){.an-kpi-grid{grid-template-columns:repeat(2,1fr)}.an-main-grid{grid-template-columns:1fr}.an-stat-strip{grid-template-columns:repeat(2,1fr);gap:12px}}
+@media(max-width:560px){.an-head{align-items:flex-start;flex-direction:column}.an-kpi-grid{gap:8px}.an-kpi{padding:13px}.an-kpi>strong{font-size:18px}.an-stat-strip{padding:12px;grid-template-columns:1fr 1fr}.an-stat-strip div{align-items:flex-start;flex-direction:column;gap:3px}.an-panel{padding:14px}.an-chart{gap:5px}.an-chart-col>strong{font-size:7px}}
+</style>
+{% endblock %}
