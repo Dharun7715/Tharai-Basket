@@ -9,7 +9,7 @@
     <h1>{{ order.order_number }}</h1>
     <p><span class="status-pill">{{ order.status }}</span></p>
     <a class="btn btn-small" href="{{ url_for('order_invoice', order_id=order.id) }}" style="display:inline-flex;margin:8px 0 18px">↓ Download invoice PDF</a>
-    {% if current_user.is_authenticated and current_user.role == 'customer' and order.user_id == current_user.id and order.status == 'Pending' %}
+    {% if current_user.is_authenticated and current_user.role == 'customer' and order.user_id == current_user.id and order.delivery_partner_id is none and order.status not in ['Delivered', 'Cancelled'] %}
     <form method="post" action="{{ url_for('cancel_order', order_id=order.id) }}" style="display:inline-flex;margin:8px 0 18px" onsubmit="return confirm('Cancel this order? The items will be returned to stock.');">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-small btn-outline">Cancel order</button>
