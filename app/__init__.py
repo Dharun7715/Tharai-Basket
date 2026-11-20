@@ -438,6 +438,61 @@ def create_app():
             discount = value
         return coupon, min(subtotal, max(Decimal('0.00'), discount)).quantize(Decimal('0.01'))
 
+    @app.post('/api/checkout/quantity/<int:product_id>')
+    @login_required
+    def checkout_update_quantity(product_id):
+        if current_user.role != 'customer':
+            abort(403)
+        product = Product.query.filter_by(id=product_id, active=True).first_or_404()
+        cart = session.get('cart', {})
+        key = str(product_id)
+        if key not in cart:
+            return jsonify({'error': 'This product is no longer in your basket.'}), 404
+        try:
+            change = int(request.form.get('change', '0'))
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid quantity change.'}), 400
+        if change not in [-1, 1]:
+            return jsonify({'error': 'Invalid quantity change.'}), 400
+        quantity = int(cart.get(key, 0)) + change
+        if quantity <= 0:
+            cart.pop(key, None)
+            session['cart'] = cart
+            if not cart:
+                session.pop('coupon_code', None)
+                return jsonify({'empty': True, 'redirect': url_for('cart')})
+        else:
+            if quantity > product.stock:
+                return jsonify({'error': f'Only {product.stock} unit(s) are available.'}), 400
+            cart[key] = quantity
+            session['cart'] = cart
+
+        rows, subtotal = cart_data()
+        if not rows:
+            session.pop('coupon_code', None)
+            return jsonify({'empty': True, 'redirect': url_for('cart')})
+        threshold = app.config['FREE_DELIVERY_THRESHOLD']
+        fee = Decimal('0.00') if subtotal >= threshold else app.config['DELIVERY_FEE']
+        coupon, discount = active_cart_coupon(subtotal)
+        total = max(Decimal('0.00'), subtotal + fee - discount)
+        upi_params = {'pa': '8838145515@sbi', 'pn': 'DHARUN M', 'am': f'{total:.2f}',
+                      'cu': 'INR', 'tn': 'Tharai Basket order payment'}
+        qr = qrcode.make('upi://pay?' + urlencode(upi_params))
+        buffer = io.BytesIO()
+        qr.save(buffer, format='PNG')
+        qr_data = 'data:image/png;base64,' + base64.b64encode(buffer.getvalue()).decode('ascii')
+        current_row = next((row for row in rows if row['product'].id == product_id), None)
+        return jsonify({
+            'quantity': current_row['quantity'] if current_row else 0,
+            'line_total': f"{current_row['line_total']:.2f}" if current_row else '0.00',
+            'subtotal': f'{subtotal:.2f}', 'delivery_fee': f'{fee:.2f}',
+            'delivery_label': 'FREE' if fee == 0 else f'₹{fee:.2f}',
+            'discount': f'{discount:.2f}', 'coupon_code': coupon.code if coupon else None,
+            'total': f'{total:.2f}', 'upi_qr_data': qr_data,
+            'item_count': sum(int(value) for value in session.get('cart', {}).values()),
+            'coupon_message': 'Coupon removed: basket value is below its minimum.' if not coupon and session.get('coupon_code') is None else None
+        })
+
     @app.post('/coupon/apply')
     @login_required
     def coupon_apply():
