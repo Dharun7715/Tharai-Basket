@@ -107,7 +107,7 @@ async function updateCartQuantity(productId, change) {
     document.getElementById('tb-cart-delivery').textContent = data.delivery_label;
     document.getElementById('tb-cart-total').textContent = '₹' + Number(data.total).toFixed(2);
     document.getElementById('tb-cart-count').textContent = data.item_count + ' item(s)';
-    document.getElementById('tb-free-delivery-note').textContent = Number(data.subtotal) >= 300 ? '✓ You’ve unlocked free delivery!' : 'Add ₹' + (300 - Number(data.subtotal)).toFixed(2) + ' more for free delivery.';
+    const freeThreshold = Number(data.free_delivery_threshold || 300);\n    document.getElementById('tb-free-delivery-note').textContent = freeThreshold <= 0 || Number(data.subtotal) >= freeThreshold ? '✓ You’ve unlocked free delivery!' : 'Add ₹' + (freeThreshold - Number(data.subtotal)).toFixed(2) + ' more for free delivery.';
     const discountRow = document.getElementById('tb-cart-discount-row');
     if (Number(data.discount) > 0) {
       discountRow.hidden = false;
