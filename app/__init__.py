@@ -149,6 +149,16 @@ def create_app():
                 return int((self.mrp - self.price) * 100 / self.mrp)
             return 0
 
+    class WishlistItem(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False, index=True)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        user = db.relationship('User', backref=db.backref('wishlist_items', cascade='all, delete-orphan'))
+        product = db.relationship('Product')
+
+        __table_args__ = (db.UniqueConstraint('user_id', 'product_id', name='uq_wishlist_user_product'),)
+
     class Supplier(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         name = db.Column(db.String(150), nullable=False)
@@ -248,16 +258,48 @@ def create_app():
         location_verified = bool(session.get('delivery_location'))
         categories = Category.query.filter_by(active=True).order_by(Category.name).all() if location_verified else []
         products = Product.query.filter_by(active=True).order_by(Product.featured.desc(), Product.name).limit(24).all() if location_verified else []
+        wishlist_product_ids = set()
+        if current_user.is_authenticated and current_user.role == 'customer':
+            wishlist_product_ids = {item.product_id for item in WishlistItem.query.filter_by(user_id=current_user.id).all()}
         return render_template('index.html', categories=categories, products=products,
                                location_verified=location_verified,
-                               delivery_location=session.get('delivery_location'))
+                               delivery_location=session.get('delivery_location'),
+                               wishlist_product_ids=wishlist_product_ids)
 
     @app.get('/product/<int:product_id>')
     def product_detail(product_id):
         product = Product.query.get_or_404(product_id)
         if not product.active:
             abort(404)
-        return render_template('product.html', product=product)
+        is_wishlisted = False
+        if current_user.is_authenticated and current_user.role == 'customer':
+            is_wishlisted = WishlistItem.query.filter_by(user_id=current_user.id, product_id=product.id).first() is not None
+        return render_template('product.html', product=product, is_wishlisted=is_wishlisted)
+
+    @app.get('/wishlist')
+    @login_required
+    def wishlist():
+        if current_user.role != 'customer':
+            abort(403)
+        items = WishlistItem.query.filter_by(user_id=current_user.id).order_by(WishlistItem.created_at.desc()).all()
+        return render_template('wishlist.html', items=items)
+
+    @app.post('/wishlist/toggle/<int:product_id>')
+    @login_required
+    def wishlist_toggle(product_id):
+        if current_user.role != 'customer':
+            abort(403)
+        product = Product.query.filter_by(id=product_id, active=True).first_or_404()
+        item = WishlistItem.query.filter_by(user_id=current_user.id, product_id=product.id).first()
+        if item:
+            db.session.delete(item)
+            db.session.commit()
+            flash(f'{product.name} removed from your wishlist.', 'info')
+        else:
+            db.session.add(WishlistItem(user_id=current_user.id, product_id=product.id))
+            db.session.commit()
+            flash(f'{product.name} saved to your wishlist.', 'success')
+        return redirect(request.referrer or url_for('wishlist'))
 
     @app.route('/register', methods=['GET', 'POST'])
     def register():
