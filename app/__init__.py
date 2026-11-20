@@ -1095,9 +1095,15 @@ def create_app():
     @app.get('/delivery')
     @delivery_required
     def delivery_dashboard():
-        orders = Order.query.filter_by(delivery_partner_id=current_user.id).order_by(Order.created_at.desc()).all()
+        all_orders = Order.query.filter_by(delivery_partner_id=current_user.id).order_by(Order.created_at.desc()).all()
+        active_orders = [o for o in all_orders if o.status in ['Ready for Pickup', 'Out for Delivery']]
+        completed_orders = [o for o in all_orders if o.status == 'Delivered']
         earnings = DeliveryEarning.query.filter_by(partner_id=current_user.id).order_by(DeliveryEarning.created_at.desc()).all()
-        return render_template('delivery/dashboard.html', orders=orders, earnings=earnings)
+        total_earnings = sum((Decimal(str(e.amount or 0)) for e in earnings), Decimal('0.00'))
+        pending_earnings = sum((Decimal(str(e.amount or 0)) for e in earnings if not e.paid), Decimal('0.00'))
+        return render_template('delivery/dashboard.html', orders=all_orders, active_orders=active_orders,
+                               completed_orders=completed_orders, earnings=earnings,
+                               total_earnings=total_earnings, pending_earnings=pending_earnings)
 
     @app.post('/delivery/order/<int:order_id>/status')
     @delivery_required
