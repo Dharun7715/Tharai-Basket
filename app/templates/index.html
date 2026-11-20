@@ -1,16 +1,37 @@
-{% extends 'base.html' %}{% block title %}Tharai Basket | Groceries at your doorstep<style>
-.tb-shop-filters{display:grid;grid-template-columns:minmax(190px,1.5fr) repeat(4,minmax(105px,.8fr));gap:12px;align-items:end;padding:17px;background:#f6faf6;border:1px solid #e1ebe2;border-radius:16px;margin:22px 0 12px}
-.tb-shop-filters label{display:block;font-size:10px;font-weight:800;color:#526257;margin-bottom:6px}
-.tb-filter-search>div{display:flex}.tb-filter-search input,.tb-filter-field input,.tb-filter-field select{width:100%;height:42px;border:1px solid #dce7dd;border-radius:9px;background:#fff;padding:0 11px;color:#24372a;font:500 12px 'DM Sans',sans-serif;min-width:0}
-.tb-filter-search input{border-radius:9px 0 0 9px}.tb-filter-search button{width:45px;border:0;border-radius:0 9px 9px 0;background:#236b3d;color:white;font-size:23px;cursor:pointer}
-.tb-stock-filter{display:flex!important;align-items:center;gap:8px;white-space:nowrap;padding:11px 0;margin:0!important}.tb-stock-filter input{accent-color:#236b3d;width:16px;height:16px}
-.tb-filter-actions{display:flex;align-items:center;gap:12px;white-space:nowrap}.tb-filter-actions a{font-size:11px;color:#467151;text-decoration:underline}
-.tb-results-line{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11px;color:#77857a;margin:10px 2px 18px}
-@media(max-width:850px){.tb-shop-filters{grid-template-columns:repeat(3,minmax(0,1fr))}.tb-filter-search{grid-column:span 2}}
-@media(max-width:560px){.tb-shop-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding:13px;gap:10px}.tb-filter-search{grid-column:1/-1}.tb-filter-actions{grid-column:1/-1}.tb-filter-actions .btn{flex:1}}
-</style>
-{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Tharai Basket | Groceries at your doorstep{% endblock %}
 {% block content %}
+<style>
+.tb-shop-filters{display:grid;grid-template-columns:minmax(220px,1.6fr) repeat(3,minmax(135px,1fr));gap:14px;align-items:end;padding:20px;background:#fff;border:1px solid #e4ece5;border-radius:18px;margin:24px 0 14px;box-shadow:0 10px 28px rgba(24,62,37,.045)}
+.tb-filter-search,.tb-filter-field{min-width:0}
+.tb-shop-filters label{display:block;font-size:11px;font-weight:700;color:#526257;margin-bottom:7px}
+.tb-filter-search>div{display:flex;min-width:0}
+.tb-filter-search input,.tb-filter-field input,.tb-filter-field select{display:block;width:100%;height:46px;min-width:0;border:1px solid #dce7dd;border-radius:10px;background:#fbfdfb;padding:0 13px;color:#24372a;font:500 13px 'DM Sans',sans-serif;outline:none}
+.tb-filter-search input:focus,.tb-filter-field input:focus,.tb-filter-field select:focus{border-color:#65a978;box-shadow:0 0 0 3px #eaf5ec}
+.tb-filter-search input{border-radius:10px 0 0 10px}.tb-filter-search button{flex:0 0 48px;border:0;border-radius:0 10px 10px 0;background:#236b3d;color:white;font-size:21px;cursor:pointer}
+.tb-filter-actions{display:flex;align-items:center;gap:14px;white-space:nowrap}
+.tb-filter-actions .btn{min-height:44px;padding:0 22px}
+.tb-filter-actions a{font-size:12px;color:#467151;text-decoration:underline}
+.tb-stock-filter{display:flex!important;align-items:center;gap:9px;white-space:nowrap;padding:10px 0;margin:0!important;font-size:12px!important}
+.tb-stock-filter input{accent-color:#236b3d;width:17px;height:17px}
+.tb-results-line{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:#77857a;margin:12px 2px 20px}
+.product-image.image-missing:after{content:'🛍️';font-size:54px;position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(135deg,#f1f8f2,#e7f3e9)}
+@media(max-width:850px){.tb-shop-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.tb-filter-search{grid-column:1/-1}.tb-filter-actions{grid-column:1/-1}}
+@media(max-width:560px){
+ .tb-shop-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding:15px;gap:12px;margin:18px 0 12px}
+ .tb-filter-search,.tb-filter-actions{grid-column:1/-1}
+ .tb-filter-search input,.tb-filter-field input,.tb-filter-field select{height:44px;font-size:13px}
+ .tb-filter-actions{justify-content:flex-start}.tb-filter-actions .btn{flex:1}
+ .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+ .product-card{border-radius:14px}
+ .product-image{height:auto;aspect-ratio:1/1}
+ .product-info{padding:12px}
+ .product-info h3{font-size:13px;line-height:1.35}
+ .product-price{gap:6px;flex-wrap:wrap}.product-price strong{font-size:15px}
+ .product-info .add-btn{font-size:11px;padding:10px 6px}
+ .discount-tag{top:8px;left:8px;font-size:9px;padding:4px 7px}
+}
+</style>
 {% if not location_verified %}
 <section class="section" style="min-height:70vh">
   <div class="container" style="max-width:900px">
@@ -139,7 +160,7 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
   <div class="tb-filter-actions"><button class="btn btn-small" type="submit">Apply filters</button><a href="{{ url_for('index') }}#shop">Clear</a></div>
 </form>
 <div class="tb-results-line"><span>{% if filters_active %}{{ products|length }} matching product{{ '' if products|length == 1 else 's' }}{% else %}Showing all available products{% endif %}</span>{% if search_query %}<span>Search: “{{ search_query }}”</span>{% endif %}</div>
-<div class="product-grid">{% for product in products %}<article class="product-card"><a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-image">{% if product.image %}<img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}">{% else %}<div class="product-placeholder">{% if product.category and 'Vegetable' in product.category.name %}🥬{% elif product.category and 'Fruit' in product.category.name %}🍎{% elif product.category and 'Oil' in product.category.name %}🫒{% else %}🛍️{% endif %}</div>{% endif %}{% if product.discount_percent %}<span class="discount-tag">{{ product.discount_percent }}% OFF</span>{% endif %}</a><div class="product-info"><small>{{ product.category.name if product.category else 'Daily essentials' }} · {{ product.unit }}</small><a href="{{ url_for('product_detail', product_id=product.id) }}"><h3>{{ product.name }}</h3></a><div class="product-price"><strong>{{ product.price|inr }}</strong>{% if product.mrp > product.price %}<del>{{ product.mrp|inr }}</del>{% endif %}</div>{% if current_user.is_authenticated and current_user.role == 'customer' %}<form method="post" action="{{ url_for('wishlist_toggle', product_id=product.id) }}" style="margin-bottom:8px"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="add-btn" type="submit">{% if product.id in wishlist_product_ids %}♥ Saved to wishlist{% else %}♡ Add to wishlist{% endif %}</button></form>{% endif %}<form method="post" action="{{ url_for('cart_add', product_id=product.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="quantity" value="1"><button class="add-btn" {% if product.stock <= 0 %}disabled{% endif %}>{% if product.stock > 0 %}+ Add to basket{% else %}Out of stock{% endif %}</button></form></div></article>{% else %}<div class="empty-state">{% if filters_active %}No products match these filters. <a href="{{ url_for('index') }}#shop">Clear filters</a> and try again.{% else %}Our shelves are getting ready. Please check back soon.{% endif %}</div>{% endfor %}</div></div></section>
+<div class="product-grid">{% for product in products %}<article class="product-card"><a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-image">{% if product.image %}<img src="{{ url_for('static', filename=product.image) }}" alt="" loading="lazy" onerror="this.style.display='none';this.parentElement.classList.add('image-missing')">{% else %}<div class="product-placeholder">{% if product.category and 'Vegetable' in product.category.name %}🥬{% elif product.category and 'Fruit' in product.category.name %}🍎{% elif product.category and 'Oil' in product.category.name %}🫒{% else %}🛍️{% endif %}</div>{% endif %}{% if product.discount_percent %}<span class="discount-tag">{{ product.discount_percent }}% OFF</span>{% endif %}</a><div class="product-info"><small>{{ product.category.name if product.category else 'Daily essentials' }} · {{ product.unit }}</small><a href="{{ url_for('product_detail', product_id=product.id) }}"><h3>{{ product.name }}</h3></a><div class="product-price"><strong>{{ product.price|inr }}</strong>{% if product.mrp > product.price %}<del>{{ product.mrp|inr }}</del>{% endif %}</div>{% if current_user.is_authenticated and current_user.role == 'customer' %}<form method="post" action="{{ url_for('wishlist_toggle', product_id=product.id) }}" style="margin-bottom:8px"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="add-btn" type="submit">{% if product.id in wishlist_product_ids %}♥ Saved to wishlist{% else %}♡ Add to wishlist{% endif %}</button></form>{% endif %}<form method="post" action="{{ url_for('cart_add', product_id=product.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="quantity" value="1"><button class="add-btn" {% if product.stock <= 0 %}disabled{% endif %}>{% if product.stock > 0 %}+ Add to basket{% else %}Out of stock{% endif %}</button></form></div></article>{% else %}<div class="empty-state">{% if filters_active %}No products match these filters. <a href="{{ url_for('index') }}#shop">Clear filters</a> and try again.{% else %}Our shelves are getting ready. Please check back soon.{% endif %}</div>{% endfor %}</div></div></section>
 <section class="promo-band" id="deals"><div class="container promo-inner"><div><span class="eyebrow light-eyebrow">A LITTLE EXTRA GOODNESS</span><h2>More in your basket.<br><em>Less to worry about.</em></h2><p>Free local delivery on eligible orders. The threshold and delivery fee are managed by our team.</p></div><div class="promo-stamp"><span>LOCAL</span><strong>♥</strong><span>LOVE</span></div></div></section>
 <section class="section how-section" id="how"><div class="container"><div class="section-heading"><div><span class="eyebrow">SIMPLE AS THAT</span><h2>From our town<br>to <em>your door.</em></h2></div></div><div class="steps-grid"><div class="step"><span>01</span><div class="step-icon">🛒</div><h3>Pick your essentials</h3><p>Browse the products and add what your home needs.</p></div><div class="step"><span>02</span><div class="step-icon">📦</div><h3>We prepare your order</h3><p>Our team confirms availability and carefully packs your basket.</p></div><div class="step"><span>03</span><div class="step-icon">🛵</div><h3>At your doorstep</h3><p>A local delivery partner brings your order home.</p></div></div></div></section>
 {% endif %}
