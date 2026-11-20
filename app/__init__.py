@@ -162,6 +162,43 @@ def create_app():
 
         __table_args__ = (db.UniqueConstraint('user_id', 'product_id', name='uq_wishlist_user_product'),)
 
+    class ProductGalleryImage(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False, index=True)
+        image_path = db.Column(db.String(255), nullable=False)
+        alt_text = db.Column(db.String(180), default='')
+        sort_order = db.Column(db.Integer, default=0)
+        product = db.relationship('Product', backref=db.backref('gallery_images', cascade='all, delete-orphan', order_by='ProductGalleryImage.sort_order'))
+
+    class ComboOffer(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        title = db.Column(db.String(140), nullable=False)
+        description = db.Column(db.String(500), default='')
+        product_ids = db.Column(db.Text, nullable=False, default='[]')
+        combo_price = db.Column(db.Numeric(10, 2), nullable=False)
+        active = db.Column(db.Boolean, default=True, nullable=False)
+        starts_at = db.Column(db.DateTime)
+        ends_at = db.Column(db.DateTime)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    class FlashSale(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False, index=True)
+        sale_price = db.Column(db.Numeric(10, 2), nullable=False)
+        starts_at = db.Column(db.DateTime, nullable=False)
+        ends_at = db.Column(db.DateTime, nullable=False)
+        active = db.Column(db.Boolean, default=True, nullable=False)
+        product = db.relationship('Product')
+
+    class VipMembership(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        tier = db.Column(db.String(20), nullable=False, default='Silver')
+        starts_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+        ends_at = db.Column(db.DateTime, nullable=False)
+        active = db.Column(db.Boolean, default=True, nullable=False)
+        user = db.relationship('User')
+
     class ProductReview(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
@@ -457,6 +494,34 @@ def create_app():
                     Product.id.in_(viewed_ids), Product.active.is_(True), Product.stock > 0
                 ).all()}
                 recently_viewed = [viewed_map[pid] for pid in viewed_ids if pid in viewed_map][:6]
+        recommended_products = []
+        active_flash_sales = []
+        active_combo_offers = []
+        vip_membership = None
+        if location_verified:
+            if current_user.is_authenticated and current_user.role == 'customer':
+                bought = [row[0] for row in db.session.query(OrderItem.product_id).join(
+                    Order, Order.id == OrderItem.order_id).filter(
+                    Order.user_id == current_user.id, Order.status == 'Delivered',
+                    OrderItem.product_id.isnot(None)).distinct().limit(30).all()]
+                cats = [row[0] for row in db.session.query(Product.category_id).filter(
+                    Product.id.in_(bought), Product.category_id.isnot(None)).distinct().all()] if bought else []
+                rq = Product.query.filter(Product.active.is_(True), Product.stock > 0)
+                if bought: rq = rq.filter(~Product.id.in_(bought))
+                if cats: rq = rq.filter(Product.category_id.in_(cats))
+                recommended_products = rq.order_by(Product.featured.desc(), Product.created_at.desc()).limit(4).all()
+                if not recommended_products:
+                    recommended_products = Product.query.filter(Product.active.is_(True), Product.stock > 0).order_by(Product.featured.desc()).limit(4).all()
+                vip_membership = VipMembership.query.filter_by(user_id=current_user.id, active=True).filter(
+                    VipMembership.ends_at > datetime.utcnow()).order_by(VipMembership.ends_at.desc()).first()
+            now_utc = datetime.utcnow()
+            active_flash_sales = FlashSale.query.join(Product).filter(
+                FlashSale.active.is_(True), FlashSale.starts_at <= now_utc, FlashSale.ends_at > now_utc,
+                Product.active.is_(True), Product.stock > 0).order_by(FlashSale.ends_at.asc()).limit(8).all()
+            active_combo_offers = ComboOffer.query.filter(
+                ComboOffer.active.is_(True),
+                db.or_(ComboOffer.starts_at.is_(None), ComboOffer.starts_at <= now_utc),
+                db.or_(ComboOffer.ends_at.is_(None), ComboOffer.ends_at > now_utc)).order_by(ComboOffer.created_at.desc()).limit(4).all()
         wishlist_product_ids = set()
         if current_user.is_authenticated and current_user.role == 'customer':
             wishlist_product_ids = {item.product_id for item in WishlistItem.query.filter_by(user_id=current_user.id).all()}
@@ -467,7 +532,7 @@ def create_app():
                                wishlist_product_ids=wishlist_product_ids,
                                search_query=search_query, selected_category_id=category_id,
                                min_price=min_price, max_price=max_price, sort=sort,
-                               in_stock=in_stock, filters_active=filters_active, recently_viewed=recently_viewed)
+                               in_stock=in_stock, filters_active=filters_active, recently_viewed=recently_viewed,\n                                recommended_products=recommended_products, active_flash_sales=active_flash_sales,\n                                active_combo_offers=active_combo_offers, vip_membership=vip_membership)
 
     @app.get('/product/<int:product_id>')
     def product_detail(product_id):
@@ -480,7 +545,7 @@ def create_app():
         is_wishlisted = False
         if current_user.is_authenticated and current_user.role == 'customer':
             is_wishlisted = WishlistItem.query.filter_by(user_id=current_user.id, product_id=product.id).first() is not None
-        reviews = ProductReview.query.filter_by(product_id=product.id).order_by(ProductReview.created_at.desc()).all()
+        gallery_images = ProductGalleryImage.query.filter_by(product_id=product.id).order_by(ProductGalleryImage.sort_order.asc()).all()\n        reviews = ProductReview.query.filter_by(product_id=product.id).order_by(ProductReview.created_at.desc()).all()
         review_count = len(reviews)
         average_rating = round(sum(r.rating for r in reviews) / review_count, 1) if review_count else 0
         can_review = False
@@ -493,7 +558,7 @@ def create_app():
             existing_review = ProductReview.query.filter_by(user_id=current_user.id, product_id=product.id).first()
         return render_template('product.html', product=product, is_wishlisted=is_wishlisted,
                                reviews=reviews, review_count=review_count, average_rating=average_rating,
-                               can_review=can_review, existing_review=existing_review)
+                               can_review=can_review, existing_review=existing_review, gallery_images=gallery_images)
 
     @app.post('/product/<int:product_id>/review')
     @login_required
@@ -1091,6 +1156,20 @@ def create_app():
             flash('No available items found in this order.', 'warning')
         return redirect(url_for('cart'))
 
+    @app.get('/account/membership')
+    @login_required
+    def account_membership():
+        if current_user.role != 'customer': abort(403)
+        membership = VipMembership.query.filter_by(user_id=current_user.id, active=True).filter(VipMembership.ends_at > datetime.utcnow()).first()
+        return render_template('membership.html', membership=membership)
+
+    @app.post('/account/membership/request')
+    @login_required
+    def membership_request():
+        if current_user.role != 'customer': abort(403)
+        flash('VIP membership is currently activated by store approval. Please contact the store team.', 'info')
+        return redirect(url_for('account_membership'))
+
     @app.post('/order/<int:order_id>/cancel')
     @login_required
     def cancel_order(order_id):
@@ -1372,6 +1451,104 @@ def create_app():
     def admin_abandoned_carts():
         carts = AbandonedCart.query.filter_by(recovered_at=None).order_by(AbandonedCart.updated_at.desc()).limit(200).all()
         return render_template('admin/abandoned_carts.html', carts=carts)
+
+    @app.get('/account/membership')
+    @login_required
+    def account_membership():
+        if current_user.role != 'customer': abort(403)
+        membership = VipMembership.query.filter_by(user_id=current_user.id, active=True).filter(
+            VipMembership.ends_at > datetime.utcnow()).order_by(VipMembership.ends_at.desc()).first()
+        return render_template('membership.html', membership=membership)
+
+    @app.post('/account/membership/request')
+    @login_required
+    def membership_request():
+        if current_user.role != 'customer': abort(403)
+        flash('VIP plans are activated by store approval. Please contact Tharai Basket.', 'info')
+        return redirect(url_for('account_membership'))
+
+    @app.get('/admin/growth-tools')
+    @admin_required
+    def admin_growth_tools():
+        return render_template('admin/growth_tools.html',
+            products=Product.query.filter_by(active=True).order_by(Product.name).all(),
+            combos=ComboOffer.query.order_by(ComboOffer.created_at.desc()).all(),
+            sales=FlashSale.query.order_by(FlashSale.ends_at.desc()).all(),
+            customers=User.query.filter_by(role='customer', active=True).order_by(User.name).all())
+
+    @app.post('/admin/growth-tools/gallery')
+    @admin_required
+    def admin_gallery_add():
+        product = Product.query.get_or_404(request.form.get('product_id', type=int))
+        image = request.files.get('image')
+        if not image or not image.filename: flash('Choose an image.', 'warning'); return redirect(url_for('admin_growth_tools'))
+        filename = secure_filename(image.filename)
+        if Path(filename).suffix.lower() not in {'.jpg','.jpeg','.png','.webp'}:
+            flash('Use JPG, PNG or WEBP.', 'danger'); return redirect(url_for('admin_growth_tools'))
+        safe = f"{datetime.utcnow():%Y%m%d%H%M%S%f}_{filename}"
+        image.save(Path(app.config['UPLOAD_FOLDER']) / safe)
+        db.session.add(ProductGalleryImage(product_id=product.id, image_path=f'uploads/{safe}', alt_text=(request.form.get('alt_text') or product.name)[:180]))
+        db.session.commit()
+        flash('Gallery image added. Note: local Render uploads may be lost on redeploy; durable image hosting is not yet configured.', 'success')
+        return redirect(url_for('admin_growth_tools'))
+
+    @app.post('/admin/growth-tools/combo')
+    @admin_required
+    def admin_combo_add():
+        ids = list(dict.fromkeys(x for x in request.form.getlist('product_ids') if x.isdigit()))
+        price = money(request.form.get('combo_price'))
+        if len(ids) < 2 or price <= 0 or not request.form.get('title','').strip():
+            flash('Enter a title, at least two products and a valid price.', 'danger'); return redirect(url_for('admin_growth_tools'))
+        valid = Product.query.filter(Product.id.in_([int(x) for x in ids]), Product.active.is_(True)).all()
+        if len(valid) != len(ids): flash('Selected products must be active.', 'danger'); return redirect(url_for('admin_growth_tools'))
+        import json
+        db.session.add(ComboOffer(title=request.form['title'].strip()[:140], description=request.form.get('description','')[:500],
+                                  product_ids=json.dumps([p.id for p in valid]), combo_price=price, active=True))
+        db.session.commit(); flash('Combo offer created.', 'success')
+        return redirect(url_for('admin_growth_tools'))
+
+    @app.post('/admin/growth-tools/flash-sale')
+    @admin_required
+    def admin_flash_sale_add():
+        product = Product.query.get_or_404(request.form.get('product_id', type=int))
+        price = money(request.form.get('sale_price'))
+        try:
+            start = datetime.fromisoformat(request.form.get('starts_at',''))
+            end = datetime.fromisoformat(request.form.get('ends_at',''))
+        except ValueError:
+            flash('Enter valid sale start/end date and time.', 'danger'); return redirect(url_for('admin_growth_tools'))
+        if price <= 0 or price >= product.price or end <= start:
+            flash('Sale price must be below current price and end after start.', 'danger'); return redirect(url_for('admin_growth_tools'))
+        db.session.add(FlashSale(product_id=product.id, sale_price=price, starts_at=start, ends_at=end))
+        db.session.commit(); flash('Flash sale scheduled. Regular catalogue price is unchanged.', 'success')
+        return redirect(url_for('admin_growth_tools'))
+
+    @app.post('/admin/growth-tools/membership')
+    @admin_required
+    def admin_membership_grant():
+        customer = User.query.filter_by(id=request.form.get('user_id', type=int), role='customer').first_or_404()
+        tier = request.form.get('tier','Silver'); days = request.form.get('days',type=int) or 30
+        if tier not in ['Silver','Gold','Platinum'] or not 1 <= days <= 365:
+            flash('Choose a valid tier and 1–365 days.', 'danger'); return redirect(url_for('admin_growth_tools'))
+        VipMembership.query.filter_by(user_id=customer.id, active=True).update({'active':False})
+        db.session.add(VipMembership(user_id=customer.id,tier=tier,starts_at=datetime.utcnow(),ends_at=datetime.utcnow()+timedelta(days=days)))
+        db.session.commit(); flash(f'{tier} membership activated for {customer.name}.', 'success')
+        return redirect(url_for('admin_growth_tools'))
+
+    @app.get('/admin/dynamic-pricing')
+    @admin_required
+    def admin_dynamic_pricing():
+        suggestions = []
+        for product in Product.query.filter_by(active=True).all():
+            sold = db.session.query(db.func.coalesce(db.func.sum(OrderItem.quantity),0)).join(
+                Order, Order.id == OrderItem.order_id).filter(OrderItem.product_id == product.id,
+                Order.status == 'Delivered', Order.created_at >= datetime.utcnow()-timedelta(days=30)).scalar() or 0
+            if product.stock <= 3: action, reason = 'Protect margin', 'Very low stock; avoid discounting and replenish.'
+            elif product.stock >= 25 and sold == 0: action, reason = 'Review a promotion', 'High stock and no delivered sales in 30 days.'
+            elif product.stock >= 15 and sold < 3: action, reason = 'Consider a combo', 'Slow movement with elevated stock.'
+            else: action, reason = 'Keep current price', 'Stock and recent sales look balanced.'
+            suggestions.append({'product':product,'sold':int(sold),'action':action,'reason':reason})
+        return render_template('admin/dynamic_pricing.html', suggestions=suggestions)
 
     @app.route('/admin/products', methods=['GET', 'POST'])
     @admin_required
