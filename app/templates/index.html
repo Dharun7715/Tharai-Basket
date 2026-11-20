@@ -193,9 +193,9 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
      {% if sale.product.image %}<img src="{{ url_for('static', filename=sale.product.image) }}" alt="{{ sale.product.name }}" loading="lazy">{% else %}<div class="product-placeholder">⚡</div>{% endif %}
      <span class="discount-tag">FLASH DEAL</span>
     </a>
-    <div class="product-info"><small>Promotional preview · Ends {{ sale.ends_at.strftime('%d %b, %I:%M %p') }}</small><h3>{{ sale.product.name }}</h3>
+    <div class="product-info"><small>Flash sale price · Ends {{ sale.ends_at.strftime('%d %b, %I:%M %p') }}</small><h3>{{ sale.product.name }}</h3>
      <div class="product-price"><strong>{{ sale.sale_price|inr }}</strong><del>{{ sale.product.price|inr }}</del></div>
-     <form method="post" action="{{ url_for('cart_add', product_id=sale.product.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="quantity" value="1"><input type="hidden" name="flash_sale_id" value="{{ sale.id }}"><button class="add-btn">+ Add at regular price</button></form>
+     <form method="post" action="{{ url_for('cart_add', product_id=sale.product.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="quantity" value="1"><input type="hidden" name="flash_sale_id" value="{{ sale.id }}"><button class="add-btn">+ Add flash deal</button></form>
     </div>
    </article>
    {% endfor %}
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
  <div class="container"><div class="section-heading"><div><span class="eyebrow">BUNDLE & SAVE</span><h2>Smart <em>combos.</em></h2></div></div>
   <div class="category-grid">
    {% for combo in active_combo_offers %}
-   <article class="category-card"><div class="category-icon">🧺</div><strong>{{ combo.title }}</strong><p class="muted tiny">{{ combo.description }}</p><h3>{{ combo.combo_price|inr }}</h3><small class="muted">Offer preview; checkout discount is not yet automatic.</small><form method="post" action="{{ url_for('combo_add_to_cart', combo_id=combo.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-small">Add items at regular prices</button></form></article>
+   <article class="category-card"><div class="category-icon">🧺</div><strong>{{ combo.title }}</strong><p class="muted tiny">{{ combo.description }}</p><h3>{{ combo.combo_price|inr }}</h3><small class="muted">Combo savings are applied automatically in your basket.</small><form method="post" action="{{ url_for('combo_add_to_cart', combo_id=combo.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-small">Add combo & save</button></form></article>
    {% endfor %}
   </div>
  </div>
