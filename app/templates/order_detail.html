@@ -4,6 +4,7 @@
 {% if order.status not in ['Delivered', 'Cancelled'] %}<meta http-equiv="refresh" content="25">{% endif %}
 {% set tracking_steps = ['Pending', 'Confirmed', 'Purchase Required', 'Purchased', 'Packing', 'Ready for Pickup', 'Picked Up', 'Out for Delivery', 'Delivered'] %}
 {% set current_step = tracking_steps.index(order.status) if order.status in tracking_steps else -1 %}
+{% set tracking_progress = ((current_step + 1) * 100 / tracking_steps|length)|round|int if current_step >= 0 else 0 %}
 <section class="section">
   <div class="container narrow">
     <span class="eyebrow">ORDER TRACKING</span>
@@ -18,7 +19,7 @@
     {% endif %}
 
     <div class="summary-card" style="margin:22px 0;padding:clamp(18px,3vw,28px)">
-      <h3 style="margin-top:0">Your order progress</h3>
+      <h3 style="margin-top:0">Your order progress</h3><div class="tb-track-progress-head"><strong>{{ tracking_progress }}% complete</strong><span>{{ order.status }}</span></div><div class="tb-track-progress"><i style="width:{{ tracking_progress }}%"></i></div>
       {% if order.status == 'Cancelled' %}
         <p class="muted">This order has been cancelled. Please contact our team if you need help.</p>
       {% else %}
@@ -86,7 +87,7 @@
   </div>
 </section>
 <style>
-.tb-track-cashback,.tb-track-update{display:grid;gap:4px;margin:14px 0;padding:13px 15px;border-radius:12px;border:1px solid #d9eadc;background:#f1f8f2}
+ .tb-track-progress-head{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:#315b3b;margin:12px 0 7px}.tb-track-progress{height:8px;border-radius:9px;background:#e8eee8;overflow:hidden}.tb-track-progress i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,#176b39,#59a96e);transition:width .3s ease}.tb-track-cashback,.tb-track-update{display:grid;gap:4px;margin:14px 0;padding:13px 15px;border-radius:12px;border:1px solid #d9eadc;background:#f1f8f2}
 .tb-track-cashback strong{color:#176b39;font-size:13px}.tb-track-cashback span,.tb-track-update span{font-size:11px;color:#607064}
 .tb-track-update strong{color:#294c34;font-size:12px}
 </style>
