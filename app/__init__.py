@@ -532,7 +532,9 @@ def create_app():
                                wishlist_product_ids=wishlist_product_ids,
                                search_query=search_query, selected_category_id=category_id,
                                min_price=min_price, max_price=max_price, sort=sort,
-                               in_stock=in_stock, filters_active=filters_active, recently_viewed=recently_viewed,\n                                recommended_products=recommended_products, active_flash_sales=active_flash_sales,\n                                active_combo_offers=active_combo_offers, vip_membership=vip_membership)
+                               in_stock=in_stock, filters_active=filters_active, recently_viewed=recently_viewed,
+                                recommended_products=recommended_products, active_flash_sales=active_flash_sales,
+                                active_combo_offers=active_combo_offers, vip_membership=vip_membership)
 
     @app.get('/product/<int:product_id>')
     def product_detail(product_id):
