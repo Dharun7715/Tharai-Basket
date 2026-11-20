@@ -1,5 +1,52 @@
 {% extends 'base.html' %}
-{% block title %}Tharai Basket | Groceries at your doorstep{% endblock %}
+{% block title %}Tharai Basket | Groceries at your doorstep<script>
+(function(){
+ const select=document.getElementById('tb-delivery-slot');
+ const caption=document.getElementById('tb-schedule-caption');
+ if(!select||!caption)return;
+ const now=new Date();
+ const slots=[
+  {day:0,start:8,end:11,label:'8 AM – 11 AM'},
+  {day:0,start:11,end:14,label:'11 AM – 2 PM'},
+  {day:0,start:14,end:17,label:'2 PM – 5 PM'},
+  {day:0,start:17,end:20,label:'5 PM – 8 PM'},
+  {day:1,start:8,end:11,label:'8 AM – 11 AM'},
+  {day:1,start:11,end:14,label:'11 AM – 2 PM'},
+  {day:1,start:14,end:17,label:'2 PM – 5 PM'},
+  {day:1,start:17,end:20,label:'5 PM – 8 PM'}
+ ];
+ const pad=n=>String(n).padStart(2,'0');
+ const dateKey=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+ const today=dateKey(now);
+ const tomorrow=new Date(now);tomorrow.setDate(tomorrow.getDate()+1);
+ const available=slots.filter(s=>{
+  if(s.day===0)return now.getHours()<s.end-1;
+  return true;
+ });
+ const saved=localStorage.getItem('tb_delivery_slot')||'asap';
+ select.innerHTML='<option value="asap">As soon as possible</option>';
+ available.forEach((s,i)=>{
+  const d=s.day===0?now:tomorrow;
+  const date=dateKey(d);
+  const name=s.day===0?'Today':'Tomorrow';
+  const value=date+'|'+s.label;
+  const option=document.createElement('option');
+  option.value=value;option.textContent=name+' · '+s.label;
+  select.appendChild(option);
+ });
+ if([...select.options].some(o=>o.value===saved))select.value=saved;
+ function updateCaption(){
+  const opt=select.options[select.selectedIndex];
+  caption.textContent=select.value==='asap'?'Fastest available delivery':opt.textContent;
+ }
+ select.addEventListener('change',()=>{
+  localStorage.setItem('tb_delivery_slot',select.value);
+  updateCaption();
+ });
+ updateCaption();
+})();
+</script>
+{% endblock %}
 {% block content %}
 <style>
 .tb-shop-filters{display:grid;grid-template-columns:minmax(220px,1.6fr) repeat(3,minmax(135px,1fr));gap:14px;align-items:end;padding:20px;background:#fff;border:1px solid #e4ece5;border-radius:18px;margin:24px 0 14px;box-shadow:0 10px 28px rgba(24,62,37,.045)}
@@ -164,6 +211,13 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
 {% else %}
 <style>
 .tb-home-toolbar{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;margin:12px auto 18px;padding:10px 12px;background:#fff;border:1px solid #e4ece5;border-radius:14px;box-shadow:0 5px 18px rgba(24,62,37,.04)}
+.tb-delivery-schedule{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;border:1px solid #e3ece4;border-radius:11px;background:#f7fbf7;color:#244b30}
+.tb-delivery-schedule .tb-schedule-copy{display:flex;align-items:center;gap:9px;min-width:0}
+.tb-delivery-schedule .tb-schedule-icon{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:10px;background:#e7f3e9;font-size:18px}
+.tb-delivery-schedule strong{display:block;font-size:12px;line-height:1.3}
+.tb-delivery-schedule small{display:block;margin-top:2px;color:#78857b;font-size:10px}
+.tb-delivery-schedule select{max-width:58%;min-width:145px;height:36px;padding:0 26px 0 9px;border:1px solid #d7e5d9;border-radius:8px;background:#fff;color:#235b35;font:700 11px 'DM Sans',sans-serif}
+
 .tb-home-location{display:flex;align-items:center;gap:6px;min-width:0;color:#355c40;font-size:12px;font-weight:700;line-height:1.2}
 .tb-home-location small{display:inline;color:#7b887e;font-size:10px;font-weight:500;margin-left:5px}
 .tb-search-row{display:flex;gap:7px;min-width:0}
@@ -196,6 +250,11 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
 .product-image.image-missing:after{content:'🛍️';font-size:54px;position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(135deg,#f1f8f2,#e7f3e9)}
 @media(max-width:620px){
  .tb-home-toolbar{gap:8px;padding:9px 10px;margin:9px auto 14px}
+ .tb-delivery-schedule{padding:8px;gap:6px}
+ .tb-delivery-schedule .tb-schedule-icon{width:30px;height:30px;flex-basis:30px;font-size:16px}
+ .tb-delivery-schedule strong{font-size:11px}
+ .tb-delivery-schedule small{font-size:9px}
+ .tb-delivery-schedule select{min-width:128px;max-width:55%;height:34px;font-size:10px}
  .tb-home-location{font-size:11px}
  .tb-home-location small{font-size:9px}
  .tb-search-row{gap:6px}
@@ -219,6 +278,15 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
 </style>
 <div class="container">
   <div class="tb-home-toolbar">
+    <div class="tb-delivery-schedule">
+      <div class="tb-schedule-copy">
+        <span class="tb-schedule-icon" aria-hidden="true">🕒</span>
+        <span><strong>Schedule delivery</strong><small id="tb-schedule-caption">Choose a convenient delivery time</small></span>
+      </div>
+      <select id="tb-delivery-slot" aria-label="Choose delivery time">
+        <option value="asap">As soon as possible</option>
+      </select>
+    </div>
     <div class="tb-home-location">
       <span aria-hidden="true">📍</span>
       {% if location_verified %}
