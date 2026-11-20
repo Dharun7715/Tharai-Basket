@@ -1,1 +1,50 @@
-{% extends 'base.html' %}{% block title %}VIP Membership | Tharai Basket{% endblock %}{% block content %}<section class="section"><div class="container narrow"><span class="eyebrow">THARAI BASKET REWARDS</span><h1>VIP <em>membership.</em></h1>{% if membership %}<div class="admin-panel"><h2>{{ membership.tier }} member</h2><p>{% if membership.tier == 'Platinum' %}Free delivery on every order.{% elif membership.tier == 'Gold' %}Free delivery on orders ₹200 and above.{% else %}Standard free-delivery threshold applies.{% endif %}<br>Active until {{ membership.ends_at.strftime('%d %B %Y') }}.</p></div>{% else %}<div class="admin-panel"><h2>Become a VIP member</h2><p class="muted">Memberships are activated by the store team. Silver: standard free-delivery threshold. Gold: free delivery on orders ₹200+. Platinum: free delivery on every order. Contact us to request activation.</p><form method="post" action="{{ url_for('membership_request') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn">Request membership information</button></form></div>{% endif %}</div></section>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}VIP Membership | Tharai Basket{% endblock %}
+{% block content %}
+<section class="section"><div class="container narrow">
+  <span class="eyebrow">THARAI BASKET REWARDS</span>
+  <h1>VIP <em>membership.</em></h1>
+  {% if membership %}
+  <div class="admin-panel"><h2>{{ membership.tier }} member</h2>
+    <p>{% if membership.tier == 'Platinum' %}Free delivery on every order.{% elif membership.tier == 'Gold' %}Free delivery when your product subtotal is above ₹150.{% endif %}
+    <br>Active until {{ membership.ends_at.strftime('%d %B %Y') }}.</p>
+  </div>
+  {% endif %}
+  <div class="admin-panel">
+    <h2>Choose your membership</h2>
+    <p class="muted">Pay by UPI QR. Submit your UTR; the store team verifies the payment before activating membership.</p>
+    <div class="membership-plans">
+      <article class="membership-plan"><span class="eyebrow">GOLD</span><h3>₹300 <small>/ 1 month</small></h3>
+        <p>Free delivery on orders above ₹150.</p><strong>3 months: ₹800</strong><small class="muted">Save ₹100</small></article>
+      <article class="membership-plan"><span class="eyebrow">PLATINUM</span><h3>₹500 <small>/ 1 month</small></h3>
+        <p>Free delivery on every order.</p><strong>3 months: ₹1,300</strong><small class="muted">Save ₹200</small></article>
+    </div>
+    {% if pending_request %}
+      <div class="membership-pending"><strong>Payment verification pending</strong><p>{{ pending_request.tier }} · {{ pending_request.months }} month(s) · ₹{{ '%.2f'|format(pending_request.amount) }}</p><small>UTR: {{ pending_request.upi_reference }}</small></div>
+    {% else %}
+    <form method="post" action="{{ url_for('membership_request') }}" id="membership-payment-form" class="membership-payment-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Membership tier<select name="tier" id="membership-tier" required><option value="Gold">Gold</option><option value="Platinum">Platinum</option></select></label>
+      <label>Duration<select name="months" id="membership-months" required><option value="1">1 month</option><option value="3">3 months (discounted)</option></select></label>
+      <div class="membership-pay-box"><div><strong id="membership-pay-title">Gold · 1 month</strong><h2 id="membership-pay-amount">₹300</h2><small>Scan with Google Pay, PhonePe, Paytm or BHIM</small></div>
+        <img id="membership-qr" src="{{ plans['Gold'][1]['qr'] }}" alt="UPI QR code for membership payment"></div>
+      <p class="muted">UPI ID: <strong>{{ upi_id }}</strong></p>
+      <label>UPI transaction reference / UTR<input name="upi_reference" required minlength="6" maxlength="100" placeholder="Enter UTR after successful payment"></label>
+      <button class="btn" type="submit">Submit payment for verification</button>
+    </form>
+    {% endif %}
+  </div>
+</div></section>
+<style>
+.membership-plans{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0}.membership-plan{border:1px solid #dce9df;border-radius:14px;padding:18px;background:#f8fbf8}.membership-plan h3{font-size:28px;margin:9px 0}.membership-plan h3 small{font-size:12px;color:#738176}.membership-plan p{font-size:13px;color:#637269;min-height:38px}.membership-plan strong,.membership-plan>small{display:block}.membership-plan>small{margin-top:5px}.membership-payment-form{display:grid;gap:13px}.membership-payment-form label{display:grid;gap:7px;font-size:12px;font-weight:700}.membership-payment-form select,.membership-payment-form input{width:100%;border:1px solid #dce6dd;border-radius:10px;padding:12px;background:white}.membership-pay-box{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px;border:1px solid #e1eae2;border-radius:13px;background:#f7faf7}.membership-pay-box h2{font-size:30px;margin:5px 0}.membership-pay-box small{color:#718076;font-size:11px}.membership-pay-box img{width:170px;height:170px;object-fit:contain;background:white;padding:7px;border-radius:9px}.membership-pending{padding:15px;border-radius:12px;background:#fff8e8;border:1px solid #f1dfb4}.membership-pending p{margin:6px 0}.membership-pending small{color:#74684f}@media(max-width:600px){.membership-plans{grid-template-columns:1fr}.membership-pay-box{align-items:flex-start;flex-direction:column}.membership-pay-box img{align-self:center}}
+</style>
+<script>
+(() => {
+ const tier=document.getElementById('membership-tier'), months=document.getElementById('membership-months');
+ if(!tier || !months) return;
+ const plans={{'Gold': {1:{amount:'300',qr:{{ plans['Gold'][1]['qr']|tojson }}},3:{amount:'800',qr:{{ plans['Gold'][3]['qr']|tojson }}}},'Platinum': {1:{amount:'500',qr:{{ plans['Platinum'][1]['qr']|tojson }}},3:{amount:'1300',qr:{{ plans['Platinum'][3]['qr']|tojson }}}}}};
+ function update(){const p=plans[tier.value][months.value];document.getElementById('membership-pay-title').textContent=tier.value+' · '+months.value+' month'+(months.value==='1'?'':'s');document.getElementById('membership-pay-amount').textContent='₹'+p.amount;document.getElementById('membership-qr').src=p.qr;}
+ tier.addEventListener('change',update);months.addEventListener('change',update);
+})();
+</script>
+{% endblock %}
