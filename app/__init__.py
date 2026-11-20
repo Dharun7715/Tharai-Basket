@@ -371,7 +371,11 @@ def create_app():
         cursor = first
         while cursor.date() == selected_date and cursor <= end:
             slot = cursor.strftime('%I:%M %p')
-            booked = DeliverySchedule.query.filter_by(delivery_date=date_value, delivery_slot=slot).count()
+            booked = DeliverySchedule.query.join(Order).filter(
+                DeliverySchedule.delivery_date == date_value,
+                DeliverySchedule.delivery_slot == slot,
+                Order.status != 'Cancelled'
+            ).count()
             if booked < capacity:
                 slots.append(slot)
             cursor += timedelta(minutes=30)
