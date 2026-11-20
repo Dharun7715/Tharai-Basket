@@ -19,18 +19,20 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!search || !('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
   const form = search.closest('form');
   const button = document.createElement('button');
-  button.type = 'button'; button.className = 'btn btn-small'; button.textContent = '🎙 Voice';
+  button.type = 'button'; button.className = 'tb-voice-search';
+  button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10a7 7 0 0 0 14 0M12 17v5m-4 0h8"></path></svg>';
   button.setAttribute('aria-label', 'Search using your voice');
+  button.setAttribute('title', 'Voice search');
   search.parentElement.appendChild(button);
   button.addEventListener('click', () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = document.documentElement.lang === 'ta' ? 'ta-IN' : 'en-IN';
     recognition.interimResults = false; recognition.maxAlternatives = 1;
-    button.disabled = true; button.textContent = 'Listening…';
+    button.disabled = true; button.classList.add('is-listening'); button.setAttribute('aria-label', 'Listening…');
     recognition.onresult = event => { search.value = event.results[0][0].transcript; form.requestSubmit(); };
-    recognition.onerror = () => { button.textContent = '🎙 Try again'; };
-    recognition.onend = () => { button.disabled = false; if (button.textContent === 'Listening…') button.textContent = '🎙 Voice'; };
+    recognition.onerror = () => { button.setAttribute('aria-label', 'Voice search failed. Try again'); };
+    recognition.onend = () => { button.disabled = false; button.classList.remove('is-listening'); button.setAttribute('aria-label', 'Search using your voice'); };
     recognition.start();
   });
 });
