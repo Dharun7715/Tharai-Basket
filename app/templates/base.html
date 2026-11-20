@@ -8,13 +8,13 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
   <meta name="theme-color" content="#176b39"><script>if(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true){document.documentElement.classList.add("tb-app-launch");}</script><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}?v=6"><link rel="icon" type="image/webp" href="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}?v=6">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}?v=7"><link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/tharai-basket-app-icon.svg') }}?v=7">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
   <script>if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}").catch(() => {}));</script>
 </head>
 <body>
-<div class="tb-app-splash" id="tb-app-splash" aria-label="Tharai Basket loading"><img src="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}?v=6" alt="Tharai Basket"><span class="tb-splash-loader"></span></div>
+<div class="tb-app-splash" id="tb-app-splash" aria-label="Tharai Basket loading"><img src="{{ url_for('static', filename='images/tharai-basket-app-icon.svg') }}?v=7" alt="Tharai Basket"></div>
 <header class="site-header"><div class="container nav-wrap">
   <a class="brand" href="{{ url_for('index') }}" aria-label="Tharai Basket home"><img class="brand-logo" src="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}?v=6" alt="Tharai Basket"></a>
   <nav class="desktop-nav"><a href="{{ url_for('index') }}">Home</a><a href="{{ url_for('index') }}#categories">Categories</a><a href="{{ url_for('index') }}#deals">Today's deals</a></nav>
