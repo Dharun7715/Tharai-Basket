@@ -196,6 +196,15 @@ def create_app():
         active = db.Column(db.Boolean, default=True, nullable=False)
         product = db.relationship('Product')
 
+    class StockBatch(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False, index=True)
+        received_quantity = db.Column(db.Integer, nullable=False)
+        remaining_quantity = db.Column(db.Integer, nullable=False)
+        expiry_date = db.Column(db.String(10), nullable=False, index=True)
+        received_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+        product = db.relationship('Product')
+
     class VipMembership(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
@@ -1699,8 +1708,51 @@ def create_app():
         products = Product.query.filter_by(active=True).filter(Product.stock <= 5).order_by(Product.stock.asc(), Product.name.asc()).all()
         out_of_stock_count = Product.query.filter_by(active=True, stock=0).count()
         low_stock_count = Product.query.filter(Product.active.is_(True), Product.stock.between(1, 5)).count()
+        today_key = datetime.now(ZoneInfo('Asia/Kolkata')).date().strftime('%Y-%m-%d')
+        expiry_cutoff = (datetime.now(ZoneInfo('Asia/Kolkata')).date() + timedelta(days=30)).strftime('%Y-%m-%d')
+        expiry_batches = StockBatch.query.filter(StockBatch.remaining_quantity > 0,
+            StockBatch.expiry_date <= expiry_cutoff).order_by(StockBatch.expiry_date.asc()).all()
+        expired_batch_count = sum(1 for batch in expiry_batches if batch.expiry_date < today_key)
         return render_template('admin/inventory.html', products=products,
-                               out_of_stock_count=out_of_stock_count, low_stock_count=low_stock_count)
+            out_of_stock_count=out_of_stock_count, low_stock_count=low_stock_count,
+            all_products=Product.query.filter_by(active=True).order_by(Product.name).all(),
+            expiry_batches=expiry_batches, expired_batch_count=expired_batch_count, today_key=today_key)
+
+    @app.post('/admin/inventory/batches')
+    @admin_required
+    def admin_inventory_add_batch():
+        product = Product.query.filter_by(id=request.form.get('product_id', type=int), active=True).first_or_404()
+        try:
+            quantity = int(request.form.get('quantity', ''))
+            expiry_date = request.form.get('expiry_date', '')
+            datetime.strptime(expiry_date, '%Y-%m-%d')
+        except (TypeError, ValueError):
+            flash('Enter a valid quantity and expiry date.', 'danger')
+            return redirect(url_for('admin_inventory'))
+        if quantity < 1 or quantity > 1000000:
+            flash('Batch quantity must be between 1 and 1,000,000.', 'danger')
+            return redirect(url_for('admin_inventory'))
+        db.session.add(StockBatch(product_id=product.id, received_quantity=quantity,
+            remaining_quantity=quantity, expiry_date=expiry_date))
+        product.stock = int(product.stock or 0) + quantity
+        db.session.commit()
+        flash(f'{quantity} units added to {product.name}; expiry recorded for {expiry_date}.', 'success')
+        return redirect(url_for('admin_inventory'))
+
+    @app.post('/admin/inventory/batches/<int:batch_id>/remove-expired')
+    @admin_required
+    def admin_inventory_remove_expired(batch_id):
+        batch = StockBatch.query.get_or_404(batch_id)
+        if batch.expiry_date >= datetime.now(ZoneInfo('Asia/Kolkata')).date().strftime('%Y-%m-%d'):
+            flash('This batch has not expired yet. Only expired batches can be removed here.', 'warning')
+            return redirect(url_for('admin_inventory'))
+        product = Product.query.get_or_404(batch.product_id)
+        remove_qty = min(int(batch.remaining_quantity or 0), int(product.stock or 0))
+        product.stock = max(0, int(product.stock or 0) - remove_qty)
+        batch.remaining_quantity = 0
+        db.session.commit()
+        flash(f'Expired batch removed: {remove_qty} units of {product.name}.', 'success')
+        return redirect(url_for('admin_inventory'))
 
     @app.post('/admin/inventory/<int:product_id>/stock')
     @admin_required
@@ -1741,6 +1793,41 @@ def create_app():
             Order.status != 'Cancelled'
         ).order_by(DeliverySchedule.delivery_date, DeliverySchedule.delivery_slot).all()
         return render_template('admin/delivery_slots.html', setting=setting, schedules=upcoming)
+
+    @app.get('/admin/reports/export.csv')
+    @admin_required
+    def admin_reports_export():
+        import csv
+        from io import StringIO
+        period = request.args.get('period', 'month')
+        today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+        if period == 'today':
+            start_date = today
+        elif period == '7days':
+            start_date = today - timedelta(days=6)
+        elif period == 'all':
+            start_date = None
+        else:
+            period = 'month'
+            start_date = today.replace(day=1)
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Type', 'Date', 'Reference', 'Customer / Description', 'Items / Category', 'Status', 'Amount INR'])
+        order_query = Order.query.filter_by(status='Delivered')
+        if start_date:
+            order_query = order_query.filter(Order.created_at >= datetime.combine(start_date, datetime.min.time()))
+        for order in order_query.order_by(Order.created_at.asc()).all():
+            item_summary = '; '.join(f'{item.product_name} x {item.quantity}' for item in order.items)
+            writer.writerow(['Sale', order.created_at.strftime('%Y-%m-%d %H:%M'), order.order_number,
+                order.customer_name, item_summary, order.status, f'{Decimal(str(order.total or 0)):.2f}'])
+        expense_query = StoreExpense.query
+        if start_date:
+            expense_query = expense_query.filter(StoreExpense.expense_date >= start_date.strftime('%Y-%m-%d'))
+        for expense in expense_query.order_by(StoreExpense.expense_date.asc()).all():
+            writer.writerow(['Expense', expense.expense_date, f'EXP-{expense.id}', expense.title,
+                expense.category, 'Recorded', f'-{Decimal(str(expense.amount or 0)):.2f}'])
+        return app.response_class('\ufeff' + output.getvalue(), mimetype='text/csv; charset=utf-8',
+            headers={'Content-Disposition': f'attachment; filename=tharai-basket-report-{period}.csv'})
 
     @app.route('/admin/expenses', methods=['GET', 'POST'])
     @admin_required
@@ -1977,6 +2064,15 @@ def create_app():
         db.session.commit(); flash(f'Combo offer created. Regular bundle total ₹{bundle_value:.2f}; combo price ₹{price:.2f}.', 'success')
         return redirect(url_for('admin_growth_tools'))
 
+    @app.post('/admin/growth-tools/combo/<int:combo_id>/toggle')
+    @admin_required
+    def admin_combo_toggle(combo_id):
+        combo = ComboOffer.query.get_or_404(combo_id)
+        combo.active = not combo.active
+        db.session.commit()
+        flash(f'Combo offer {combo.title} is now {"active" if combo.active else "inactive"}.', 'success')
+        return redirect(url_for('admin_growth_tools'))
+
     @app.post('/admin/growth-tools/flash-sale')
     @admin_required
     def admin_flash_sale_add():
@@ -1991,6 +2087,15 @@ def create_app():
             flash('Sale price must be below current price and end after start.', 'danger'); return redirect(url_for('admin_growth_tools'))
         db.session.add(FlashSale(product_id=product.id, sale_price=price, starts_at=start, ends_at=end))
         db.session.commit(); flash('Flash sale scheduled. Regular catalogue price is unchanged.', 'success')
+        return redirect(url_for('admin_growth_tools'))
+
+    @app.post('/admin/growth-tools/flash-sale/<int:sale_id>/toggle')
+    @admin_required
+    def admin_flash_sale_toggle(sale_id):
+        sale = FlashSale.query.get_or_404(sale_id)
+        sale.active = not sale.active
+        db.session.commit()
+        flash(f'Flash sale for {sale.product.name} is now {"active" if sale.active else "inactive"}.', 'success')
         return redirect(url_for('admin_growth_tools'))
 
     @app.post('/admin/growth-tools/membership')
