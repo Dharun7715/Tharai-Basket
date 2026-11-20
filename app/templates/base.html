@@ -75,4 +75,19 @@
 {% block content %}{% endblock %}
 </main>
 <footer class="site-footer"><div class="container footer-grid"><div><a class="brand brand-footer" href="{{ url_for('index') }}" aria-label="Tharai Basket home"><img class="brand-logo" src="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}" alt="Tharai Basket"></a><p>Everyday essentials, closer to home. Serving Tharamangalam with care.</p></div><div><h4>Explore</h4><a href="{{ url_for('index') }}#categories">Categories</a><a href="{{ url_for('cart') }}">Your basket</a><a href="{{ url_for('my_orders') if current_user.is_authenticated and current_user.role == 'customer' else url_for('login') }}">My orders</a></div><div><h4>Need help?</h4><p>Tharamangalam, Salem District<br>Tamil Nadu, India</p><p>WhatsApp ordering support<br><strong>Contact number to be configured</strong></p></div></div><div class="container footer-bottom">© {{ now.year }} Tharai Basket. Made for our town.</div></footer>
+
+<nav class="tb-bottom-nav" aria-label="Quick navigation">
+  <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}is-active{% endif %}" aria-label="Home">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
+    <span>Home</span>
+  </a>
+  <a href="{{ url_for('index') }}#categories" aria-label="Categories">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.4"/><rect x="14" y="3" width="7" height="7" rx="1.4"/><rect x="3" y="14" width="7" height="7" rx="1.4"/><rect x="14" y="14" width="7" height="7" rx="1.4"/></svg>
+    <span>Categories</span>
+  </a>
+  <a href="{{ url_for('my_orders') if current_user.is_authenticated and current_user.role == 'customer' else url_for('login') }}" aria-label="Orders">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l2 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z"/><path d="M4 7h16M9 11h6M9 15h6"/></svg>
+    <span>Orders</span>
+  </a>
+</nav>
 </body></html>

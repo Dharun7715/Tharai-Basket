@@ -102,3 +102,15 @@ body.tb-menu-open{overflow:hidden}
  .brand-logo{width:104px;max-height:49px}
  .nav-actions{margin-left:auto}
 }
+
+/* Mobile fixed bottom quick navigation */
+.tb-bottom-nav{display:none}
+@media(max-width:620px){
+ .tb-bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:80;display:grid;grid-template-columns:repeat(3,1fr);align-items:center;height:64px;padding:6px 12px calc(6px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid #e4ece5;box-shadow:0 -5px 22px rgba(20,60,32,.08);backdrop-filter:blur(14px)}
+ .tb-bottom-nav a{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#78847a;font-size:10px;font-weight:700;letter-spacing:.01em}
+ .tb-bottom-nav a svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+ .tb-bottom-nav a.is-active{color:#176b39}
+ .tb-bottom-nav a.is-active svg{stroke-width:2.3}
+ body{padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+ .site-footer{padding-bottom:calc(85px + env(safe-area-inset-bottom))}
+}
