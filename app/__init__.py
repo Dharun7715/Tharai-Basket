@@ -423,12 +423,54 @@ def create_app():
                 rows.append({'product': product, 'quantity': quantity, 'line_total': line})
         return rows, subtotal
 
+    def active_cart_coupon(subtotal):
+        code = session.get('coupon_code')
+        if not code:
+            return None, Decimal('0.00')
+        coupon = Coupon.query.filter_by(code=code, active=True).first()
+        if not coupon or subtotal < Decimal(str(coupon.min_order or 0)):
+            session.pop('coupon_code', None)
+            return None, Decimal('0.00')
+        value = Decimal(str(coupon.value or 0))
+        if coupon.discount_type == 'percent':
+            discount = subtotal * value / Decimal('100')
+        else:
+            discount = value
+        return coupon, min(subtotal, max(Decimal('0.00'), discount)).quantize(Decimal('0.01'))
+
+    @app.post('/coupon/apply')
+    @login_required
+    def coupon_apply():
+        if current_user.role != 'customer':
+            abort(403)
+        _, subtotal = cart_data()
+        code = request.form.get('coupon_code', '').strip().upper()
+        coupon = Coupon.query.filter_by(code=code, active=True).first() if code else None
+        if not coupon:
+            flash('Invalid or inactive coupon code.', 'danger')
+        elif subtotal < Decimal(str(coupon.min_order or 0)):
+            flash(f'Add items worth ₹{Decimal(str(coupon.min_order or 0)):.2f} to use this coupon.', 'warning')
+        else:
+            session['coupon_code'] = coupon.code
+            flash(f'Coupon {coupon.code} applied successfully!', 'success')
+        return redirect(url_for('cart'))
+
+    @app.post('/coupon/remove')
+    @login_required
+    def coupon_remove():
+        session.pop('coupon_code', None)
+        flash('Coupon removed.', 'info')
+        return redirect(url_for('cart'))
+
     @app.get('/cart')
     def cart():
         rows, subtotal = cart_data()
         threshold = app.config['FREE_DELIVERY_THRESHOLD']
         fee = Decimal('0') if subtotal >= threshold else app.config['DELIVERY_FEE']
-        return render_template('cart.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=subtotal + fee, threshold=threshold)
+        coupon, discount = active_cart_coupon(subtotal)
+        total = max(Decimal('0.00'), subtotal + fee - discount)
+        return render_template('cart.html', rows=rows, subtotal=subtotal, delivery_fee=fee,
+                               total=total, threshold=threshold, coupon=coupon, discount=discount)
 
     @app.get('/api/delivery-check')
     def delivery_check():
@@ -488,7 +530,8 @@ def create_app():
             return redirect(url_for('cart'))
         threshold = app.config['FREE_DELIVERY_THRESHOLD']
         fee = Decimal('0') if subtotal >= threshold else app.config['DELIVERY_FEE']
-        total = subtotal + fee
+        coupon, discount = active_cart_coupon(subtotal)
+        total = max(Decimal('0.00'), subtotal + fee - discount)
 
         # Create a dynamic UPI QR with this checkout's exact payable amount.
         upi_params = {
@@ -541,9 +584,12 @@ def create_app():
                     if row['product'].stock < row['quantity']:
                         flash(f"Insufficient stock for {row['product'].name}.", 'danger')
                         return redirect(url_for('cart'))
+                # Revalidate the coupon at order placement; never trust browser totals.
+                coupon, discount = active_cart_coupon(subtotal)
+                total = max(Decimal('0.00'), subtotal + fee - discount)
                 order = Order(order_number=f"TB{datetime.utcnow():%y%m%d%H%M%S}{current_user.id}", user_id=current_user.id,
                               customer_name=name, phone=phone, address_text=address, subtotal=subtotal,
-                              delivery_fee=fee, total=total, payment_method=payment,
+                              discount=discount, delivery_fee=fee, total=total, payment_method=payment,
                               payment_status='Pending' if payment == 'COD' else 'Awaiting UPI verification',
                               status='Pending',
                               notes=(f'UPI reference submitted by customer: {upi_reference}' if payment == 'UPI' else ''))
@@ -556,10 +602,11 @@ def create_app():
                     p.stock -= row['quantity']
                 db.session.commit()
                 session['cart'] = {}
+                session.pop('coupon_code', None)
                 flash(f'Order {order.order_number} placed successfully. UPI payment will be verified by our team.' if payment == 'UPI' else f'Order {order.order_number} placed successfully. Our team will confirm it shortly.', 'success')
                 return redirect(url_for('my_orders'))
         return render_template('checkout.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=total,
-                               upi_qr_data=upi_qr_data, upi_id='8838145515@sbi')
+                               coupon=coupon, discount=discount, upi_qr_data=upi_qr_data, upi_id='8838145515@sbi')
     @app.post('/order/<int:order_id>/buy-again')
     @login_required
     def buy_again(order_id):
@@ -620,6 +667,37 @@ def create_app():
         return render_template('admin/dashboard.html', order_count=Order.query.count(), customer_count=User.query.filter_by(role='customer').count(),
                                product_count=Product.query.count(), pending_count=Order.query.filter(Order.status.in_(['Pending','Confirmed','Purchase Required','Purchased','Packing','Ready for Pickup','Out for Delivery'])).count(),
                                total_sales=total_sales, orders=orders, low_stock=Product.query.filter(Product.stock <= 5, Product.active.is_(True)).count())
+
+    @app.route('/admin/coupons', methods=['GET', 'POST'])
+    @admin_required
+    def admin_coupons():
+        if request.method == 'POST':
+            code = request.form.get('code', '').strip().upper()
+            discount_type = request.form.get('discount_type', 'fixed')
+            value = money(request.form.get('value'))
+            min_order = money(request.form.get('min_order'))
+            if not code or discount_type not in ['fixed', 'percent'] or value <= 0 or min_order < 0:
+                flash('Enter a valid code, discount and minimum order value.', 'danger')
+            elif discount_type == 'percent' and value > 100:
+                flash('Percentage discount cannot exceed 100%.', 'danger')
+            elif Coupon.query.filter_by(code=code).first():
+                flash('That coupon code already exists.', 'warning')
+            else:
+                db.session.add(Coupon(code=code, discount_type=discount_type, value=value, min_order=min_order, active=True))
+                db.session.commit()
+                flash(f'Coupon {code} created.', 'success')
+            return redirect(url_for('admin_coupons'))
+        coupons = Coupon.query.order_by(Coupon.id.desc()).all()
+        return render_template('admin/coupons.html', coupons=coupons)
+
+    @app.post('/admin/coupons/<int:coupon_id>/toggle')
+    @admin_required
+    def admin_coupon_toggle(coupon_id):
+        coupon = Coupon.query.get_or_404(coupon_id)
+        coupon.active = not coupon.active
+        db.session.commit()
+        flash(f'Coupon {coupon.code} is now {"active" if coupon.active else "inactive"}.', 'success')
+        return redirect(url_for('admin_coupons'))
 
     @app.route('/admin/products', methods=['GET', 'POST'])
     @admin_required
