@@ -1,0 +1,18 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Delivery Slot Capacity | Tharai Basket{% endblock %}
+{% block admin_content %}
+<div class="admin-top"><div><span class="eyebrow">DELIVERY OPERATIONS</span><h1>Slot <em>capacity.</em></h1><p class="muted">Control how many customer orders can reserve the same delivery time.</p></div></div>
+<div class="admin-panel" style="padding:22px;margin-bottom:20px">
+ <form method="post" style="display:flex;gap:14px;align-items:end;flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label style="display:grid;gap:7px;font-size:12px;font-weight:700">Maximum orders per 30-minute slot
+   <input type="number" name="capacity" min="1" max="100" value="{{ setting.capacity }}" required style="padding:12px;border:1px solid #dce7dd;border-radius:9px;width:190px">
+  </label>
+  <button class="btn" type="submit">Save capacity</button>
+ </form>
+ <p class="muted" style="font-size:11px;margin:12px 0 0">When a slot reaches this limit, it disappears from checkout automatically. Existing reservations are not removed when you lower the limit.</p>
+</div>
+<div class="admin-panel"><h2 style="padding:18px 18px 0">Upcoming reservations</h2><div class="table-wrap"><table><thead><tr><th>Date</th><th>Time slot</th><th>Order</th><th>Customer</th><th>Status</th></tr></thead><tbody>
+{% for item in schedules %}<tr><td>{{ item.delivery_date }}</td><td><strong>{{ item.delivery_slot }}</strong></td><td>{{ item.order.order_number }}</td><td>{{ item.order.customer_name }}</td><td>{{ item.order.status }}</td></tr>{% else %}<tr><td colspan="5">No upcoming reservations.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}
