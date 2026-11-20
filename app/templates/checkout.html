@@ -148,9 +148,13 @@ async function changeCheckoutQuantity(productId, change) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Could not update this item.');
     if (data.empty) { window.location.href = data.redirect || '/cart'; return; }
-    document.getElementById('checkout-qty-' + productId).textContent = data.quantity;
-    document.getElementById('checkout-qty-control-' + productId).textContent = data.quantity;
-    document.getElementById('checkout-line-' + productId).textContent = '₹' + Number(data.line_total).toFixed(2);
+    if (Number(data.quantity) <= 0) {
+      item.remove();
+    } else {
+      document.getElementById('checkout-qty-' + productId).textContent = data.quantity;
+      document.getElementById('checkout-qty-control-' + productId).textContent = data.quantity;
+      document.getElementById('checkout-line-' + productId).textContent = '₹' + Number(data.line_total).toFixed(2);
+    }
     document.getElementById('checkout-subtotal').textContent = '₹' + Number(data.subtotal).toFixed(2);
     document.getElementById('checkout-delivery').textContent = data.delivery_label;
     document.getElementById('checkout-total').textContent = '₹' + Number(data.total).toFixed(2);
