@@ -1419,6 +1419,17 @@ def create_app():
                     db.session.add(OrderItem(order_id=order.id, product_id=p.id, product_name=p.name,
                                              unit=p.unit, quantity=row['quantity'], unit_price=row['unit_price']))
                     p.stock -= row['quantity']
+                    # Consume tracked stock batches in earliest-expiry-first order.
+                    remaining_to_allocate = int(row['quantity'])
+                    tracked_batches = StockBatch.query.filter(
+                        StockBatch.product_id == p.id, StockBatch.remaining_quantity > 0
+                    ).order_by(StockBatch.expiry_date.asc(), StockBatch.id.asc()).all()
+                    for batch in tracked_batches:
+                        if remaining_to_allocate <= 0:
+                            break
+                        used = min(int(batch.remaining_quantity), remaining_to_allocate)
+                        batch.remaining_quantity -= used
+                        remaining_to_allocate -= used
                 db.session.flush()
                 if reward_discount > 0:
                     points_used = int(reward_discount)
@@ -1510,6 +1521,12 @@ def create_app():
                 product = Product.query.get(item.product_id)
                 if product:
                     product.stock = int(product.stock or 0) + int(item.quantity or 0)
+                    restore_batch = StockBatch.query.filter(
+                        StockBatch.product_id == product.id,
+                        StockBatch.expiry_date >= datetime.now(ZoneInfo('Asia/Kolkata')).date().strftime('%Y-%m-%d')
+                    ).order_by(StockBatch.expiry_date.asc(), StockBatch.id.asc()).first()
+                    if restore_batch:
+                        restore_batch.remaining_quantity += int(item.quantity or 0)
         order.status = 'Cancelled'
         create_customer_notification(order, 'Order cancelled', 'Your order has been cancelled successfully.')
         db.session.commit()
