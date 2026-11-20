@@ -127,3 +127,18 @@ body.tb-menu-open{overflow:hidden}
 body{top:0!important}
 .goog-te-gadget{font-size:0!important}
 .goog-te-gadget .goog-te-combo{display:none!important}
+
+
+/* Header alignment: vertically center the logo, navigation and account controls. */
+.site-header{height:96px;min-height:96px}
+.site-header .nav-wrap{height:96px;min-height:96px;display:flex;align-items:center;justify-content:space-between;gap:28px}
+.site-header .brand{display:flex;align-items:center;flex:0 0 auto;line-height:0}
+.site-header .brand-logo{display:block;width:148px;height:82px;max-height:82px;object-fit:contain;object-position:left center}
+.site-header .desktop-nav{display:flex;align-items:center;justify-content:center;gap:36px;margin-left:auto;height:100%;line-height:1}
+.site-header .nav-actions{display:flex;align-items:center;justify-content:flex-end;flex:0 0 auto;height:100%;margin-left:18px}
+@media(max-width:620px){
+ .site-header{height:70px;min-height:70px}
+ .site-header .nav-wrap{height:70px;min-height:70px;gap:8px}
+ .site-header .brand-logo{width:112px;height:60px;max-height:60px}
+ .site-header .nav-actions{margin-left:auto}
+}
