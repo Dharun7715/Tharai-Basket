@@ -24,7 +24,7 @@
 @media(max-width:620px){.site-header .nav-actions{gap:9px!important}.site-header .tb-header-cart{width:36px;height:36px;flex:0 0 36px}.site-header .tb-header-cart svg{width:19px;height:19px}}
 </style>
 </head>
-<body>
+<body{% if vip_theme_tier %} class="tb-vip-theme tb-vip-{{ vip_theme_tier|lower }}"{% endif %}>
 
 <header class="site-header"><div class="container nav-wrap">
   <a class="brand" href="{{ url_for('index') }}" aria-label="Tharai Basket home"><img class="brand-logo" src="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}?v=6" alt="Tharai Basket"></a>
