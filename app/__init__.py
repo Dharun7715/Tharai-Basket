@@ -820,7 +820,7 @@ def create_app():
             OrderItem.product_id, db.func.sum(OrderItem.quantity).label('pair_count')
         ).filter(OrderItem.order_id.in_(co_order_ids), OrderItem.product_id.isnot(None),
                  OrderItem.product_id != product.id).group_by(OrderItem.product_id).order_by(
-                     db.desc('pair_count')).limit(8).all()
+                     db.func.sum(OrderItem.quantity).desc()).limit(8).all()
         co_product_ids = [row.product_id for row in co_product_rows]
         co_product_map = {item.id: item for item in Product.query.filter(
             Product.id.in_(co_product_ids), Product.active.is_(True), Product.stock > 0
