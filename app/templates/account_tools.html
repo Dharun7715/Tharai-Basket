@@ -3,6 +3,7 @@
 {% block content %}
 <section class="section"><div class="container">
   <div class="section-heading"><div><span class="eyebrow">YOUR SHOPPING COMPANION</span><h1>My <em>tools.</em></h1><p class="muted">Shopping lists, repeat baskets and wallet rewards in one place.</p></div></div>
+  <section class="tb-tools-card" style="margin-bottom:16px"><span class="eyebrow">THARAI LOYALTY</span><h2>{{ loyalty_points }} points available</h2><p class="muted tiny">Earn 1 point for every ₹100 in a delivered order. 100 points can be redeemed for ₹100 off at checkout when you choose to use rewards.</p></section>
   <div class="tb-tools-grid">
     <section class="tb-tools-card"><span class="eyebrow">SMART SHOPPING LIST</span><h2>Saved essentials</h2><p class="muted tiny">Save products and add the whole list to your basket whenever you need it.</p>
       {% for item in items %}<div class="tb-tool-row"><div><strong>{{ item.product.name if item.product else 'Unavailable product' }}</strong><small>{{ item.quantity }} × {{ item.product.unit if item.product else '' }}</small></div><strong>{{ item.product.price|inr if item.product else '—' }}</strong><form method="post" action="{{ url_for('shopping_list_remove', item_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="tb-tool-link">Remove</button></form></div>{% else %}<p class="muted tiny">No saved products yet. Use “Save to shopping list” on a product page.</p>{% endfor %}
