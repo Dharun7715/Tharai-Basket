@@ -908,6 +908,7 @@ def create_app():
                               notes=(f'UPI reference submitted by customer: {upi_reference}' if payment == 'UPI' else ''))
                 db.session.add(order)
                 db.session.flush()
+                create_customer_notification(order, 'Order placed successfully', f'Your order {order.order_number} has been received. We will confirm it shortly.')
                 for row in rows:
                     p = row['product']
                     db.session.add(OrderItem(order_id=order.id, product_id=p.id, product_name=p.name,
@@ -978,6 +979,7 @@ def create_app():
                 if product:
                     product.stock = int(product.stock or 0) + int(item.quantity or 0)
         order.status = 'Cancelled'
+        create_customer_notification(order, 'Order cancelled', 'Your order has been cancelled successfully.')
         db.session.commit()
         flash(f'Order {order.order_number} was cancelled. Item quantities have been returned to stock.', 'success')
         return redirect(url_for('order_detail', order_id=order.id))
@@ -1309,6 +1311,8 @@ def create_app():
     def admin_orders():
         if request.method == 'POST':
             order = Order.query.get_or_404(request.form.get('order_id', type=int))
+            previous_status = order.status
+            previous_partner_id = order.delivery_partner_id
             status = request.form.get('status', 'Pending')
             allowed = ['Pending','Confirmed','Purchase Required','Purchased','Packing','Ready for Pickup','Picked Up','Out for Delivery','Delivered','Cancelled']
             if status not in allowed:
@@ -1327,6 +1331,23 @@ def create_app():
                 existing = DeliveryEarning.query.filter_by(order_id=order.id).first()
                 if not existing:
                     db.session.add(DeliveryEarning(partner_id=order.delivery_partner_id, order_id=order.id, amount=Decimal('25.00')))
+            if status != previous_status:
+                status_messages = {
+                    'Confirmed': ('Order confirmed', 'Your order has been confirmed by the Tharai Basket team.'),
+                    'Purchase Required': ('Purchase in progress', 'Our team is arranging items for your order.'),
+                    'Purchased': ('Items purchased', 'Your order items have been purchased and are being prepared.'),
+                    'Packing': ('Packing started', 'Your order is now being packed.'),
+                    'Ready for Pickup': ('Ready for pickup', 'Your order is ready for the delivery partner to collect.'),
+                    'Picked Up': ('Order picked up', 'The delivery partner has collected your order.'),
+                    'Out for Delivery': ('Out for delivery', 'Your order is on the way!'),
+                    'Delivered': ('Order delivered', 'Your Tharai Basket order has been delivered. Thank you!'),
+                    'Cancelled': ('Order cancelled', 'Your order has been cancelled by the store team.'),
+                }
+                notice = status_messages.get(status)
+                if notice:
+                    create_customer_notification(order, notice[0], notice[1])
+            if order.delivery_partner_id and order.delivery_partner_id != previous_partner_id:
+                create_customer_notification(order, 'Delivery partner assigned', 'A delivery partner has been assigned to your order.')
             award_referral_points(order)
             db.session.commit()
             flash('Order updated.', 'success')
@@ -1454,6 +1475,14 @@ def create_app():
             flash('This order cannot move to that status. Follow the delivery steps in order.', 'warning')
             return redirect(url_for('delivery_dashboard'))
         order.status = status
+        rider_status_messages = {
+            'Picked Up': ('Order picked up', 'The delivery partner has collected your order.'),
+            'Out for Delivery': ('Out for delivery', 'Your order is on the way!'),
+            'Delivered': ('Order delivered', 'Your Tharai Basket order has been delivered. Thank you!'),
+        }
+        notice = rider_status_messages.get(status)
+        if notice:
+            create_customer_notification(order, notice[0], notice[1])
         if status == 'Delivered' and not DeliveryEarning.query.filter_by(order_id=order.id).first():
             db.session.add(DeliveryEarning(partner_id=current_user.id, order_id=order.id, amount=Decimal('25.00')))
         award_referral_points(order)
