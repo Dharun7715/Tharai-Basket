@@ -4,6 +4,27 @@
 <section class="section tb-account">
  <div class="container">
   <div class="tb-account-heading"><span class="eyebrow">YOUR THARAI BASKET</span><h1>My <em>account.</em></h1><p>Manage your profile and saved delivery addresses in one place.</p></div>
+  <section class="tb-account-card" style="margin-bottom:20px">
+   <div class="tb-account-card-head"><div class="tb-account-icon">🎁</div><div><h2>Refer a friend & earn rewards</h2><p>Share your code. You and your friend each earn 100 points after their first order is delivered.</p></div></div>
+   {% if referral_code %}
+   <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#f2f8f3;border:1px dashed #9fc8a8;border-radius:13px;padding:15px">
+    <div style="flex:1;min-width:180px"><small style="display:block;color:#728477;font-weight:700;font-size:9px;letter-spacing:1px">YOUR REFERRAL CODE</small><strong id="tb-referral-code" style="font:800 23px 'Manrope';letter-spacing:2px;color:#185d35">{{ referral_code.code }}</strong></div>
+    <button type="button" class="tb-account-primary" onclick="navigator.clipboard.writeText(document.getElementById('tb-referral-code').textContent).then(()=>{this.textContent='Copied!'})">Copy code</button>
+    <a class="tb-account-primary" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text={{ ('Join me on Tharai Basket! Use my referral code ' ~ referral_code.code ~ ' when creating your account.')|urlencode }}">Share on WhatsApp</a>
+   </div>
+   {% endif %}
+   <div style="display:flex;gap:25px;flex-wrap:wrap;margin-top:17px">
+    <div><small style="color:#7b897e;font-size:10px">YOUR REWARD POINTS</small><div style="font:800 25px 'Manrope';color:#185d35">{{ reward_points }} pts</div></div>
+    <div><small style="color:#7b897e;font-size:10px">FRIENDS REFERRED</small><div style="font:800 25px 'Manrope';color:#203428">{{ referral_count }}</div></div>
+   </div>
+   <p class="muted tiny" style="margin:12px 0 0">Points are tracked in your account. Redemption will be added in a later upgrade.</p>
+   {% if reward_transactions %}
+   <div style="margin-top:15px;border-top:1px solid #e8eee8;padding-top:12px">
+    <strong style="font-size:11px">Reward history</strong>
+    {% for reward in reward_transactions %}<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #f0f3f0;font-size:10px"><span>{{ reward.description }} · {{ reward.created_at.strftime('%d %b %Y') }}</span><strong style="color:#25804a">+{{ reward.points }} pts</strong></div>{% endfor %}
+   </div>
+   {% endif %}
+  </section>
   <div class="tb-account-grid">
    <section class="tb-account-card">
     <div class="tb-account-card-head"><div class="tb-account-icon">👤</div><div><h2>Personal details</h2><p>Keep your contact information up to date.</p></div></div>
