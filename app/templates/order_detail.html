@@ -41,6 +41,11 @@
         <p class="muted">Your order status will be updated by our team.</p>
         {% endif %}
       {% endif %}
+      {% if order.status == 'Delivered' %}
+      <div class="tb-track-cashback"><strong>🎉 Delivery complete!</strong><span>1% wallet cashback from this order has been credited to your Tharai Basket wallet.</span></div>
+      {% elif order.status not in ['Cancelled'] %}
+      <div class="tb-track-update"><strong>We’re preparing your basket.</strong><span>This page refreshes automatically as our team updates your order status.</span></div>
+      {% endif %}
       <p class="muted tiny">Order status refreshes automatically every 25 seconds while your order is in progress. This is live status tracking, not a GPS map of the delivery rider.</p>
     </div>
 
@@ -63,4 +68,9 @@
     </div>
   </div>
 </section>
+<style>
+.tb-track-cashback,.tb-track-update{display:grid;gap:4px;margin:14px 0;padding:13px 15px;border-radius:12px;border:1px solid #d9eadc;background:#f1f8f2}
+.tb-track-cashback strong{color:#176b39;font-size:13px}.tb-track-cashback span,.tb-track-update span{font-size:11px;color:#607064}
+.tb-track-update strong{color:#294c34;font-size:12px}
+</style>
 {% endblock %}
