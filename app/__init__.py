@@ -547,7 +547,8 @@ def create_app():
         is_wishlisted = False
         if current_user.is_authenticated and current_user.role == 'customer':
             is_wishlisted = WishlistItem.query.filter_by(user_id=current_user.id, product_id=product.id).first() is not None
-        gallery_images = ProductGalleryImage.query.filter_by(product_id=product.id).order_by(ProductGalleryImage.sort_order.asc()).all()\n        reviews = ProductReview.query.filter_by(product_id=product.id).order_by(ProductReview.created_at.desc()).all()
+        gallery_images = ProductGalleryImage.query.filter_by(product_id=product.id).order_by(ProductGalleryImage.sort_order.asc()).all()
+        reviews = ProductReview.query.filter_by(product_id=product.id).order_by(ProductReview.created_at.desc()).all()
         review_count = len(reviews)
         average_rating = round(sum(r.rating for r in reviews) / review_count, 1) if review_count else 0
         can_review = False
