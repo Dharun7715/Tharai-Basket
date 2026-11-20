@@ -154,25 +154,47 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
 </script>
 {% else %}
 <style>
-.tb-home-toolbar{display:grid;grid-template-columns:auto minmax(220px,1fr);gap:14px;align-items:center;margin:18px auto 22px;padding:14px 16px;background:#fff;border:1px solid #e4ece5;border-radius:16px;box-shadow:0 8px 24px rgba(24,62,37,.045)}
-.tb-home-location{display:flex;align-items:center;gap:8px;min-width:0;color:#355c40;font-size:13px;font-weight:700}
-.tb-home-location small{display:block;color:#7b887e;font-size:11px;font-weight:500;margin-top:2px}
-.tb-home-search{display:flex;min-width:0;height:46px}
-.tb-home-search input{flex:1;min-width:0;border:1px solid #dce7dd;border-right:0;border-radius:10px 0 0 10px;padding:0 14px;background:#fbfdfb;font:500 14px 'DM Sans',sans-serif;outline:none}
+.tb-home-toolbar{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;margin:12px auto 18px;padding:10px 12px;background:#fff;border:1px solid #e4ece5;border-radius:14px;box-shadow:0 5px 18px rgba(24,62,37,.04)}
+.tb-home-location{display:flex;align-items:center;gap:6px;min-width:0;color:#355c40;font-size:12px;font-weight:700;line-height:1.2}
+.tb-home-location small{display:inline;color:#7b887e;font-size:10px;font-weight:500;margin-left:5px}
+.tb-search-row{display:flex;gap:7px;min-width:0}
+.tb-home-search{display:flex;min-width:0;flex:1;height:42px}
+.tb-home-search input{flex:1;min-width:0;width:100%;border:1px solid #dce7dd;border-right:0;border-radius:9px 0 0 9px;padding:0 12px;background:#fbfdfb;font:500 13px 'DM Sans',sans-serif;outline:none}
 .tb-home-search input:focus{border-color:#65a978;box-shadow:0 0 0 3px #eaf5ec}
-.tb-home-search button{width:52px;flex:0 0 52px;border:0;border-radius:0 10px 10px 0;background:#236b3d;color:#fff;font-size:21px;cursor:pointer}
+.tb-home-search button{width:42px;flex:0 0 42px;border:0;border-radius:0 9px 9px 0;background:#236b3d;color:#fff;font-size:20px;cursor:pointer}
+.tb-filter-toggle{width:43px;flex:0 0 43px;border:1px solid #dce7dd;border-radius:9px;background:#f5faf6;color:#236b3d;display:grid;place-items:center;cursor:pointer}
+.tb-filter-toggle svg{width:19px;height:19px}
+.tb-filter-panel{display:none;padding:10px 0 2px;border-top:1px solid #edf2ed;margin-top:2px}
+.tb-filter-panel.is-open{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.tb-filter-panel label{display:grid;gap:4px;font-size:10px;color:#526257;font-weight:700}
+.tb-filter-panel select,.tb-filter-panel input{width:100%;height:36px;min-width:0;border:1px solid #dce7dd;border-radius:8px;padding:0 8px;background:#fbfdfb;font-size:12px}
+.tb-filter-panel .tb-filter-check{display:flex;align-items:center;gap:7px;align-self:center}
+.tb-filter-panel .tb-filter-check input{width:16px;height:16px}
+.tb-filter-panel button{height:36px;border:0;border-radius:8px;background:#236b3d;color:#fff;font-weight:700;font-size:12px}
 .tb-products{padding:4px 0 48px}
 .tb-products-heading{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:10px 0 18px}
 .tb-products-heading h1{font:800 clamp(23px,3vw,32px) 'Manrope',sans-serif;color:#1c3524;margin:0}
 .tb-products-heading p{margin:4px 0 0;color:#7b887e;font-size:12px}
 .tb-recent-tag{position:absolute;left:9px;top:9px;z-index:2;background:#fff;border:1px solid #d9e9dc;color:#28653a;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:800;box-shadow:0 3px 10px #173b2417}
 .tb-results-line{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:#77857a;margin:0 2px 16px}
+.product-image-wrap{position:relative;display:block}
+.product-image-wrap .product-image{display:grid}
+.tb-product-heart{position:absolute;z-index:4;right:9px;top:9px;width:34px;height:34px;border:1px solid #e3e9e4;border-radius:50%;background:rgba(255,255,255,.96);color:#45634d;display:grid;place-items:center;padding:0;box-shadow:0 3px 12px rgba(0,0,0,.12);cursor:pointer}
+.tb-product-heart svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+.tb-product-heart.is-saved{color:#e34b55}
+.tb-product-heart.is-saved svg{fill:#e34b55;stroke:#e34b55}
+.tb-product-heart span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 .product-image.image-missing:after{content:'🛍️';font-size:54px;position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(135deg,#f1f8f2,#e7f3e9)}
 @media(max-width:620px){
- .tb-home-toolbar{grid-template-columns:1fr;gap:11px;padding:12px;margin:12px auto 18px}
- .tb-home-location{font-size:12px}
- .tb-home-search{height:44px}
- .tb-home-search input{font-size:13px}
+ .tb-home-toolbar{gap:8px;padding:9px 10px;margin:9px auto 14px}
+ .tb-home-location{font-size:11px}
+ .tb-home-location small{font-size:9px}
+ .tb-search-row{gap:6px}
+ .tb-home-search{height:39px}
+ .tb-home-search input{font-size:12px;padding:0 10px}
+ .tb-home-search button{width:39px;flex-basis:39px}
+ .tb-filter-toggle{width:40px;flex-basis:40px}
+ .tb-filter-panel.is-open{gap:7px}
  .tb-products{padding-bottom:32px}
  .tb-products-heading{margin:6px 0 14px}
  .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
@@ -183,20 +205,34 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
  .product-price{gap:6px;flex-wrap:wrap}.product-price strong{font-size:15px}
  .product-info .add-btn{font-size:11px;padding:10px 6px}
  .discount-tag{top:8px;left:8px;font-size:9px;padding:4px 7px}
+ .tb-product-heart{width:31px;height:31px;right:7px;top:7px}
 }
 </style>
 <div class="container">
   <div class="tb-home-toolbar">
     <div class="tb-home-location">
       <span aria-hidden="true">📍</span>
-      <span>Delivering to your location<small>{{ delivery_location.distance_km }} km from Tharamangalam centre · <a href="{{ url_for('clear_delivery_location') }}">Change</a></small></span>
+      <span>Delivering to your location <small>{{ delivery_location.distance_km }} km · <a href="{{ url_for('clear_delivery_location') }}">Change</a></small></span>
     </div>
-    <form class="tb-home-search" method="get" action="{{ url_for('index') }}#shop" role="search">
-      <input type="search" name="q" value="{{ search_query }}" placeholder="Search products, fruits, vegetables…" aria-label="Search products">
-      <button type="submit" aria-label="Search">⌕</button>
+    <div class="tb-search-row">
+      <form class="tb-home-search" method="get" action="{{ url_for('index') }}#shop" role="search">
+        <input type="search" name="q" value="{{ search_query }}" placeholder="Search groceries…" aria-label="Search products">
+        <button type="submit" aria-label="Search">⌕</button>
+      </form>
+      <button class="tb-filter-toggle" type="button" aria-label="Show filters" aria-expanded="false" onclick="const p=document.getElementById('tb-filter-panel');const open=p.classList.toggle('is-open');this.setAttribute('aria-expanded',open?'true':'false');" >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <form class="tb-filter-panel" id="tb-filter-panel" method="get" action="{{ url_for('index') }}#shop">
+      <input type="hidden" name="q" value="{{ search_query }}">
+      <label>Category<select name="category"><option value="">All categories</option>{% for category in categories %}<option value="{{ category.id }}" {% if selected_category_id == category.id %}selected{% endif %}>{{ category.name }}</option>{% endfor %}</select></label>
+      <label>Sort by<select name="sort"><option value="recommended" {% if sort == 'recommended' %}selected{% endif %}>Recommended</option><option value="price_low" {% if sort == 'price_low' %}selected{% endif %}>Price: Low to high</option><option value="price_high" {% if sort == 'price_high' %}selected{% endif %}>Price: High to low</option><option value="name" {% if sort == 'name' %}selected{% endif %}>Name</option><option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest</option></select></label>
+      <label>Min price<input type="number" name="min_price" min="0" step="1" value="{{ min_price }}" placeholder="₹ Min"></label>
+      <label>Max price<input type="number" name="max_price" min="0" step="1" value="{{ max_price }}" placeholder="₹ Max"></label>
+      <label class="tb-filter-check"><input type="checkbox" name="in_stock" value="1" {% if in_stock %}checked{% endif %}> In stock only</label>
+      <button type="submit">Apply filters</button>
     </form>
-  </div>
-  {% set recently_viewed_ids = recently_viewed|map(attribute='id')|list if recently_viewed else [] %}
+  </div>  {% set recently_viewed_ids = recently_viewed|map(attribute='id')|list if recently_viewed else [] %}
   <section class="tb-products" id="shop">
     <div class="tb-products-heading">
       <div><h1>{% if search_query %}Search results{% else %}Shop products{% endif %}</h1><p>Fresh everyday essentials, delivered locally.</p></div>
@@ -209,19 +245,29 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
     <div class="product-grid">
       {% for product in products %}
       <article class="product-card">
-        <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-image">
-          {% if product.image %}<img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}" loading="lazy" onerror="this.style.display='none';this.parentElement.classList.add('image-missing')">
-          {% else %}<div class="product-placeholder">{% if product.category and 'Vegetable' in product.category.name %}🥬{% elif product.category and 'Fruit' in product.category.name %}🍎{% elif product.category and 'Oil' in product.category.name %}🫒{% else %}🛍️{% endif %}</div>{% endif %}
-          {% if product.id in recently_viewed_ids %}<span class="tb-recent-tag">Recently viewed</span>{% endif %}
-          {% if product.discount_percent %}<span class="discount-tag">{{ product.discount_percent }}% OFF</span>{% endif %}
-        </a>
+        <div class="product-image-wrap">
+          <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-image">
+            {% if product.image %}<img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}" loading="lazy" onerror="this.style.display='none';this.parentElement.classList.add('image-missing')">
+            {% else %}<div class="product-placeholder">{% if product.category and 'Vegetable' in product.category.name %}🥬{% elif product.category and 'Fruit' in product.category.name %}🍎{% elif product.category and 'Oil' in product.category.name %}🫒{% else %}🛍️{% endif %}</div>{% endif %}
+            {% if product.id in recently_viewed_ids %}<span class="tb-recent-tag">Recently viewed</span>{% endif %}
+            {% if product.discount_percent %}<span class="discount-tag">{{ product.discount_percent }}% OFF</span>{% endif %}
+          </a>
+          {% if current_user.is_authenticated and current_user.role == 'customer' %}
+          <form method="post" action="{{ url_for('wishlist_toggle', product_id=product.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="tb-product-heart {% if product.id in wishlist_product_ids %}is-saved{% endif %}" type="submit" aria-label="{% if product.id in wishlist_product_ids %}Remove from wishlist{% else %}Add to wishlist{% endif %}" title="{% if product.id in wishlist_product_ids %}Saved{% else %}Add to wishlist{% endif %}">
+              <svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8z"/></svg>
+              <span>Wishlist</span>
+            </button>
+          </form>
+          {% endif %}
+        </div>
         <div class="product-info">
           <small>{{ product.category.name if product.category else 'Daily essentials' }} · {{ product.unit }}</small>
           <a href="{{ url_for('product_detail', product_id=product.id) }}"><h3>{{ product.name }}</h3></a>
           <div class="product-price"><strong>{{ product.price|inr }}</strong>{% if product.mrp > product.price %}<del>{{ product.mrp|inr }}</del>{% endif %}</div>
           {% if current_user.is_authenticated and current_user.role == 'customer' %}
           <form method="post" action="{{ url_for('shopping_list_add', product_id=product.id) }}" style="margin-bottom:8px"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="add-btn" type="submit">＋ Save to shopping list</button></form>
-          <form method="post" action="{{ url_for('wishlist_toggle', product_id=product.id) }}" style="margin-bottom:8px"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="add-btn" type="submit">{% if product.id in wishlist_product_ids %}♥ Saved to wishlist{% else %}♡ Add to wishlist{% endif %}</button></form>
           {% endif %}
           <form method="post" action="{{ url_for('cart_add', product_id=product.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="quantity" value="1"><button class="add-btn" type="submit" {% if product.stock <= 0 %}disabled{% endif %}>{% if product.stock > 0 %}+ Add to basket{% else %}Out of stock{% endif %}</button></form>
         </div>
