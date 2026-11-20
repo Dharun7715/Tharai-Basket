@@ -9,6 +9,12 @@
     <h1>{{ order.order_number }}</h1>
     <p><span class="status-pill">{{ order.status }}</span></p>
     <a class="btn btn-small" href="{{ url_for('order_invoice', order_id=order.id) }}" style="display:inline-flex;margin:8px 0 18px">↓ Download invoice PDF</a>
+    {% if current_user.is_authenticated and current_user.role == 'customer' and order.user_id == current_user.id and order.status == 'Pending' %}
+    <form method="post" action="{{ url_for('cancel_order', order_id=order.id) }}" style="display:inline-flex;margin:8px 0 18px" onsubmit="return confirm('Cancel this order? The items will be returned to stock.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-small btn-outline">Cancel order</button>
+    </form>
+    {% endif %}
 
     <div class="summary-card" style="margin:22px 0;padding:clamp(18px,3vw,28px)">
       <h3 style="margin-top:0">Your order progress</h3>
