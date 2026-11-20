@@ -17,8 +17,8 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <a class="btn btn-small btn-outline" href="{{ url_for('order_detail', order_id=order.id) }}">View order</a>
         <a class="btn btn-small btn-outline" href="{{ url_for('order_invoice', order_id=order.id) }}">Invoice PDF</a>
-        {% if order.status == 'Pending' %}
-        <form method="post" action="{{ url_for('cancel_order', order_id=order.id) }}" onsubmit="return confirm('Cancel this pending order?');">
+        {% if order.delivery_partner_id is none and order.status not in ['Delivered', 'Cancelled'] %}
+        <form method="post" action="{{ url_for('cancel_order', order_id=order.id) }}" onsubmit="return confirm('Cancel this order? It has not been assigned to a delivery partner.');">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-small btn-outline" type="submit">Cancel</button>
         </form>
