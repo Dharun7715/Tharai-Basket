@@ -1764,6 +1764,7 @@ def create_app():
                             for item in delivered_items), Decimal('0.00'))
         recorded_expenses = db.session.query(db.func.coalesce(db.func.sum(StoreExpense.amount), 0)).scalar() or 0
         estimated_net = gross_profit - Decimal(str(recorded_expenses or 0))
+        latest_order_id = db.session.query(db.func.coalesce(db.func.max(Order.id), 0)).scalar() or 0
         return render_template('admin/dashboard.html',
             order_count=Order.query.count(), customer_count=User.query.filter_by(role='customer').count(),
             product_count=Product.query.filter_by(active=True).count(),
@@ -1775,7 +1776,23 @@ def create_app():
             low_stock_products=low_stock_products, recent_reviews=recent_reviews,
             review_count=review_count, average_review_rating=round(float(average_review_rating), 1),
             wallet_cashback_total=wallet_cashback_total, gross_profit=gross_profit,
-            recorded_expenses=recorded_expenses, estimated_net=estimated_net)
+            recorded_expenses=recorded_expenses, estimated_net=estimated_net,
+            latest_order_id=latest_order_id)
+
+    @app.get('/admin/orders/poll')
+    @admin_required
+    def admin_orders_poll():
+        after_id = max(0, request.args.get('after_id', 0, type=int) or 0)
+        new_orders = Order.query.filter(Order.id > after_id).order_by(Order.id.asc()).limit(20).all()
+        latest_id = db.session.query(db.func.coalesce(db.func.max(Order.id), 0)).scalar() or 0
+        return jsonify({
+            'latest_id': latest_id,
+            'new_orders': [{
+                'id': order.id, 'number': order.order_number,
+                'customer': order.customer_name, 'total': float(order.total or 0),
+                'status': order.status
+            } for order in new_orders]
+        })
 
     @app.route('/admin/coupons', methods=['GET', 'POST'])
     @admin_required
