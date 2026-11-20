@@ -1827,6 +1827,13 @@ def create_app():
                             for item in delivered_items), Decimal('0.00'))
         recorded_expenses = db.session.query(db.func.coalesce(db.func.sum(StoreExpense.amount), 0)).scalar() or 0
         estimated_net = gross_profit - Decimal(str(recorded_expenses or 0))
+        last_30_start = datetime.combine(today - timedelta(days=29), datetime.min.time())
+        last_30_items = OrderItem.query.join(Order).filter(Order.status == 'Delivered', Order.created_at >= last_30_start).all()
+        last_30_gross_profit = sum(((Decimal(str(item.unit_price or 0)) - Decimal(str(item.purchase_cost or 0))) * int(item.quantity or 0)
+                                    for item in last_30_items), Decimal('0.00'))
+        last_30_expenses = db.session.query(db.func.coalesce(db.func.sum(StoreExpense.amount), 0)).filter(
+            StoreExpense.expense_date >= (today - timedelta(days=29)).strftime('%Y-%m-%d')).scalar() or 0
+        last_30_net = last_30_gross_profit - Decimal(str(last_30_expenses or 0))
         latest_order_id = db.session.query(db.func.coalesce(db.func.max(Order.id), 0)).scalar() or 0
         delivered_order_count = delivered_query.count()
         average_order_value = (Decimal(str(total_sales or 0)) / delivered_order_count) if delivered_order_count else Decimal('0.00')
@@ -1852,6 +1859,8 @@ def create_app():
             average_order_value=average_order_value,
             repeat_customer_count=repeat_customer_count,
             repeat_customer_rate=repeat_customer_rate,
+            last_30_gross_profit=last_30_gross_profit, last_30_expenses=last_30_expenses,
+            last_30_net=last_30_net,
             latest_order_id=latest_order_id)
 
     @app.get('/admin/orders/poll')
