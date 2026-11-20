@@ -10,6 +10,21 @@
  {% if low_stock > low_stock_products|length %}<small class="an-stock-more">+ {{ low_stock - low_stock_products|length }} more products need restocking</small>{% endif %}
 </section>
 {% endif %}
+<section class="an-panel" style="margin-bottom:18px;border:1px solid #cfe5d3;background:#f5fbf6">
+ <div class="an-panel-head"><div><h2>🔔 New order alerts</h2><p id="tb-admin-alert-text">Watching for new customer orders while this dashboard is open.</p></div><div style="display:flex;gap:8px;align-items:center"><button type="button" class="an-add-btn" id="tb-admin-sound-toggle">Enable sound</button><a href="{{ url_for('admin_orders') }}">Manage orders →</a></div></div>
+ <div id="tb-admin-new-orders" aria-live="polite" style="font-size:12px;color:#24633a">No new orders detected in this session.</div>
+</section>
+<script>
+(function(){
+ const text=document.getElementById('tb-admin-alert-text'),list=document.getElementById('tb-admin-new-orders'),button=document.getElementById('tb-admin-sound-toggle');
+ if(!text||!list||!button)return;
+ let latestId={{ latest_order_id|int }},enabled=false,ctx=null;
+ button.addEventListener('click',function(){enabled=!enabled;const C=window.AudioContext||window.webkitAudioContext;if(enabled&&C){ctx=ctx||new C();if(ctx.state==='suspended')ctx.resume();}button.textContent=enabled?'Sound enabled':'Enable sound';});
+ function ping(){if(!enabled||!ctx)return;try{const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=880;g.gain.setValueAtTime(.0001,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.1,ctx.currentTime+.02);g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.22);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.23);}catch(e){}}
+ async function poll(){try{const r=await fetch('{{ url_for("admin_orders_poll") }}?after_id='+latestId,{headers:{'Accept':'application/json'},cache:'no-store'});if(!r.ok)return;const d=await r.json(),fresh=d.new_orders||[];if(!fresh.length)return;latestId=Math.max(latestId,...fresh.map(x=>Number(x.id)||0));text.textContent=fresh.length+' new order'+(fresh.length===1?'':'s')+' received. Open orders to review.';fresh.reverse().forEach(order=>{const row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid #dcebdd';const left=document.createElement('strong');left.textContent='Order '+order.number+' · '+order.customer;const right=document.createElement('span');right.textContent='₹'+Number(order.total).toFixed(2);row.append(left,right);list.prepend(row);});ping();}catch(e){}}
+ window.setInterval(poll,25000);
+})();
+</script>
 <div class="an-kpi-grid">
  <article class="an-kpi an-kpi-primary"><span>Delivered revenue · All time</span><strong>{{ total_sales|inr }}</strong><small>Revenue from delivered orders</small><i>₹</i></article>
  <article class="an-kpi"><span>This month's revenue</span><strong>{{ monthly_revenue|inr }}</strong><small>Delivered orders this month</small></article>
