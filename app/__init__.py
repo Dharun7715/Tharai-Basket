@@ -600,16 +600,7 @@ def create_app():
                 cart[key] = min(product.stock, before + int(qty))
                 added += max(0, cart[key] - before)
         session['cart'] = cart
-        today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
-        delta = {'Weekly': 7, 'Fortnightly': 14, 'Monthly': 30}.get(sub.frequency, 7)
-        try:
-            due = datetime.strptime(sub.next_date, '%Y-%m-%d').date()
-        except ValueError:
-            due = today
-        while due <= today:
-            due += timedelta(days=delta)
-        sub.next_date = due.isoformat()
-        db.session.commit()
+        session['pending_subscription_id'] = sub.id
         save_customer_cart_snapshot()
         flash(f'{added} subscription item(s) added to basket. Review quantities and checkout when ready.', 'success' if added else 'warning')
         return redirect(url_for('cart'))
@@ -1416,6 +1407,20 @@ def create_app():
                     db.session.add(WalletTransaction(user_id=current_user.id, amount=wallet_used, kind='Debit',
                                                      reference=order.order_number, description='Used for order payment'))
                 db.session.commit()
+                pending_subscription_id = session.pop('pending_subscription_id', None)
+                if pending_subscription_id:
+                    completed_subscription = GrocerySubscription.query.filter_by(id=pending_subscription_id, user_id=current_user.id, active=True).first()
+                    if completed_subscription:
+                        today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+                        delta = {'Weekly': 7, 'Fortnightly': 14, 'Monthly': 30}.get(completed_subscription.frequency, 7)
+                        try:
+                            due = datetime.strptime(completed_subscription.next_date, '%Y-%m-%d').date()
+                        except ValueError:
+                            due = today
+                        while due <= today:
+                            due += timedelta(days=delta)
+                        completed_subscription.next_date = due.isoformat()
+                        db.session.commit()
                 session['cart'] = {}
                 session.pop('combo_offer_id', None)
                 abandoned_record = AbandonedCart.query.filter_by(user_id=current_user.id, recovered_at=None).first()
