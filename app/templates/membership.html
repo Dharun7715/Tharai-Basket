@@ -14,10 +14,10 @@
     <h2>Choose your membership</h2>
     <p class="muted">Pay by UPI QR. Submit your UTR; the store team verifies the payment before activating membership.</p>
     <div class="membership-plans">
-      <article class="membership-plan"><span class="eyebrow">GOLD</span><h3>₹300 <small>/ 1 month</small></h3>
-        <p>Free delivery on orders above ₹150.</p><strong>3 months: ₹800</strong><small class="muted">Save ₹100</small></article>
-      <article class="membership-plan"><span class="eyebrow">PLATINUM</span><h3>₹500 <small>/ 1 month</small></h3>
-        <p>Free delivery on every order.</p><strong>3 months: ₹1,300</strong><small class="muted">Save ₹200</small></article>
+      <article class="membership-plan"><span class="eyebrow">GOLD</span><h3>₹0 <small>/ 1 month</small></h3>
+        <p>Free delivery on orders above ₹150.</p><strong>3 months: ₹0</strong><small class="muted">Save ₹100</small></article>
+      <article class="membership-plan"><span class="eyebrow">PLATINUM</span><h3>₹0 <small>/ 1 month</small></h3>
+        <p>Free delivery on every order.</p><strong>3 months: ₹0</strong><small class="muted">Save ₹200</small></article>
     </div>
     {% if pending_request %}
       <div class="membership-pending"><strong>Payment verification pending</strong><p>{{ pending_request.tier }} · {{ pending_request.months }} month(s) · ₹{{ '%.2f'|format(pending_request.amount) }}</p><small>UTR: {{ pending_request.upi_reference }}</small></div>
@@ -26,11 +26,11 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>Membership tier<select name="tier" id="membership-tier" required><option value="Gold">Gold</option><option value="Platinum">Platinum</option></select></label>
       <label>Duration<select name="months" id="membership-months" required><option value="1">1 month</option><option value="3">3 months (discounted)</option></select></label>
-      <div class="membership-pay-box"><div><strong id="membership-pay-title">Gold · 1 month</strong><h2 id="membership-pay-amount">₹300</h2><small>Scan with Google Pay, PhonePe, Paytm or BHIM</small></div>
-        <img id="membership-qr" src="{{ plans['Gold'][1]['qr'] }}" alt="UPI QR code for membership payment"></div>
-      <p class="muted">UPI ID: <strong>{{ upi_id }}</strong></p>
-      <label>UPI transaction reference / UTR<input name="upi_reference" required minlength="6" maxlength="100" placeholder="Enter UTR after successful payment"></label>
-      <button class="btn" type="submit">Submit payment for verification</button>
+      <div class="membership-pay-box"><div><strong id="membership-pay-title">Gold · 1 month</strong><h2 id="membership-pay-amount">₹0</h2><small id="membership-pay-note">Free testing access — no payment required</small></div>
+        <img id="membership-qr" src="" alt="UPI QR code for membership payment" hidden></div>
+      <p class="muted" id="membership-free-note">Testing mode: Gold and Platinum memberships are temporarily free and activate immediately.</p>
+      <label id="membership-utr-label" hidden>UPI transaction reference / UTR<input name="upi_reference" minlength="6" maxlength="100" placeholder="Enter UTR after successful payment"></label>
+      <button class="btn" type="submit">Activate free membership</button>
     </form>
     {% endif %}
   </div>
@@ -43,20 +43,20 @@
  const tier=document.getElementById('membership-tier'), months=document.getElementById('membership-months');
  if(!tier || !months) return;
  const plans = {
-   Gold: {
-     1: {amount:'300', qr: {{ plans['Gold'][1]['qr']|tojson }}},
-     3: {amount:'800', qr: {{ plans['Gold'][3]['qr']|tojson }}}
-   },
-   Platinum: {
-     1: {amount:'500', qr: {{ plans['Platinum'][1]['qr']|tojson }}},
-     3: {amount:'1300', qr: {{ plans['Platinum'][3]['qr']|tojson }}}
-   }
+   Gold: {1: {amount:'0', qr:''}, 3: {amount:'0', qr:''}},
+   Platinum: {1: {amount:'0', qr:''}, 3: {amount:'0', qr:''}}
  };
  function update(){
    const p=plans[tier.value][months.value];
    document.getElementById('membership-pay-title').textContent=tier.value+' · '+months.value+' month'+(months.value==='1'?'':'s');
    document.getElementById('membership-pay-amount').textContent='₹'+p.amount;
-   document.getElementById('membership-qr').src=p.qr;
+   const qr=document.getElementById('membership-qr');
+   const free=p.amount==='0';
+   qr.hidden=free; qr.src=p.qr;
+   document.getElementById('membership-utr-label').hidden=free;
+   document.getElementById('membership-pay-note').textContent=free?'Free testing access — no payment required':'Scan with Google Pay, PhonePe, Paytm or BHIM';
+   document.getElementById('membership-free-note').hidden=!free;
+   document.querySelector('#membership-payment-form button[type="submit"]').textContent=free?'Activate free membership':'Submit payment for verification';
  }
  tier.addEventListener('change',update); months.addEventListener('change',update);
 })();
