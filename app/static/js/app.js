@@ -37,23 +37,35 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Lightweight language preference toggle. Stored locally in the browser only.
+// Real page translation through Google Translate, controlled from the account drawer.
 document.addEventListener('DOMContentLoaded', () => {
-  const key = 'tharai-language';
-  const lang = localStorage.getItem(key) || 'en';
-  document.documentElement.lang = lang === 'ta' ? 'ta' : 'en';
-  const toggle = document.createElement('button');
-  toggle.type = 'button'; toggle.className = 'nav-link'; toggle.textContent = lang === 'ta' ? 'English' : 'தமிழ்';
-  toggle.setAttribute('aria-label', 'Switch website language');
-  document.querySelector('.nav-actions')?.appendChild(toggle);
-  toggle.addEventListener('click', () => {
-    const next = (localStorage.getItem(key) || 'en') === 'en' ? 'ta' : 'en';
-    localStorage.setItem(key, next);
-    document.documentElement.lang = next === 'ta' ? 'ta' : 'en';
-    location.reload();
+  const button = document.getElementById('tb-language-toggle');
+  const label = document.getElementById('tb-language-label');
+  if (!button || !label) return;
+
+  const currentLanguage = () => {
+    const match = document.cookie.match(/(?:^|;\\s*)googtrans=\\/[^/]+\\/([^;]+)/);
+    if (match) return decodeURIComponent(match[1]);
+    return document.documentElement.lang === 'ta' ? 'ta' : 'en';
+  };
+  const refreshLabel = () => {
+    label.textContent = currentLanguage() === 'ta' ? 'English' : 'தமிழ்';
+  };
+  refreshLabel();
+
+  button.addEventListener('click', () => {
+    const combo = document.querySelector('.goog-te-combo');
+    if (!combo) {
+      label.textContent = 'Loading…';
+      window.setTimeout(refreshLabel, 1800);
+      return;
+    }
+    const next = currentLanguage() === 'ta' ? 'en' : 'ta';
+    combo.value = next;
+    combo.dispatchEvent(new Event('change', { bubbles: true }));
+    label.textContent = next === 'ta' ? 'English' : 'தமிழ்';
   });
 });
-
 
 // Progressive Web App installation (Android/desktop prompt + iPhone/iPad guide).
 document.addEventListener('DOMContentLoaded', () => {
