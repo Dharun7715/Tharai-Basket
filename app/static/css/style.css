@@ -296,3 +296,58 @@ body.tb-vip-platinum .membership-pending{background:#211b0d;border-color:#806324
 body.tb-vip-platinum .empty-state{background:#191710;border-color:#65501f;color:#e9dbb7}
 body.tb-vip-platinum .tb-recent-tag{background:#211b0d;border-color:#806324;color:#edc75e}
 body.tb-vip-platinum .discount-tag{background:#e4bd55;color:#17120a}
+
+/* 10/10 luxury palette refinement: champagne Gold and obsidian Platinum. */
+body.tb-vip-gold{
+ --forest:#76520b;--green:#b58a2a;--leaf:#f7e8bd;--mint:#fffaf0;
+ --ink:#302516;--muted:#88795e;--line:#e8d6a8;
+ --shadow:0 16px 42px rgba(119,82,11,.09);
+ background:#fffdf8;color:#302516;
+}
+body.tb-vip-gold .site-header{background:rgba(255,253,247,.97);border-bottom:1px solid #e8d6a8}
+body.tb-vip-gold .brand-mark{background:linear-gradient(145deg,#9a6d12,#e8c66e);color:#fff}
+body.tb-vip-gold .tb-home-toolbar,body.tb-vip-gold .product-card,
+body.tb-vip-gold .summary-card,body.tb-vip-gold .admin-panel{
+ background:#fffdf8;border-color:#eadbb7;box-shadow:0 8px 24px rgba(119,82,11,.055)
+}
+body.tb-vip-gold .tb-delivery-schedule,body.tb-vip-gold .tb-filter-toggle{
+ background:linear-gradient(135deg,#fffaf0,#f8edcf);border-color:#e5d2a0;color:#795713
+}
+body.tb-vip-gold .tb-home-search input{background:#fffefa;border-color:#e5d7b8;color:#302516}
+body.tb-vip-gold .tb-home-search .tb-voice-search{background:#f5e8c6;color:#886112}
+body.tb-vip-gold .tb-filter-panel button,body.tb-vip-gold .btn:not(.btn-outline),
+body.tb-vip-gold .add-btn{background:linear-gradient(120deg,#9a6d12,#d9b45a 55%,#b88a2c);border-color:#c49a43;color:#fff}
+body.tb-vip-gold .tb-bottom-nav{background:#fffdf8;border-top:1px solid #e8d6a8}
+body.tb-vip-gold .tb-bottom-nav a{color:#756344}
+body.tb-vip-gold .tb-bottom-nav a.is-active{color:#9a6d12}
+body.tb-vip-gold .tb-bottom-nav a[aria-label="VIP"]{color:#b48625}
+body.tb-vip-gold .tb-view-cart-bar{background:linear-gradient(105deg,#8d6416,#c49a43);border:1px solid #dfc47e}
+body.tb-vip-gold .tb-recent-tag{background:#fff8e7;border-color:#e8d6a8;color:#8a651d}
+body.tb-vip-gold .discount-tag{background:#f0d78e;color:#4b3510}
+body.tb-vip-platinum{
+ --forest:#080808;--green:#d0a744;--leaf:#292317;--mint:#15130f;
+ --ink:#f4edda;--muted:#b9ad91;--line:#514326;
+ --shadow:0 18px 48px rgba(0,0,0,.32);
+ background:#0d0d0c;color:#f4edda;
+}
+body.tb-vip-platinum .site-header{background:rgba(10,10,9,.98);border-bottom:1px solid #594824}
+body.tb-vip-platinum .brand-mark{background:linear-gradient(145deg,#a77b20,#f0d27b);color:#17130a}
+body.tb-vip-platinum .tb-home-toolbar,body.tb-vip-platinum .product-card,
+body.tb-vip-platinum .summary-card,body.tb-vip-platinum .admin-panel{
+ background:linear-gradient(145deg,#1b1a17,#11110f);border-color:#594824;
+ box-shadow:0 12px 30px rgba(0,0,0,.28);color:#f4edda
+}
+body.tb-vip-platinum .tb-delivery-schedule,body.tb-vip-platinum .tb-filter-toggle{
+ background:linear-gradient(145deg,#211d14,#13120f);border-color:#80652b;color:#e5c36c
+}
+body.tb-vip-platinum .tb-home-search input{background:#151411;border-color:#66532c;color:#f4edda}
+body.tb-vip-platinum .tb-home-search .tb-voice-search{background:#3b2e14;color:#edca70}
+body.tb-vip-platinum .tb-filter-panel button,body.tb-vip-platinum .btn:not(.btn-outline),
+body.tb-vip-platinum .add-btn{background:linear-gradient(120deg,#9b741e,#e0bd62 55%,#b78c35);border-color:#d0a744;color:#17130a}
+body.tb-vip-platinum .tb-bottom-nav{background:#0a0a09;border-top:1px solid #594824}
+body.tb-vip-platinum .tb-bottom-nav a{color:#c9bea2}
+body.tb-vip-platinum .tb-bottom-nav a.is-active,
+body.tb-vip-platinum .tb-bottom-nav a[aria-label="VIP"]{color:#edca70}
+body.tb-vip-platinum .tb-view-cart-bar{background:linear-gradient(105deg,#080808,#30250f 60%,#8d681d);border:1px solid #80652b}
+body.tb-vip-platinum .tb-recent-tag{background:#292113;border-color:#80652b;color:#f0d27b}
+body.tb-vip-platinum .discount-tag{background:#e4c36f;color:#21190a}
