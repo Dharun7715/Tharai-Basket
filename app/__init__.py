@@ -1156,20 +1156,6 @@ def create_app():
             flash('No available items found in this order.', 'warning')
         return redirect(url_for('cart'))
 
-    @app.get('/account/membership')
-    @login_required
-    def account_membership():
-        if current_user.role != 'customer': abort(403)
-        membership = VipMembership.query.filter_by(user_id=current_user.id, active=True).filter(VipMembership.ends_at > datetime.utcnow()).first()
-        return render_template('membership.html', membership=membership)
-
-    @app.post('/account/membership/request')
-    @login_required
-    def membership_request():
-        if current_user.role != 'customer': abort(403)
-        flash('VIP membership is currently activated by store approval. Please contact the store team.', 'info')
-        return redirect(url_for('account_membership'))
-
     @app.post('/order/<int:order_id>/cancel')
     @login_required
     def cancel_order(order_id):
