@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Track Order {{ order.order_number }} | Tharai Basket{% endblock %}
 {% block content %}
+{% if order.status not in ['Delivered', 'Cancelled'] %}<meta http-equiv="refresh" content="25">{% endif %}
 {% set tracking_steps = ['Pending', 'Confirmed', 'Purchase Required', 'Purchased', 'Packing', 'Ready for Pickup', 'Picked Up', 'Out for Delivery', 'Delivered'] %}
 {% set current_step = tracking_steps.index(order.status) if order.status in tracking_steps else -1 %}
 <section class="section">
