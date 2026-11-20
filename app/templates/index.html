@@ -40,11 +40,11 @@
 }
 </style>
 {% if not location_verified %}
-<section class="section" style="min-height:70vh">
+<section class="section tb-location-section">
   <div class="container" style="max-width:900px">
-    <div class="summary-card" style="padding:clamp(20px,4vw,36px)">
-      <div style="text-align:center">
-        <div style="font-size:42px;margin-bottom:8px">📍</div>
+    <div class="summary-card tb-location-card" style="padding:clamp(16px,3vw,28px)">
+      <div class="tb-location-heading" style="text-align:center">
+        <div style="font-size:34px;margin-bottom:5px">📍</div>
         <span class="eyebrow">THARAI BASKET · THARAMANGALAM</span>
         <h1 style="margin:10px 0">Where should we <em>deliver?</em></h1>
         <p class="muted">Choose either option. To set manually, move the map and tap your exact home or delivery location.</p>
@@ -64,14 +64,23 @@
   </div>
 </section>
 <style>
-#delivery-map{height:380px;width:100%;border-radius:16px;overflow:hidden;border:1px solid #d9e3d8;z-index:1}
-.location-actions{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}
-.location-actions .btn{min-height:46px}
+ .tb-location-section{padding:28px 0!important;min-height:0!important}
+#delivery-map{height:330px;width:100%;border-radius:14px;overflow:hidden;border:1px solid #d9e3d8;z-index:1}
+.location-actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.location-actions .btn{min-height:42px}
 @media(max-width:620px){
-  #delivery-map{height: min(58vh, 340px); min-height:260px}
-  .location-actions{display:grid;grid-template-columns:1fr;gap:10px}
-  .location-actions .btn{width:100%;min-height:48px}
-  #confirm-map-location{width:100%;min-height:48px}
+  .tb-location-section{padding:14px 0!important}
+  .tb-location-card{padding:13px!important;position:static}
+  .tb-location-heading .eyebrow{margin-bottom:4px;font-size:9px}
+  .tb-location-heading h1{font-size:24px!important;margin:5px 0!important}
+  .tb-location-heading p{font-size:11px;line-height:1.45;margin-bottom:10px}
+  #delivery-map{height:205px;min-height:0}
+  .location-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:9px 0}
+  .location-actions .btn{width:100%;min-height:38px;padding:7px 6px;font-size:11px}
+  #map-help{font-size:10px;padding:8px;margin-bottom:8px!important}
+  #confirm-map-location{width:100%;min-height:39px;padding:8px;font-size:12px}
+  #location-message{font-size:10px;padding:8px;margin-top:8px!important}
+  .tb-location-card>small{font-size:9px}
 }
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
