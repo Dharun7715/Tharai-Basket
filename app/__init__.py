@@ -1125,7 +1125,7 @@ def create_app():
         db.session.add(RewardTransaction(user_id=referral.referrer_id, referral_id=referral.id,
                                           points=50, description='Referral reward for a friend’s first delivered order'))
         db.session.add(RewardTransaction(user_id=referral.referred_id, referral_id=referral.id,
-                                          points=100, description='Welcome reward for your first delivered order'))
+                                          points=50, description='Welcome reward for your first delivered order'))
 
     @app.route('/admin/orders', methods=['GET', 'POST'])
     @admin_required
