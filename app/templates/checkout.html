@@ -25,7 +25,7 @@
             <select id="saved-address-select" onchange="fillSavedAddress(this)"><option value="">Enter a new address</option>{% for address in saved_addresses %}<option value="{{ address.id }}" data-recipient="{{ address.recipient }}" data-phone="{{ address.phone }}" data-address="{{ address.line1 }}{% if address.landmark %}, {{ address.landmark }}{% endif %}{% if address.pincode %}, {{ address.pincode }}{% endif %}">{{ address.label }} — {{ address.line1 }}</option>{% endfor %}</select>
           </label>{% endif %}
           <div class="tb-schedule-box">
-            <div class="tb-schedule-heading"><span>🕒</span><div><strong>Schedule your delivery</strong><small>First slot starts 2 hours from now; slots are 30 minutes apart.</small></div></div>
+            <div class="tb-schedule-heading"><span>🕒</span><div><strong>Schedule your delivery</strong><small>First slot is at least 2 hours after you place your order, rounded up to the next :00 or :30. New slots every 30 minutes.</small></div></div>
             <div class="tb-schedule-fields">
               <label>Delivery date
                 <input type="date" id="delivery-date" name="delivery_date" value="{{ delivery_date }}" min="{{ min_delivery_date }}" max="{{ max_delivery_date }}" required>
