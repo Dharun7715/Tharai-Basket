@@ -93,7 +93,7 @@
           </div>
           <p id="checkout-update-status" class="tb-update-status" role="status" aria-live="polite"></p>
           <div class="tb-price-lines"><div><span>Subtotal</span><strong id="checkout-subtotal">{{ subtotal|inr }}</strong></div><div><span>Delivery</span><strong id="checkout-delivery">{{ 'FREE' if delivery_fee == 0 else delivery_fee|inr }}</strong></div>
-            {% if combo and combo_discount > 0 %}<div class="tb-price-line"><span>Combo saving · {{ combo.title }}</span><strong>-{{ combo_discount|inr }}</strong></div>{% endif %}<div class="tb-discount-line" id="checkout-discount-row" {% if discount <= 0 %}hidden{% endif %}><span>Offers & discounts{% if coupon %} · {{ coupon.code }}{% endif %}{% if reward_discount > 0 %} + Rewards{% endif %}</span><strong id="checkout-discount">-{{ discount|inr }}</strong></div>
+            <div class="tb-discount-line" id="checkout-discount-row" {% if discount <= 0 %}hidden{% endif %}><span>{% if combo %}Offers & combo savings{% else %}Offers & discounts{% endif %}{% if coupon %} · {{ coupon.code }}{% endif %}{% if reward_discount > 0 %} + Rewards{% endif %}</span><strong id="checkout-discount">-{{ discount|inr }}</strong></div>
           </div>
           <div class="tb-grand-total"><span>Total payable</span><strong id="checkout-total">{{ total|inr }}</strong></div>
           <div class="tb-delivery-note">🚚 Free delivery on orders of ₹300 or more. Otherwise, delivery is ₹25 within Tharamangalam.</div>
