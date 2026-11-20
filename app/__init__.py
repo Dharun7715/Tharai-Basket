@@ -5,6 +5,7 @@ import base64
 import io
 import math
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 from pathlib import Path
@@ -248,6 +249,14 @@ def create_app():
         delivery_partner = db.relationship('User', foreign_keys=[delivery_partner_id])
         items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan')
 
+    class DeliverySchedule(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, unique=True)
+        delivery_date = db.Column(db.String(10), nullable=False)
+        delivery_slot = db.Column(db.String(20), nullable=False)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+        order = db.relationship('Order', backref=db.backref('delivery_schedule', uselist=False))
+
     class Notification(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
@@ -313,6 +322,39 @@ def create_app():
     UserModel, AddressModel, CategoryModel, ProductModel = User, Address, Category, Product
     SupplierModel, SupplierProductModel, OrderModel, OrderItemModel = Supplier, SupplierProduct, Order, OrderItem
     PurchaseModel, PurchaseItemModel, CouponModel, DeliveryEarningModel = Purchase, PurchaseItem, Coupon, DeliveryEarning
+
+    def available_delivery_slots(date_value):
+        local_now = datetime.now(ZoneInfo('Asia/Kolkata'))
+        try:
+            selected_date = datetime.strptime(date_value, '%Y-%m-%d').date()
+        except (TypeError, ValueError):
+            return []
+        today = local_now.date()
+        if selected_date < today or selected_date > today + timedelta(days=7):
+            return []
+        if selected_date == today:
+            first = local_now.replace(tzinfo=None) + timedelta(hours=2)
+            minute_remainder = first.minute % 30
+            if minute_remainder:
+                first += timedelta(minutes=30 - minute_remainder)
+            first = first.replace(second=0, microsecond=0)
+        else:
+            first = datetime.combine(selected_date, datetime.strptime('08:00', '%H:%M').time())
+        end = datetime.combine(selected_date, datetime.strptime('22:00', '%H:%M').time())
+        slots = []
+        cursor = first
+        while cursor.date() == selected_date and cursor <= end:
+            slots.append(cursor.strftime('%I:%M %p'))
+            cursor += timedelta(minutes=30)
+        return slots
+
+    @app.get('/api/delivery-slots')
+    @login_required
+    def delivery_slots_api():
+        if current_user.role != 'customer':
+            abort(403)
+        date_value = request.args.get('date', '')
+        return jsonify({'date': date_value, 'slots': available_delivery_slots(date_value)})
 
     def create_customer_notification(order, title, message, category='order'):
         db.session.add(Notification(user_id=order.user_id, order_id=order.id,
@@ -840,6 +882,10 @@ def create_app():
         fee = Decimal('0') if subtotal >= threshold else app.config['DELIVERY_FEE']
         coupon, discount = active_cart_coupon(subtotal)
         total = max(Decimal('0.00'), subtotal + fee - discount)
+        local_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+        delivery_date = request.values.get('delivery_date') or local_today.strftime('%Y-%m-%d')
+        delivery_slots = available_delivery_slots(delivery_date)
+        delivery_slot = request.values.get('delivery_slot', '')
 
         # Create a dynamic UPI QR with this checkout's exact payable amount.
         upi_params = {
@@ -882,6 +928,8 @@ def create_app():
                 flash(f"Sorry, delivery is currently available only within {app.config['DELIVERY_RADIUS_KM']:g} km of Tharamangalam town centre. Your location is {distance_km:.1f} km away.", 'danger')
             elif not all([name, phone, address]):
                 flash('Please complete your delivery details.', 'danger')
+            elif delivery_slot not in available_delivery_slots(delivery_date):
+                flash('Please choose a valid available delivery date and time slot.', 'warning')
             elif subtotal < app.config['MIN_ORDER_VALUE']:
                 flash(f"Minimum order value is {app.config['CURRENCY']}{app.config['MIN_ORDER_VALUE']}.", 'warning')
             elif payment == 'UPI' and not upi_reference:
@@ -908,6 +956,7 @@ def create_app():
                               notes=(f'UPI reference submitted by customer: {upi_reference}' if payment == 'UPI' else ''))
                 db.session.add(order)
                 db.session.flush()
+                db.session.add(DeliverySchedule(order_id=order.id, delivery_date=delivery_date, delivery_slot=delivery_slot))
                 create_customer_notification(order, 'Order placed successfully', f'Your order {order.order_number} has been received. We will confirm it shortly.')
                 for row in rows:
                     p = row['product']
@@ -928,7 +977,10 @@ def create_app():
         return render_template('checkout.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=total,
                                coupon=coupon, discount=discount, reward_discount=reward_discount,
                                available_reward_points=available_reward_points, use_rewards=use_rewards,
-                               saved_addresses=saved_addresses, upi_qr_data=upi_qr_data, upi_id='8838145515@sbi')
+                               saved_addresses=saved_addresses, upi_qr_data=upi_qr_data, upi_id='8838145515@sbi',
+                               delivery_date=delivery_date, delivery_slots=delivery_slots, delivery_slot=delivery_slot,
+                               min_delivery_date=local_today.strftime('%Y-%m-%d'),
+                               max_delivery_date=(local_today + timedelta(days=7)).strftime('%Y-%m-%d'))
     @app.post('/order/<int:order_id>/buy-again')
     @login_required
     def buy_again(order_id):
