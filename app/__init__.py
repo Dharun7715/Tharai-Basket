@@ -1359,7 +1359,7 @@ def create_app():
     @app.get('/admin/abandoned-carts')
     @admin_required
     def admin_abandoned_carts():
-        carts = AbandonedCart.query.order_by(AbandonedCart.updated_at.desc()).limit(200).all()
+        carts = AbandonedCart.query.filter_by(recovered_at=None).order_by(AbandonedCart.updated_at.desc()).limit(200).all()
         return render_template('admin/abandoned_carts.html', carts=carts)
 
     @app.route('/admin/products', methods=['GET', 'POST'])
