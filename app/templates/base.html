@@ -35,6 +35,7 @@
     <button class="tb-menu-close" id="tb-menu-close" type="button" aria-label="Close menu">×</button>
   </div>
   <nav class="tb-menu-links">
+    <button class="tb-language-toggle" id="tb-language-toggle" type="button"><span aria-hidden="true">文</span><span id="tb-language-label">தமிழ்</span></button>
     <a href="{{ url_for('index') }}"><span>⌂</span> Home</a>
     <a href="{{ url_for('index') }}#categories"><span>▦</span> Categories</a>
     <a href="{{ url_for('index') }}#shop"><span>🛍</span> Shop groceries</a>
@@ -91,4 +92,7 @@
     <span>Orders</span>
   </a>
 </nav>
+<div id="google_translate_element" hidden></div>
+<script>function googleTranslateElementInit(){new google.translate.TranslateElement({pageLanguage:"en",includedLanguages:"en,ta",autoDisplay:false}, "google_translate_element");}</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" defer></script>
 </body></html>
