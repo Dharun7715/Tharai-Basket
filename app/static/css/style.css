@@ -182,15 +182,13 @@ html.tb-app-launch .tb-splash-loader{display:none!important}
 }
 
 
-/* Premium gold glow for the VIP crown in mobile navigation. */
-@media(max-width:620px){
- .tb-bottom-nav a[aria-label="VIP"]{color:#b8860b;font-weight:800;text-shadow:0 0 8px rgba(255,196,48,.38)}
- .tb-bottom-nav a[aria-label="VIP"] svg{stroke:#d49b16;fill:rgba(255,195,48,.18);filter:drop-shadow(0 0 3px rgba(255,190,35,.78)) drop-shadow(0 0 7px rgba(255,190,35,.42));animation:tb-vip-gold-glow 2s ease-in-out infinite}
- .tb-bottom-nav a[aria-label="VIP"].is-active{color:#a87500}
- .tb-bottom-nav a[aria-label="VIP"].is-active svg{stroke:#c58b08;fill:rgba(255,190,35,.3)}
-}
+/* Premium animated gold crown glow for VIP navigation. */
+.tb-bottom-nav a[aria-label="VIP"]{color:#c18a08;font-weight:900;text-shadow:0 0 7px rgba(255,196,48,.45)}
+.tb-bottom-nav a[aria-label="VIP"] svg{stroke:#d99b12;fill:rgba(255,195,48,.28);stroke-width:2;filter:drop-shadow(0 0 3px rgba(255,190,35,.85)) drop-shadow(0 0 8px rgba(255,190,35,.55));animation:tb-vip-gold-glow 1.7s ease-in-out infinite}
+.tb-bottom-nav a[aria-label="VIP"].is-active{color:#a87500}
+.tb-bottom-nav a[aria-label="VIP"].is-active svg{stroke:#c58b08;fill:rgba(255,190,35,.4)}
 @keyframes tb-vip-gold-glow{
- 0%,100%{filter:drop-shadow(0 0 2px rgba(255,190,35,.55)) drop-shadow(0 0 5px rgba(255,190,35,.25))}
- 50%{filter:drop-shadow(0 0 4px rgba(255,190,35,.95)) drop-shadow(0 0 10px rgba(255,190,35,.65))}
+ 0%,100%{filter:drop-shadow(0 0 2px rgba(255,190,35,.65)) drop-shadow(0 0 5px rgba(255,190,35,.35))}
+ 50%{filter:drop-shadow(0 0 5px rgba(255,190,35,1)) drop-shadow(0 0 13px rgba(255,190,35,.8))}
 }
 @media(prefers-reduced-motion:reduce){.tb-bottom-nav a[aria-label="VIP"] svg{animation:none}}
