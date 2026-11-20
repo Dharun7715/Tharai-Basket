@@ -11,6 +11,7 @@
     <div style="flex:1;min-width:180px"><small style="display:block;color:#728477;font-weight:700;font-size:9px;letter-spacing:1px">YOUR REFERRAL CODE</small><strong id="tb-referral-code" style="font:800 23px 'Manrope';letter-spacing:2px;color:#185d35">{{ referral_code.code }}</strong></div>
     <button type="button" class="tb-account-primary" onclick="navigator.clipboard.writeText(document.getElementById('tb-referral-code').textContent).then(()=>{this.textContent='Copied!'})">Copy code</button>
     <a class="tb-account-primary" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text={{ ('Join me on Tharai Basket! Use my referral code ' ~ referral_code.code ~ ' when creating your account.')|urlencode }}">Share on WhatsApp</a>
+    <button type="button" class="tb-account-primary" onclick="(async()=>{const message='Join me on Tharai Basket! Use my referral code {{ referral_code.code }} when creating your account.';if(navigator.share){try{await navigator.share({title:'Tharai Basket invitation',text:message,url:window.location.origin});return;}catch(e){if(e.name==='AbortError')return;}}try{await navigator.clipboard.writeText(message);this.textContent='Invite copied!';}catch(e){window.prompt('Copy your invite message',message);}})()">More share options</button>
    </div>
    {% endif %}
    <div style="display:flex;gap:25px;flex-wrap:wrap;margin-top:17px">
