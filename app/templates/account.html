@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}My Account | Tharai Basket{% endblock %}
+{% block content %}
+<section class="section tb-account">
+ <div class="container">
+  <div class="tb-account-heading"><span class="eyebrow">YOUR THARAI BASKET</span><h1>My <em>account.</em></h1><p>Manage your profile and saved delivery addresses in one place.</p></div>
+  <div class="tb-account-grid">
+   <section class="tb-account-card">
+    <div class="tb-account-card-head"><div class="tb-account-icon">👤</div><div><h2>Personal details</h2><p>Keep your contact information up to date.</p></div></div>
+    <form method="post" class="tb-account-form">
+     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+     <label>Full name<input name="name" value="{{ current_user.name }}" maxlength="120" required></label>
+     <label>Email address<input value="{{ current_user.email }}" disabled><small>Email address cannot be changed here.</small></label>
+     <label>Phone number<input name="phone" value="{{ current_user.phone }}" maxlength="20" inputmode="tel" placeholder="Your mobile number"></label>
+     <button class="tb-account-primary" type="submit">Save profile changes</button>
+    </form>
+   </section>
+   <section class="tb-account-card">
+    <div class="tb-account-card-head"><div class="tb-account-icon">📍</div><div><h2>Saved addresses</h2><p>Save home, work or another delivery location.</p></div></div>
+    {% if addresses %}
+    <div class="tb-address-list">
+     {% for address in addresses %}
+     <article class="tb-address-card">
+      <div class="tb-address-top"><strong>{{ address.label }}</strong><form method="post" action="{{ url_for('account_address_delete', address_id=address.id) }}" onsubmit="return confirm('Delete this saved address?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" aria-label="Delete address">Delete</button></form></div>
+      <strong class="tb-address-recipient">{{ address.recipient }}</strong>
+      <p>{{ address.line1 }}{% if address.landmark %}, {{ address.landmark }}{% endif %}{% if address.pincode %} – {{ address.pincode }}{% endif %}</p>
+      <small>☎ {{ address.phone }}</small>
+     </article>
+     {% endfor %}
+    </div>
+    {% else %}
+    <div class="tb-address-empty"><span>🏡</span><strong>No saved addresses yet</strong><p>Add your home or work address for faster checkout next time.</p></div>
+    {% endif %}
+    <details class="tb-add-address">
+     <summary>＋ Add a new address</summary>
+     <form method="post" action="{{ url_for('account_address_add') }}" class="tb-account-form tb-address-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Address label<select name="label"><option>Home</option><option>Work</option><option>Other</option></select></label>
+      <label>Recipient name<input name="recipient" value="{{ current_user.name }}" required maxlength="120"></label>
+      <label>Phone number<input name="phone" value="{{ current_user.phone }}" required maxlength="20" inputmode="tel"></label>
+      <label>Door no. and street<input name="line1" required maxlength="220" placeholder="House no., street, area"></label>
+      <label>Landmark<input name="landmark" maxlength="160" placeholder="Nearby landmark (optional)"></label>
+      <label>PIN code<input name="pincode" maxlength="10" inputmode="numeric" placeholder="PIN code"></label>
+      <button class="tb-account-primary" type="submit">Save delivery address</button>
+     </form>
+    </details>
+   </section>
+  </div>
+ </div>
+</section>
+<style>
+.tb-account{background:#f7faf7;min-height:70vh;padding-top:42px}.tb-account-heading{margin-bottom:25px}.tb-account-heading h1{font:800 clamp(34px,4vw,46px) 'Manrope';letter-spacing:-1.5px;margin:7px 0}.tb-account-heading h1 em{font-style:normal;color:#25804a}.tb-account-heading p{font-size:12px;color:#7c897f;margin:0}.tb-account-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:20px;align-items:start}.tb-account-card{background:#fff;border:1px solid #e3ebe4;border-radius:18px;padding:23px;box-shadow:0 9px 28px rgba(25,67,38,.035)}.tb-account-card-head{display:flex;align-items:center;gap:12px;margin-bottom:21px}.tb-account-icon{width:42px;height:42px;border-radius:12px;background:#edf6ef;display:grid;place-items:center;font-size:19px}.tb-account-card-head h2{font:800 17px 'Manrope';color:#203428;margin:0}.tb-account-card-head p{font-size:10px;color:#879389;margin:4px 0 0}.tb-account-form{display:grid;gap:13px}.tb-account-form label{display:grid;gap:6px;font-size:10px;font-weight:800;color:#526257}.tb-account-form input,.tb-account-form select{width:100%;border:1px solid #dfe8e0;border-radius:9px;padding:11px 12px;font:400 12px 'DM Sans';color:#24372a;background:#fff;outline:none}.tb-account-form input:focus,.tb-account-form select:focus{border-color:#65a978;box-shadow:0 0 0 3px #eaf5ec}.tb-account-form input:disabled{background:#f4f7f4;color:#89948b}.tb-account-form label small{font-size:9px;color:#8a958d;font-weight:400}.tb-account-primary{border:0;border-radius:10px;background:#155b34;color:white;padding:13px 16px;font-size:11px;font-weight:800;cursor:pointer;margin-top:3px}.tb-address-list{display:grid;gap:10px}.tb-address-card{border:1px solid #e5ede6;border-radius:12px;padding:13px;background:#fcfefc}.tb-address-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.tb-address-top>strong{font-size:10px;color:#24683b;background:#edf6ef;border-radius:20px;padding:5px 9px}.tb-address-top button{border:0;background:transparent;color:#b45a4b;font-size:10px;cursor:pointer}.tb-address-recipient{font-size:12px;color:#293b2e}.tb-address-card p{font-size:11px;color:#65746a;line-height:1.6;margin:5px 0}.tb-address-card>small{font-size:10px;color:#7d897f}.tb-address-empty{text-align:center;padding:22px 12px;border:1px dashed #dce7dd;border-radius:12px;background:#fbfdfb}.tb-address-empty span{font-size:25px}.tb-address-empty strong{display:block;font-size:12px;margin-top:8px}.tb-address-empty p{font-size:10px;color:#879389;margin:5px 0 0}.tb-add-address{margin-top:15px;border-top:1px solid #e8eee8;padding-top:14px}.tb-add-address summary{cursor:pointer;color:#1d6538;font-size:11px;font-weight:800;list-style:none}.tb-address-form{margin-top:15px;grid-template-columns:1fr 1fr}.tb-address-form label:nth-of-type(4){grid-column:1/-1}.tb-address-form button{grid-column:1/-1}
+@media(max-width:800px){.tb-account-grid{grid-template-columns:1fr}}@media(max-width:560px){.tb-account{padding-top:28px}.tb-account-card{padding:17px}.tb-address-form{grid-template-columns:1fr}.tb-address-form label:nth-of-type(4),.tb-address-form button{grid-column:auto}}
+</style>
+{% endblock %}
