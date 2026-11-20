@@ -1152,7 +1152,7 @@ def create_app():
                 reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
                 available_reward_points = max(0, reward_credits - int(reward_spent or 0))
                 reward_discount = min(Decimal(available_reward_points), subtotal) if session.get('use_rewards') else Decimal('0.00')
-                discount = min(subtotal, coupon_discount + reward_discount)
+                discount = min(subtotal, coupon_discount + reward_discount + combo_discount)
                 total = max(Decimal('0.00'), subtotal + fee - discount)
                 order = Order(order_number=f"TB{datetime.utcnow():%y%m%d%H%M%S}{current_user.id}", user_id=current_user.id,
                               customer_name=name, phone=phone, address_text=address, subtotal=subtotal,
