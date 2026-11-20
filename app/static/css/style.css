@@ -351,3 +351,20 @@ body.tb-vip-platinum .tb-bottom-nav a[aria-label="VIP"]{color:#edca70}
 body.tb-vip-platinum .tb-view-cart-bar{background:linear-gradient(105deg,#080808,#30250f 60%,#8d681d);border:1px solid #80652b}
 body.tb-vip-platinum .tb-recent-tag{background:#292113;border-color:#80652b;color:#f0d27b}
 body.tb-vip-platinum .discount-tag{background:#e4c36f;color:#21190a}
+
+
+/* VIP account drawer: keep menu text crisp black on the white panel. */
+body.tb-vip-theme .tb-menu-links>a,
+body.tb-vip-platinum .tb-menu-links>a,
+body.tb-vip-theme .tb-language-toggle,
+body.tb-vip-platinum .tb-language-toggle{color:#171717!important}
+body.tb-vip-theme .tb-menu-links>a>span,
+body.tb-vip-platinum .tb-menu-links>a>span,
+body.tb-vip-theme .tb-menu-label,
+body.tb-vip-platinum .tb-menu-label{color:#171717!important}
+body.tb-vip-theme .tb-menu-links>a:hover,
+body.tb-vip-platinum .tb-menu-links>a:hover,
+body.tb-vip-theme .tb-language-toggle:hover,
+body.tb-vip-platinum .tb-language-toggle:hover{background:#f1f1f1!important;color:#000!important}
+body.tb-vip-theme .tb-menu-links>a small,
+body.tb-vip-platinum .tb-menu-links>a small{background:#e9f2eb;color:#171717}
