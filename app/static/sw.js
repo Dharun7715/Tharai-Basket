@@ -1,5 +1,5 @@
-const CACHE='tharai-basket-shell-v6';
-const SHELL=['/static/css/style.css','/static/js/app.js','/static/manifest.json'];
+const CACHE='tharai-basket-shell-v7';
+const SHELL=['/static/css/style.css','/static/js/app.js','/static/manifest.json','/static/images/tharai-basket-app-icon.svg','/static/images/tharai-basket-logo.webp'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('tharai-basket-shell-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
