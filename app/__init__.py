@@ -963,7 +963,8 @@ def create_app():
             'subtotal': f'{subtotal:.2f}', 'delivery_fee': f'{fee:.2f}',
             'delivery_label': 'FREE' if fee == 0 else f'₹{fee:.2f}',
             'discount': f'{discount:.2f}', 'coupon_discount': f'{coupon_discount:.2f}',
-            'reward_discount': f'{reward_discount:.2f}', 'combo_discount': f'{combo_discount:.2f}',\n            'combo_title': active_combo.title if active_combo else None, 'coupon_code': coupon.code if coupon else None,
+            'reward_discount': f'{reward_discount:.2f}', 'combo_discount': f'{combo_discount:.2f}',
+            'combo_title': active_combo.title if active_combo else None, 'coupon_code': coupon.code if coupon else None,
             'total': f'{total:.2f}', 'upi_qr_data': qr_data,
             'item_count': sum(int(value) for value in session.get('cart', {}).values()),
             'coupon_message': 'Coupon removed: basket value is below its minimum.' if applied_coupon_code and not coupon else None
