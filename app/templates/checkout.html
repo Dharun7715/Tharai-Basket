@@ -39,6 +39,7 @@
         {% for row in rows %}<div class="summary-line"><span>{{ row.product.name }} × {{ row.quantity }}</span><strong>{{ row.line_total|inr }}</strong></div>{% endfor %}
         <div class="summary-line"><span>Subtotal</span><strong>{{ subtotal|inr }}</strong></div>
         <div class="summary-line"><span>Delivery</span><strong>{{ 'FREE' if delivery_fee == 0 else delivery_fee|inr }}</strong></div>
+        {% if coupon and discount > 0 %}<div class="summary-line" style="color:#16803c"><span>Coupon ({{ coupon.code }})</span><strong>-{{ discount|inr }}</strong></div>{% endif %}
         <div class="summary-total"><span>Payable</span><strong>{{ total|inr }}</strong></div>
         <p class="summary-note">Free delivery on orders of ₹300 or more. Otherwise, delivery is ₹25 within Tharamangalam.</p>
       </aside>
