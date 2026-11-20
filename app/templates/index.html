@@ -317,15 +317,89 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
  .tb-product-heart{width:31px;height:31px;right:7px;top:7px}
 }
 </style>
+
+<style>
+.tb-storefront-top{margin:0 calc((100vw - min(1160px,100vw - 40px))/ -2) 20px;padding:18px max(20px,calc((100vw - 1160px)/2)) 14px;background:linear-gradient(145deg,#eaf6ed 0%,#f7fbf7 72%);border-bottom:1px solid #dcebdd}
+.tb-storefront-kicker{display:flex;align-items:center;gap:9px;color:#27643a;font-size:10px;font-weight:900;letter-spacing:.14em;margin-bottom:14px}
+.tb-storefront-mark{width:29px;height:29px;border-radius:9px;background:#176b39;color:#fff;display:grid;place-items:center;font:800 11px 'Manrope',sans-serif;letter-spacing:-.04em}
+.tb-town-pill{margin-left:auto;border:1px solid #cfe3d2;border-radius:99px;padding:6px 9px;font-size:9px;letter-spacing:.06em}
+.tb-delivery-location-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch;margin-bottom:13px}
+.tb-delivery-schedule{width:100%;min-width:0;display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border:1px solid #d7e8d9;border-radius:13px;background:#fff;color:#244b30;cursor:pointer;box-shadow:0 3px 12px #174d2b0b}
+.tb-schedule-icon{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:11px;background:#e8f4e9;color:#176b39;font-size:25px}
+.tb-schedule-text{min-width:0;display:grid;gap:3px}
+.tb-schedule-text small,.tb-location-copy small{font-size:9px;letter-spacing:.1em;color:#809084;font-weight:800}
+.tb-schedule-text strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-schedule-chevron{margin-left:auto;font-size:18px;color:#63816a}
+.tb-home-location{display:flex;align-items:center;gap:10px;min-width:0;padding:9px 12px;border:1px solid #d7e8d9;border-radius:13px;background:#fff;color:#355c40}
+.tb-location-pin{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:11px;background:#e8f4e9;color:#176b39;font-size:24px}
+.tb-location-copy{display:grid;gap:3px;min-width:0}
+.tb-location-copy strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-location-copy a{font-size:10px;color:#267342;font-weight:700}
+.tb-search-row{display:flex;gap:8px;min-width:0}
+.tb-home-search{display:flex;align-items:center;gap:8px;min-width:0;flex:1;height:48px;padding:0 8px 0 13px;background:#fff;border:1px solid #dce7dd;border-radius:13px;box-shadow:0 3px 12px #174d2b0b}
+.tb-search-glass{font-size:23px;line-height:1;color:#526b59}
+.tb-home-search input{flex:1;min-width:0;width:100%;height:100%;border:0!important;outline:0;background:transparent;font:500 13px 'DM Sans',sans-serif;color:#24372a;box-shadow:none!important}
+.tb-home-search button{height:34px;padding:0 14px;border:0;border-radius:9px;background:#176b39;color:#fff;font-size:11px;font-weight:800;cursor:pointer}
+.tb-filter-toggle{width:48px;flex:0 0 48px;border:1px solid #dce7dd;border-radius:13px;background:#fff;color:#236b3d;display:grid;place-items:center;cursor:pointer;box-shadow:0 3px 12px #174d2b0b}
+.tb-filter-toggle svg{width:21px;height:21px}
+.tb-filter-panel{display:none;padding:12px;margin-top:10px;border:1px solid #dce9de;border-radius:13px;background:#fff}
+.tb-filter-panel.is-open{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.tb-filter-panel label{display:grid;gap:4px;font-size:10px;color:#526257;font-weight:700}
+.tb-filter-panel select,.tb-filter-panel input{width:100%;height:38px;min-width:0;border:1px solid #dce7dd;border-radius:8px;padding:0 8px;background:#fbfdfb;font-size:12px}
+.tb-filter-panel .tb-filter-check{display:flex;align-items:center;gap:7px;align-self:center}
+.tb-filter-panel .tb-filter-check input{width:16px;height:16px}
+.tb-filter-panel button{height:38px;border:0;border-radius:8px;background:#236b3d;color:#fff;font-weight:700;font-size:12px}
+.tb-category-strip{display:flex;gap:9px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:14px 0 3px}
+.tb-category-strip::-webkit-scrollbar{display:none}
+.tb-category-chip{flex:0 0 76px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px 5px 9px;border-radius:12px;color:#526b59;text-align:center;border:1px solid transparent}
+.tb-category-chip>span{width:43px;height:43px;border-radius:13px;background:#fff;display:grid;place-items:center;font-size:23px;box-shadow:0 3px 12px #174d2b0b}
+.tb-category-chip small{font-size:10px;font-weight:700;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.tb-category-chip.is-active{background:#dcefe0;border-color:#c6e1cb;color:#176b39}
+.tb-category-chip.is-active>span{background:#176b39;color:#fff}
+.tb-products-heading{margin:16px 0 14px}
+.tb-products-heading h1{font-size:22px}
+@media(max-width:620px){
+ .tb-storefront-top{margin:0 -14px 15px;padding:14px 14px 10px}
+ .tb-storefront-kicker{font-size:9px;margin-bottom:12px}
+ .tb-delivery-location-row{grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px}
+ .tb-delivery-schedule,.tb-home-location{padding:8px;gap:7px;border-radius:11px}
+ .tb-schedule-icon,.tb-location-pin{width:31px;height:31px;flex-basis:31px;border-radius:9px;font-size:20px}
+ .tb-schedule-text small,.tb-location-copy small{font-size:8px}
+ .tb-schedule-text strong,.tb-location-copy strong{font-size:10px}
+ .tb-location-copy a{font-size:9px}
+ .tb-search-row{gap:7px}
+ .tb-home-search{height:46px;border-radius:12px;padding-left:10px}
+ .tb-home-search input{font-size:12px}
+ .tb-home-search button{height:32px;padding:0 10px;font-size:10px}
+ .tb-filter-toggle{width:46px;flex-basis:46px;border-radius:12px}
+ .tb-category-strip{gap:5px;padding:11px 0 2px}
+ .tb-category-chip{flex-basis:68px;padding:6px 3px 8px;gap:5px}
+ .tb-category-chip>span{width:39px;height:39px;font-size:21px;border-radius:12px}
+ .tb-category-chip small{font-size:9px}
+ .tb-products-heading{margin:12px 0}
+ .tb-products-heading h1{font-size:19px}
+}
+</style>
 <div class="container">
-  <div class="tb-home-toolbar">
-    <button class="tb-delivery-schedule" id="tb-delivery-open" type="button" aria-haspopup="dialog" aria-controls="tb-delivery-modal">
-      <span class="tb-schedule-copy">
-        <span class="tb-schedule-icon" aria-hidden="true">🕒</span>
-        <span><strong>Scheduled delivery</strong><small id="tb-schedule-caption">Choose your preferred delivery time</small></span>
-      </span>
-      <span class="tb-schedule-action">Select time <span aria-hidden="true">›</span></span>
-    </button>
+  <section class="tb-storefront-top" aria-label="Store delivery and shopping">
+    <div class="tb-storefront-kicker"><span class="tb-storefront-mark">TB</span><span>EVERYDAY GROCERIES</span><span class="tb-town-pill">THARAMANGALAM</span></div>
+    <div class="tb-delivery-location-row">
+      <button class="tb-delivery-schedule" id="tb-delivery-open" type="button" aria-haspopup="dialog" aria-controls="tb-delivery-modal">
+        <span class="tb-schedule-icon" aria-hidden="true">◷</span>
+        <span class="tb-schedule-text"><small>DELIVERY TIME</small><strong id="tb-schedule-caption">Choose a time slot</strong></span>
+        <span class="tb-schedule-chevron">⌄</span>
+      </button>
+      <div class="tb-home-location">
+        <span class="tb-location-pin" aria-hidden="true">⌖</span>
+        <span class="tb-location-copy">
+          {% if location_verified %}
+          <small>DELIVERING TO</small><strong>Your location</strong><a href="{{ url_for('clear_delivery_location') }}">{{ delivery_location.distance_km }} km · Change</a>
+          {% else %}
+          <small>YOUR LOCATION</small><strong>Choose delivery address</strong><a href="{{ url_for('index', choose_location=1) }}">Set location</a>
+          {% endif %}
+        </span>
+      </div>
+    </div>
     <div class="tb-delivery-modal" id="tb-delivery-modal" hidden>
       <section class="tb-delivery-dialog" role="dialog" aria-modal="true" aria-labelledby="tb-delivery-title">
         <div class="tb-delivery-dialog-head">
@@ -336,20 +410,13 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
         <p class="tb-delivery-note">Time slots are offered every 30 minutes. Your selected time will be shown here.</p>
       </section>
     </div>
-    <div class="tb-home-location">
-      <span aria-hidden="true">📍</span>
-      {% if location_verified %}
-      <span>Delivering to your location <small>{{ delivery_location.distance_km }} km · <a href="{{ url_for('clear_delivery_location') }}">Change</a></small></span>
-      {% else %}
-      <span>Choose delivery location <small><a href="{{ url_for('index', choose_location=1) }}">Set your location</a> · Browse products first</small></span>
-      {% endif %}
-    </div>
     <div class="tb-search-row">
       <form class="tb-home-search" method="get" action="{{ url_for('index') }}#shop" role="search">
-        <input type="search" name="q" value="{{ search_query }}" placeholder="Search groceries…" aria-label="Search products">
-        <button type="submit" aria-label="Search">⌕</button>
+        <span class="tb-search-glass" aria-hidden="true">⌕</span>
+        <input type="search" name="q" value="{{ search_query }}" placeholder="Search for groceries…" aria-label="Search products">
+        <button type="submit" aria-label="Search">Search</button>
       </form>
-      <button class="tb-filter-toggle" type="button" aria-label="Show filters" aria-expanded="false" onclick="const p=document.getElementById('tb-filter-panel');const open=p.classList.toggle('is-open');this.setAttribute('aria-expanded',open?'true':'false');" >
+      <button class="tb-filter-toggle" type="button" aria-label="Show filters" aria-expanded="false" onclick="const p=document.getElementById('tb-filter-panel');const open=p.classList.toggle('is-open');this.setAttribute('aria-expanded',open?'true':'false');">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/></svg>
       </button>
     </div>
@@ -362,7 +429,16 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
       <label class="tb-filter-check"><input type="checkbox" name="in_stock" value="1" {% if in_stock %}checked{% endif %}> In stock only</label>
       <button type="submit">Apply filters</button>
     </form>
-  </div>  {% set recently_viewed_ids = recently_viewed|map(attribute='id')|list if recently_viewed else [] %}
+    <nav class="tb-category-strip" aria-label="Shop by category">
+      <a class="tb-category-chip {% if not selected_category_id %}is-active{% endif %}" href="{{ url_for('index') }}#shop"><span>▦</span><small>All</small></a>
+      {% for category in categories %}
+      <a class="tb-category-chip {% if selected_category_id == category.id %}is-active{% endif %}" href="{{ url_for('index', category=category.id) }}#shop">
+        <span aria-hidden="true">{% set category_label = category.name|lower %}{% if 'fruit' in category_label %}🍎{% elif 'vegetable' in category_label or 'veg' in category_label %}🥬{% elif 'dairy' in category_label or 'milk' in category_label %}🥛{% elif 'snack' in category_label %}🍿{% elif 'drink' in category_label or 'beverage' in category_label %}🥤{% elif 'oil' in category_label %}🫒{% elif 'rice' in category_label or 'grain' in category_label %}🌾{% elif 'personal' in category_label %}🧴{% elif 'clean' in category_label or 'home' in category_label %}🧹{% else %}🛍️{% endif %}</span>
+        <small>{{ category.name }}</small>
+      </a>
+      {% endfor %}
+    </nav>
+  </section>  {% set recently_viewed_ids = recently_viewed|map(attribute='id')|list if recently_viewed else [] %}
   <section class="tb-products" id="shop">
     <div class="tb-products-heading">
       <div><h1>{% if search_query %}Search results{% else %}Shop products{% endif %}</h1><p>Fresh everyday essentials, delivered locally.</p></div>
