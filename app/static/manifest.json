@@ -14,9 +14,9 @@
   "theme_color": "#176b39",
   "icons": [
     {
-      "src": "/static/icons/icon.svg",
+      "src": "/static/images/tharai-basket-logo.webp",
       "sizes": "any",
-      "type": "image/svg+xml",
+      "type": "image/webp",
       "purpose": "any maskable"
     }
   ]
