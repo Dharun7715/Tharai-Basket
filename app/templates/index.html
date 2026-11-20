@@ -461,6 +461,16 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
       {% endfor %}
     </nav>
   </section>  {% set recently_viewed_ids = recently_viewed|map(attribute='id')|list if recently_viewed else [] %}
+  {% if location_verified and recently_viewed and not search_query and not selected_category_id and not min_price and not max_price and not in_stock %}
+  <section class="tb-products tb-recently-viewed-shelf" style="padding:12px 0 8px">
+    <div class="tb-products-heading"><div><span class="eyebrow">PICK UP WHERE YOU LEFT OFF</span><h2>Recently viewed</h2><p>Your recently explored in-stock essentials.</p></div></div>
+    <div class="product-grid">
+      {% for product in recently_viewed %}
+      <article class="product-card"><a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-image">{% if product.image %}<img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}" loading="lazy">{% else %}<div class="product-placeholder">🛍️</div>{% endif %}</a><div class="product-info"><small>{{ product.category.name if product.category else 'Daily essentials' }} · {{ product.unit }}</small><a href="{{ url_for('product_detail', product_id=product.id) }}"><h3>{{ product.name }}</h3></a><div class="product-price"><strong>{{ product.price|inr }}</strong></div><form method="post" action="{{ url_for('cart_add', product_id=product.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="quantity" value="1"><button class="add-btn" type="submit">＋ Add to basket</button></form></div></article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
   {% if location_verified and recommended_products and not search_query and not selected_category_id and not min_price and not max_price and not in_stock %}
   <section class="tb-products" style="padding-bottom:10px">
     <div class="tb-products-heading"><div><span class="eyebrow">PICKS FOR YOUR BASKET</span><h2>Recommended for you</h2><p>Based on your shopping and popular delivered items.</p></div></div>
