@@ -139,3 +139,16 @@ body{top:0!important}
 html.tb-app-launch .tb-splash-loader{display:none!important}
 
 /* Native operating-system PWA splash uses the manifest icon; no extra startup overlay. */
+
+
+/* Ensure the account/profile button remains visible in the mobile header. */
+@media(max-width:620px){
+  .site-header .nav-wrap{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:6px!important;width:calc(100% - 20px)!important}
+  .site-header .brand{flex:1 1 auto!important;min-width:0!important;overflow:hidden}
+  .site-header .brand-logo{width:104px!important;max-width:100%;height:auto!important;max-height:49px!important}
+  .site-header .nav-actions{display:flex!important;visibility:visible!important;opacity:1!important;flex:0 0 auto!important;min-width:max-content!important;margin-left:auto!important;gap:7px!important}
+  .site-header .nav-actions .auth-nav-btn{display:none!important}
+  .site-header .nav-actions .nav-icon{display:inline-flex!important;align-items:center;white-space:nowrap;padding:7px 8px!important;font-size:10px!important}
+  .site-header .nav-actions .tb-profile-icon{display:inline-grid!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:25!important;width:36px!important;height:36px!important;min-width:36px!important;flex:0 0 36px!important;margin:0!important}
+  .site-header .nav-actions .tb-profile-icon svg{display:block!important;width:21px!important;height:21px!important}
+}
