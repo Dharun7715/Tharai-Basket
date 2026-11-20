@@ -767,6 +767,27 @@ def create_app():
         flash('You have been logged out.', 'info')
         return redirect(url_for('index'))
 
+    @app.post('/combo/<int:combo_id>/add')
+    def combo_add_to_cart(combo_id):
+        combo = ComboOffer.query.filter_by(id=combo_id, active=True).first_or_404()
+        import json
+        try: ids = [int(x) for x in json.loads(combo.product_ids)]
+        except (ValueError, TypeError): abort(404)
+        products = Product.query.filter(Product.id.in_(ids), Product.active.is_(True), Product.stock > 0).all()
+        if len(products) != len(ids):
+            flash('Some combo products are unavailable. Please contact the store.', 'warning')
+            return redirect(url_for('index'))
+        cart = session.get('cart', {})
+        for product in products:
+            key = str(product.id)
+            cart[key] = min(int(cart.get(key, 0)) + 1, product.stock)
+        session['cart'] = cart
+        session['combo_offer_id'] = combo.id
+        session['combo_offer_price'] = str(combo.combo_price)
+        save_customer_cart_snapshot()
+        flash('Combo items added. Combo discount will be confirmed by the store before payment.', 'info')
+        return redirect(url_for('cart'))
+
     @app.post('/cart/add/<int:product_id>')
     def cart_add(product_id):
         product = Product.query.get_or_404(product_id)
@@ -1453,6 +1474,21 @@ def create_app():
         flash('VIP plans are activated by store approval. Please contact Tharai Basket.', 'info')
         return redirect(url_for('account_membership'))
 
+    @app.get('/admin/dynamic-pricing')
+    @admin_required
+    def admin_dynamic_pricing():
+        suggestions = []
+        for product in Product.query.filter_by(active=True).all():
+            sold = db.session.query(db.func.coalesce(db.func.sum(OrderItem.quantity),0)).join(
+                Order, Order.id == OrderItem.order_id).filter(OrderItem.product_id == product.id,
+                Order.status == 'Delivered', Order.created_at >= datetime.utcnow()-timedelta(days=30)).scalar() or 0
+            if product.stock <= 3: action, reason = 'Protect margin', 'Very low stock; avoid discounting and replenish.'
+            elif product.stock >= 25 and sold == 0: action, reason = 'Review a promotion', 'High stock and no delivered sales in 30 days.'
+            elif product.stock >= 15 and sold < 3: action, reason = 'Consider a combo', 'Slow movement with elevated stock.'
+            else: action, reason = 'Keep current price', 'Stock and recent sales look balanced.'
+            suggestions.append({'product':product,'sold':int(sold),'action':action,'reason':reason})
+        return render_template('admin/dynamic_pricing.html', suggestions=suggestions)
+
     @app.get('/admin/growth-tools')
     @admin_required
     def admin_growth_tools():
@@ -1796,6 +1832,21 @@ def create_app():
             return redirect(url_for('admin_delivery_partners'))
         partners = User.query.filter_by(role='delivery').order_by(User.name).all()
         return render_template('admin/delivery.html', partners=partners)
+
+    @app.get('/delivery/route')
+    @delivery_required
+    def delivery_route():
+        active = Order.query.filter_by(delivery_partner_id=current_user.id).filter(
+            Order.status.in_(['Ready for Pickup','Picked Up','Out for Delivery'])).order_by(Order.created_at.asc()).all()
+        addresses = [o.address_text.replace('\n', ', ') for o in active if o.address_text]
+        route_url = None
+        if addresses:
+            from urllib.parse import quote
+            destination = quote(addresses[-1], safe='')
+            origin = quote(addresses[0], safe='')
+            waypoints = quote('|'.join(addresses[1:-1]), safe='')
+            route_url = f'https://www.google.com/maps/dir/?api=1&origin={origin}&destination={destination}&travelmode=driving' + (f'&waypoints={waypoints}' if waypoints else '')
+        return render_template('delivery/route.html', orders=active, route_url=route_url)
 
     @app.get('/delivery')
     @delivery_required
