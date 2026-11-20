@@ -1,58 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{{ product.name }} | Tharai Basket
-<section class="section" id="reviews">
-  <div class="container">
-    <div style="display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;margin-bottom:22px">
-      <div>
-        <span class="eyebrow">CUSTOMER FEEDBACK</span>
-        <h2 style="margin:8px 0">Ratings & Reviews</h2>
-        {% if review_count %}
-        <p class="muted" style="margin:0"><strong style="color:#183b2a;font-size:1.25rem">{{ average_rating }}/5</strong> · {{ review_count }} review{{ '' if review_count == 1 else 's' }}</p>
-        {% else %}<p class="muted" style="margin:0">No reviews yet. Be the first customer to share feedback.</p>{% endif %}
-      </div>
-    </div>
-
-    {% if can_review %}
-    <form method="post" action="{{ url_for('product_review', product_id=product.id) }}" style="max-width:620px;background:#f5faf6;border:1px solid #dcebe0;border-radius:18px;padding:20px;margin-bottom:28px">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <h3 style="margin:0 0 14px">{{ 'Update your review' if existing_review else 'Share your experience' }}</h3>
-      <label for="review-rating" style="display:block;font-weight:700;margin-bottom:7px">Your rating</label>
-      <select id="review-rating" name="rating" required style="width:100%;padding:12px;border:1px solid #cbd9ce;border-radius:10px;margin-bottom:14px">
-        <option value="">Choose stars</option>
-        {% for n in range(5, 0, -1) %}
-        <option value="{{ n }}" {% if existing_review and existing_review.rating == n %}selected{% endif %}>{{ '★' * n }}{{ '☆' * (5-n) }} — {{ n }}/5</option>
-        {% endfor %}
-      </select>
-      <label for="review-comment" style="display:block;font-weight:700;margin-bottom:7px">Your review (optional)</label>
-      <textarea id="review-comment" name="comment" maxlength="1000" rows="4" placeholder="What did you think about this product?" style="width:100%;padding:12px;border:1px solid #cbd9ce;border-radius:10px;resize:vertical;margin-bottom:14px">{{ existing_review.comment if existing_review else '' }}</textarea>
-      <button class="btn" type="submit">{{ 'Update review' if existing_review else 'Submit review' }}</button>
-      <p class="muted tiny" style="margin:10px 0 0">Only customers with a delivered order can review this product. One review per customer; you can update it later.</p>
-    </form>
-    {% elif current_user.is_authenticated and current_user.role == 'customer' %}
-    <p class="muted" style="background:#f5faf6;padding:14px 16px;border-radius:12px;margin-bottom:24px">You can review this product after your order is marked as delivered.</p>
-    {% elif not current_user.is_authenticated %}
-    <p class="muted" style="margin-bottom:24px"><a href="{{ url_for('login', next=request.path) }}">Login</a> to review after receiving this product.</p>
-    {% endif %}
-
-    {% if reviews %}
-    <div style="display:grid;gap:14px;max-width:850px">
-      {% for review in reviews %}
-      <article style="border:1px solid #e3ebe5;border-radius:16px;padding:18px">
-        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <strong>{{ review.user.name }}</strong>
-          <span style="color:#d18a13;letter-spacing:2px" aria-label="{{ review.rating }} out of 5 stars">{{ '★' * review.rating }}{{ '☆' * (5-review.rating) }}</span>
-        </div>
-        {% if review.comment %}<p style="margin:10px 0 0;white-space:pre-line">{{ review.comment }}</p>{% endif %}
-        <p class="muted tiny" style="margin:10px 0 0">{{ review.created_at.strftime('%d %b %Y') }} · Verified purchase</p>
-      </article>
-      {% endfor %}
-    </div>
-    {% endif %}
-  </div>
-</section>
-
-<style>.product-gallery{height:100%;display:flex;flex-direction:column;gap:10px;padding:12px}.product-gallery-main{flex:1;min-height:0;overflow:hidden;border-radius:14px}.product-gallery-main img{width:100%;height:100%;object-fit:contain}.product-gallery-thumbs{display:flex;gap:8px;overflow:auto}.product-gallery-thumb{width:64px;height:64px;flex:0 0 64px;border:1px solid #dce8de;background:#fff;border-radius:9px;padding:4px;cursor:pointer}.product-gallery-thumb img{width:100%;height:100%;object-fit:cover;border-radius:5px}</style>
-{% endblock %}
+{% block title %}{{ product.name }} | Tharai Basket{% endblock %}
 {% block content %}
 <section class="section">
   <div class="container detail-grid">
@@ -71,20 +18,22 @@
       <div class="product-price detail-price"><strong>{{ product.price|inr }}</strong>{% if product.mrp > product.price %}<del>{{ product.mrp|inr }}</del><span class="discount-tag">{{ product.discount_percent }}% OFF</span>{% endif %}</div>
       <p>{{ product.unit }} · {% if product.stock > 0 %}<span class="stock-good">Available</span>{% else %}<span class="stock-out">Out of stock</span>{% endif %}</p>
       {% if current_user.is_authenticated and current_user.role == 'customer' %}
-      <form method="post" action="{{ url_for('wishlist_toggle', product_id=product.id) }}" style="margin:14px 0">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-outline" type="submit">{% if is_wishlisted %}♥ Remove from wishlist{% else %}♡ Add to wishlist{% endif %}</button>
-      </form>
-      {% elif not current_user.is_authenticated %}
-      <p class="muted tiny"><a href="{{ url_for('login') }}">Login</a> to save this product to your wishlist.</p>
-      {% endif %}
-      <form method="post" action="{{ url_for('cart_add', product_id=product.id) }}" class="add-detail">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}">
-        <button class="btn" {% if product.stock <= 0 %}disabled{% endif %}>Add to basket</button>
-      </form>
+      <form method="post" action="{{ url_for('wishlist_toggle', product_id=product.id) }}" style="margin:14px 0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline" type="submit">{% if is_wishlisted %}♥ Remove from wishlist{% else %}♡ Add to wishlist{% endif %}</button></form>
+      {% elif not current_user.is_authenticated %}<p class="muted tiny"><a href="{{ url_for('login') }}">Login</a> to save this product.</p>{% endif %}
+      <form method="post" action="{{ url_for('cart_add', product_id=product.id) }}" class="add-detail"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}"><button class="btn" {% if product.stock <= 0 %}disabled{% endif %}>Add to basket</button></form>
       <p class="muted tiny">Availability is confirmed before your order is prepared.</p>
     </div>
   </div>
 </section>
+<section class="section" id="reviews"><div class="container">
+  <span class="eyebrow">CUSTOMER FEEDBACK</span><h2>Ratings & Reviews</h2>
+  {% if review_count %}<p class="muted"><strong>{{ average_rating }}/5</strong> · {{ review_count }} review{{ '' if review_count == 1 else 's' }}</p>{% else %}<p class="muted">No reviews yet.</p>{% endif %}
+  {% if can_review %}
+  <form method="post" action="{{ url_for('product_review', product_id=product.id) }}" class="form-card" style="max-width:620px;margin:20px 0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Your rating<select name="rating" required>{% for n in range(5,0,-1) %}<option value="{{ n }}" {% if existing_review and existing_review.rating == n %}selected{% endif %}>{{ n }}/5</option>{% endfor %}</select></label><label>Your review<textarea name="comment" maxlength="1000" rows="4">{{ existing_review.comment if existing_review else '' }}</textarea></label><button class="btn">Submit review</button></form>
+  {% elif not current_user.is_authenticated %}<p class="muted"><a href="{{ url_for('login', next=request.path) }}">Login</a> to review after receiving this product.</p>{% endif %}
+  {% for review in reviews %}<article class="order-card"><div><strong>{{ review.user.name }}</strong><p>{{ '★' * review.rating }}{{ '☆' * (5-review.rating) }}</p><p>{{ review.comment }}</p><small>{{ review.created_at.strftime('%d %b %Y') }} · Verified purchase</small></div></article>{% endfor %}
+</div></section>
+<style>
+.product-gallery{height:100%;display:flex;flex-direction:column;gap:10px;padding:12px}.product-gallery-main{flex:1;min-height:0;overflow:hidden;border-radius:14px}.product-gallery-main img{width:100%;height:100%;object-fit:contain}.product-gallery-thumbs{display:flex;gap:8px;overflow:auto}.product-gallery-thumb{width:64px;height:64px;flex:0 0 64px;border:1px solid #dce8de;background:#fff;border-radius:9px;padding:4px;cursor:pointer}.product-gallery-thumb img{width:100%;height:100%;object-fit:cover;border-radius:5px}
+</style>
 {% endblock %}
