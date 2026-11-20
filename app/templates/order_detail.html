@@ -49,6 +49,23 @@
       <p class="muted tiny">Order status refreshes automatically every 25 seconds while your order is in progress. This is live status tracking, not a GPS map of the delivery rider.</p>
     </div>
 
+    {% if current_user.role == 'customer' and order.user_id == current_user.id and order.status in ['Pending', 'Confirmed'] and order.delivery_partner_id is none and order.payment_method == 'COD' and order.payment_status == 'Pending' %}
+    <div class="form-card" style="margin:16px 0">
+      <h3>Forgot something?</h3>
+      <p class="muted tiny">Add available products while your COD order is still awaiting store processing.</p>
+      <form method="post" action="{{ url_for('order_add_item', order_id=order.id) }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label style="flex:1;min-width:190px">Product
+          <select name="product_id" required style="width:100%;padding:11px;border:1px solid #dce7dd;border-radius:9px">
+            {% for product in addable_products %}<option value="{{ product.id }}">{{ product.name }} · {{ product.price|inr }} · {{ product.stock }} left</option>{% endfor %}
+          </select>
+        </label>
+        <label>Qty <input type="number" name="quantity" min="1" max="10" value="1" required style="width:75px;padding:11px;border:1px solid #dce7dd;border-radius:9px"></label>
+        <button class="btn btn-small" type="submit" {% if not addable_products %}disabled{% endif %}>＋ Add item</button>
+      </form>
+      {% if not addable_products %}<p class="muted tiny">No additional products are currently in stock.</p>{% endif %}
+    </div>
+    {% endif %}
     <div class="summary-card">
       <h3>Items</h3>
       {% for item in order.items %}
