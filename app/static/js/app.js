@@ -127,3 +127,18 @@ document.addEventListener('DOMContentLoaded', () => {
     closeHelp();
   });
 });
+
+
+// Branded splash screen for installed Tharai Basket PWA launches.
+document.addEventListener('DOMContentLoaded', () => {
+  const root = document.documentElement;
+  const splash = document.getElementById('tb-app-splash');
+  if (!splash || !root.classList.contains('tb-app-launch')) return;
+  window.setTimeout(() => {
+    root.classList.add('tb-splash-done');
+    window.setTimeout(() => {
+      splash.remove();
+      root.classList.remove('tb-app-launch', 'tb-splash-done');
+    }, 420);
+  }, 1450);
+});

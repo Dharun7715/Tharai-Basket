@@ -53,3 +53,13 @@ html,body{max-width:100%;overflow-x:clip}
 .install-help-steps b{color:#14532d}
 body.install-help-open{overflow:hidden}
 @media(max-width:620px){.nav-actions{gap:7px}.install-app-btn{padding:8px 10px;font-size:11px}.nav-icon{padding:8px 10px;font-size:11px}}
+
+/* Branded PWA launch screen: only shown when opened as an installed app */
+.tb-app-splash{display:none}
+html.tb-app-launch .tb-app-splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:28px;background:#fff;opacity:1;visibility:visible;transition:opacity .35s ease,visibility .35s ease}
+html.tb-app-launch .tb-app-splash img{display:block;width:min(82vw,430px);height:auto;max-height:58vh;object-fit:contain}
+.tb-splash-loader{width:54px;height:4px;border-radius:99px;background:#e8f1e9;overflow:hidden;position:relative}
+.tb-splash-loader:after{content:"";position:absolute;inset:0 auto 0 0;width:38%;border-radius:99px;background:#176b39;animation:tb-splash-progress 1s ease-in-out infinite alternate}
+html.tb-app-launch.tb-splash-done .tb-app-splash{opacity:0;visibility:hidden;pointer-events:none}
+@keyframes tb-splash-progress{from{transform:translateX(0)}to{transform:translateX(165%)}} 
+@media(prefers-reduced-motion:reduce){.tb-splash-loader:after{animation:none}}
