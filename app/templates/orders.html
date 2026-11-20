@@ -16,6 +16,7 @@
       <strong>{{ order.total|inr }}</strong>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <a class="btn btn-small btn-outline" href="{{ url_for('order_detail', order_id=order.id) }}">View order</a>
+        <a class="btn btn-small btn-outline" href="{{ url_for('order_invoice', order_id=order.id) }}">Invoice PDF</a>
         <form method="post" action="{{ url_for('buy_again', order_id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-small" type="submit">Buy again</button>
