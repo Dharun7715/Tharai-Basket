@@ -198,6 +198,15 @@ def create_app():
 
         __table_args__ = (db.UniqueConstraint('user_id', 'referral_id', name='uq_reward_user_referral'),)
 
+    class RewardRedemption(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, unique=True)
+        points = db.Column(db.Integer, nullable=False)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        user = db.relationship('User')
+        order = db.relationship('Order')
+
     class Supplier(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         name = db.Column(db.String(150), nullable=False)
@@ -454,7 +463,9 @@ def create_app():
                     db.session.commit()
                     break
         reward_transactions = RewardTransaction.query.filter_by(user_id=current_user.id).order_by(RewardTransaction.created_at.desc()).all()
-        reward_points = sum(item.points for item in reward_transactions)
+        reward_credits = sum(item.points for item in reward_transactions)
+        reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
+        reward_points = max(0, reward_credits - int(reward_spent or 0))
         referral_count = Referral.query.filter_by(referrer_id=current_user.id).count()
         return render_template('account.html', addresses=addresses, referral_code=referral_code,
                                reward_transactions=reward_transactions, reward_points=reward_points,
@@ -677,7 +688,17 @@ def create_app():
         rows, subtotal = cart_data()
         threshold = app.config['FREE_DELIVERY_THRESHOLD']
         fee = Decimal('0') if subtotal >= threshold else app.config['DELIVERY_FEE']
-        coupon, discount = active_cart_coupon(subtotal)
+        coupon, coupon_discount = active_cart_coupon(subtotal)
+        reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
+        reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
+        available_reward_points = max(0, reward_credits - int(reward_spent or 0))
+        use_rewards = request.args.get('use_rewards') == '1'
+        if request.args.get('use_rewards') in ['0', '1']:
+            session['use_rewards'] = use_rewards
+        else:
+            use_rewards = bool(session.get('use_rewards'))
+        reward_discount = min(Decimal(available_reward_points), subtotal) if use_rewards else Decimal('0.00')
+        discount = min(subtotal, coupon_discount + reward_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
         return render_template('cart.html', rows=rows, subtotal=subtotal, delivery_fee=fee,
                                total=total, threshold=threshold, coupon=coupon, discount=discount)
@@ -794,8 +815,13 @@ def create_app():
                     if row['product'].stock < row['quantity']:
                         flash(f"Insufficient stock for {row['product'].name}.", 'danger')
                         return redirect(url_for('cart'))
-                # Revalidate the coupon at order placement; never trust browser totals.
-                coupon, discount = active_cart_coupon(subtotal)
+                # Revalidate coupons and reward balance on the server; never trust browser totals.
+                coupon, coupon_discount = active_cart_coupon(subtotal)
+                reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
+                reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
+                available_reward_points = max(0, reward_credits - int(reward_spent or 0))
+                reward_discount = min(Decimal(available_reward_points), subtotal) if session.get('use_rewards') else Decimal('0.00')
+                discount = min(subtotal, coupon_discount + reward_discount)
                 total = max(Decimal('0.00'), subtotal + fee - discount)
                 order = Order(order_number=f"TB{datetime.utcnow():%y%m%d%H%M%S}{current_user.id}", user_id=current_user.id,
                               customer_name=name, phone=phone, address_text=address, subtotal=subtotal,
@@ -810,15 +836,21 @@ def create_app():
                     db.session.add(OrderItem(order_id=order.id, product_id=p.id, product_name=p.name,
                                              unit=p.unit, quantity=row['quantity'], unit_price=p.price))
                     p.stock -= row['quantity']
+                db.session.flush()
+                if reward_discount > 0:
+                    points_used = int(reward_discount)
+                    db.session.add(RewardRedemption(user_id=current_user.id, order_id=order.id, points=points_used))
                 db.session.commit()
                 session['cart'] = {}
                 session.pop('coupon_code', None)
+                session.pop('use_rewards', None)
                 flash(f'Order {order.order_number} placed successfully. UPI payment will be verified by our team.' if payment == 'UPI' else f'Order {order.order_number} placed successfully. Our team will confirm it shortly.', 'success')
                 return redirect(url_for('my_orders'))
         saved_addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.id.desc()).all()
         return render_template('checkout.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=total,
-                               coupon=coupon, discount=discount, saved_addresses=saved_addresses,
-                               upi_qr_data=upi_qr_data, upi_id='8838145515@sbi')
+                               coupon=coupon, discount=discount, reward_discount=reward_discount,
+                               available_reward_points=available_reward_points, use_rewards=use_rewards,
+                               saved_addresses=saved_addresses, upi_qr_data=upi_qr_data, upi_id='8838145515@sbi')
     @app.post('/order/<int:order_id>/buy-again')
     @login_required
     def buy_again(order_id):
@@ -1085,7 +1117,7 @@ def create_app():
         if RewardTransaction.query.filter_by(user_id=referral.referrer_id, referral_id=referral.id).first():
             return
         db.session.add(RewardTransaction(user_id=referral.referrer_id, referral_id=referral.id,
-                                          points=100, description='Referral reward for a friend’s first delivered order'))
+                                          points=50, description='Referral reward for a friend’s first delivered order'))
         db.session.add(RewardTransaction(user_id=referral.referred_id, referral_id=referral.id,
                                           points=100, description='Welcome reward for your first delivered order'))
 
