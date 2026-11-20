@@ -880,7 +880,17 @@ def create_app():
             return redirect(url_for('cart'))
         threshold = app.config['FREE_DELIVERY_THRESHOLD']
         fee = Decimal('0') if subtotal >= threshold else app.config['DELIVERY_FEE']
-        coupon, discount = active_cart_coupon(subtotal)
+        coupon, coupon_discount = active_cart_coupon(subtotal)
+        reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
+        reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
+        available_reward_points = max(0, reward_credits - int(reward_spent or 0))
+        use_rewards = request.args.get('use_rewards') == '1'
+        if request.args.get('use_rewards') in ['0', '1']:
+            session['use_rewards'] = use_rewards
+        else:
+            use_rewards = bool(session.get('use_rewards'))
+        reward_discount = min(Decimal(available_reward_points), subtotal) if use_rewards else Decimal('0.00')
+        discount = min(subtotal, coupon_discount + reward_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
         local_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
         delivery_date = request.values.get('delivery_date') or local_today.strftime('%Y-%m-%d')
