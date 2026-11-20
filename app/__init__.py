@@ -449,6 +449,14 @@ def create_app():
         if sort not in sort_options:
             sort = 'recommended'
         products = products_query.order_by(*sort_options[sort]).all() if location_verified else []
+        recently_viewed = []
+        if location_verified and not search_query and not category_id and not min_price and not max_price and not in_stock:
+            viewed_ids = session.get('recently_viewed_products', [])
+            if viewed_ids:
+                viewed_map = {p.id: p for p in Product.query.filter(
+                    Product.id.in_(viewed_ids), Product.active.is_(True), Product.stock > 0
+                ).all()}
+                recently_viewed = [viewed_map[pid] for pid in viewed_ids if pid in viewed_map][:6]
         wishlist_product_ids = set()
         if current_user.is_authenticated and current_user.role == 'customer':
             wishlist_product_ids = {item.product_id for item in WishlistItem.query.filter_by(user_id=current_user.id).all()}
@@ -459,13 +467,16 @@ def create_app():
                                wishlist_product_ids=wishlist_product_ids,
                                search_query=search_query, selected_category_id=category_id,
                                min_price=min_price, max_price=max_price, sort=sort,
-                               in_stock=in_stock, filters_active=filters_active)
+                               in_stock=in_stock, filters_active=filters_active, recently_viewed=recently_viewed)
 
     @app.get('/product/<int:product_id>')
     def product_detail(product_id):
         product = Product.query.get_or_404(product_id)
         if not product.active:
             abort(404)
+        viewed_ids = session.get('recently_viewed_products', [])
+        viewed_ids = [int(pid) for pid in viewed_ids if str(pid).isdigit() and int(pid) != product.id]
+        session['recently_viewed_products'] = ([product.id] + viewed_ids)[:8]
         is_wishlisted = False
         if current_user.is_authenticated and current_user.role == 'customer':
             is_wishlisted = WishlistItem.query.filter_by(user_id=current_user.id, product_id=product.id).first() is not None
