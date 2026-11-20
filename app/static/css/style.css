@@ -165,3 +165,16 @@ html.tb-app-launch .tb-splash-loader{display:none!important}
  .tb-view-cart-count{font-size:12px}
  .tb-view-cart-inner a{padding:9px 13px;font-size:12px}
 }
+
+
+/* Four-item mobile navigation with the basket bar beneath it. */
+@media(max-width:620px){
+ .tb-bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr));height:62px}
+ .tb-bottom-nav.has-cart-bar{bottom:58px}
+ .tb-view-cart-bar{left:0;right:0;bottom:0;transform:none;width:100%;height:58px;display:flex;align-items:center;padding:7px 14px calc(7px + env(safe-area-inset-bottom));border-radius:0;box-shadow:0 -4px 18px rgba(12,55,26,.18)}
+ .tb-view-cart-inner{width:100%;max-width:560px;margin:0 auto}
+ body:has(.tb-view-cart-bar){padding-bottom:calc(130px + env(safe-area-inset-bottom))}
+ body:not(:has(.tb-view-cart-bar)){padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+ .tb-bottom-nav a{font-size:9px}
+ .tb-bottom-nav a svg{width:20px;height:20px}
+}
