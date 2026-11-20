@@ -770,11 +770,44 @@ def create_app():
     @admin_required
     def admin_dashboard():
         today = datetime.utcnow().date()
-        orders = Order.query.order_by(Order.created_at.desc()).limit(8).all()
+        month_start = today.replace(day=1)
+        week_start = datetime.combine(today - __import__('datetime').timedelta(days=6), datetime.min.time())
+        delivered_query = Order.query.filter_by(status='Delivered')
         total_sales = db.session.query(db.func.coalesce(db.func.sum(Order.total), 0)).filter(Order.status == 'Delivered').scalar()
-        return render_template('admin/dashboard.html', order_count=Order.query.count(), customer_count=User.query.filter_by(role='customer').count(),
-                               product_count=Product.query.count(), pending_count=Order.query.filter(Order.status.in_(['Pending','Confirmed','Purchase Required','Purchased','Packing','Ready for Pickup','Out for Delivery'])).count(),
-                               total_sales=total_sales, orders=orders, low_stock=Product.query.filter(Product.stock <= 5, Product.active.is_(True)).count())
+        monthly_revenue = db.session.query(db.func.coalesce(db.func.sum(Order.total), 0)).filter(
+            Order.status == 'Delivered', Order.created_at >= datetime.combine(month_start, datetime.min.time())).scalar()
+        today_revenue = db.session.query(db.func.coalesce(db.func.sum(Order.total), 0)).filter(
+            Order.status == 'Delivered', Order.created_at >= datetime.combine(today, datetime.min.time())).scalar()
+        week_orders = Order.query.filter(Order.created_at >= week_start).all()
+        daily_sales = []
+        for offset in range(6, -1, -1):
+            day = today - __import__('datetime').timedelta(days=offset)
+            amount = sum((Decimal(str(order.total or 0)) for order in week_orders
+                          if order.status == 'Delivered' and order.created_at.date() == day), Decimal('0.00'))
+            daily_sales.append({'label': day.strftime('%a'), 'date': day.strftime('%d %b'), 'amount': float(amount)})
+        max_daily_sales = max([item['amount'] for item in daily_sales] or [0]) or 1
+        top_product_totals = {}
+        for order in delivered_query.order_by(Order.created_at.desc()).limit(500).all():
+            for item in order.items:
+                key = item.product_name
+                if key not in top_product_totals:
+                    top_product_totals[key] = {'name': key, 'quantity': 0, 'revenue': Decimal('0.00')}
+                top_product_totals[key]['quantity'] += int(item.quantity or 0)
+                top_product_totals[key]['revenue'] += Decimal(str(item.unit_price or 0)) * int(item.quantity or 0)
+        top_products = sorted(top_product_totals.values(), key=lambda item: item['quantity'], reverse=True)[:5]
+        status_rows = db.session.query(Order.status, db.func.count(Order.id)).group_by(Order.status).all()
+        status_breakdown = [{'label': label, 'count': count} for label, count in status_rows]
+        payment_rows = db.session.query(Order.payment_method, db.func.count(Order.id)).group_by(Order.payment_method).all()
+        payment_breakdown = [{'label': label or 'Other', 'count': count} for label, count in payment_rows]
+        recent_orders = Order.query.order_by(Order.created_at.desc()).limit(10).all()
+        return render_template('admin/dashboard.html',
+            order_count=Order.query.count(), customer_count=User.query.filter_by(role='customer').count(),
+            product_count=Product.query.filter_by(active=True).count(),
+            pending_count=Order.query.filter(Order.status.in_(['Pending','Confirmed','Purchase Required','Purchased','Packing','Ready for Pickup','Out for Delivery'])).count(),
+            total_sales=total_sales, monthly_revenue=monthly_revenue, today_revenue=today_revenue,
+            delivered_count=delivered_query.count(), low_stock=Product.query.filter(Product.stock <= 5, Product.active.is_(True)).count(),
+            daily_sales=daily_sales, max_daily_sales=max_daily_sales, top_products=top_products,
+            status_breakdown=status_breakdown, payment_breakdown=payment_breakdown, orders=recent_orders)
 
     @app.route('/admin/coupons', methods=['GET', 'POST'])
     @admin_required
