@@ -1035,7 +1035,8 @@ def create_app():
         total = max(Decimal('0.00'), subtotal + fee - discount)
         return render_template('cart.html', rows=rows, subtotal=subtotal, delivery_fee=fee,
                                total=total, threshold=threshold, coupon=coupon, discount=discount,
-                               combo=active_combo, combo_discount=combo_discount)
+                               coupon_discount=coupon_discount, reward_discount=reward_discount,
+                               combo=active_combo, combo_discount=combo_discount, membership=membership)
 
     @app.get('/api/delivery-check')
     def delivery_check():
