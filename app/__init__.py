@@ -318,6 +318,15 @@ def create_app():
         user = db.relationship('User')
         order = db.relationship('Order')
 
+    class LoyaltyPoint(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, unique=True)
+        points = db.Column(db.Integer, nullable=False)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+        user = db.relationship('User')
+        order = db.relationship('Order')
+
     class Supplier(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         name = db.Column(db.String(150), nullable=False)
@@ -503,6 +512,15 @@ def create_app():
         db.session.add(Notification(user_id=order.user_id, order_id=order.id,
                                     title=title, message=message, category=category))
 
+    def award_order_loyalty_points(order):
+        if order.status != 'Delivered' or LoyaltyPoint.query.filter_by(order_id=order.id).first():
+            return
+        points = int(Decimal(str(order.subtotal or 0)) // Decimal('100'))
+        if points > 0:
+            db.session.add(LoyaltyPoint(user_id=order.user_id, order_id=order.id, points=points))
+            create_customer_notification(order, 'Loyalty points earned',
+                f'You earned {points} Tharai points for this delivered order. 100 points = ₹100 reward value at checkout.', 'rewards')
+
     def wallet_balance(user_id):
         credits = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter_by(user_id=user_id, kind='Credit').scalar()
         debits = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter_by(user_id=user_id, kind='Debit').scalar()
@@ -517,8 +535,12 @@ def create_app():
         subscriptions = GrocerySubscription.query.filter_by(user_id=current_user.id).order_by(GrocerySubscription.next_date.asc()).all()
         transactions = WalletTransaction.query.filter_by(user_id=current_user.id).order_by(WalletTransaction.created_at.desc()).limit(30).all()
         today_date = datetime.now(ZoneInfo('Asia/Kolkata')).date().isoformat()
+        loyalty_points = sum(row.points for row in LoyaltyPoint.query.filter_by(user_id=current_user.id).all())
+        referral_points = sum(row.points for row in RewardTransaction.query.filter_by(user_id=current_user.id).all())
+        redeemed_points = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar() or 0
         return render_template('account_tools.html', items=items, subscriptions=subscriptions, today_date=today_date,
-                               wallet_balance=wallet_balance(current_user.id), transactions=transactions)
+                               wallet_balance=wallet_balance(current_user.id), transactions=transactions,
+                               loyalty_points=max(0, loyalty_points + referral_points - int(redeemed_points)))
 
     @app.post('/account/shopping-list/add/<int:product_id>')
     @login_required
@@ -1199,6 +1221,7 @@ def create_app():
         coupon, coupon_discount = active_cart_coupon(subtotal)
         active_combo, combo_discount = active_cart_combo(rows)
         reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
+        reward_credits += sum(item.points for item in LoyaltyPoint.query.filter_by(user_id=current_user.id).all())
         reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
         available_reward_points = max(0, reward_credits - int(reward_spent or 0))
         reward_discount = min(Decimal(available_reward_points), subtotal) if session.get('use_rewards') else Decimal('0.00')
@@ -1732,6 +1755,11 @@ def create_app():
             WalletTransaction.kind == 'Credit',
             WalletTransaction.reference.like('ORDER-CASHBACK-%')
         ).scalar() or 0
+        delivered_items = OrderItem.query.join(Order).filter(Order.status == 'Delivered').all()
+        gross_profit = sum(((Decimal(str(item.unit_price or 0)) - Decimal(str(item.purchase_cost or 0))) * int(item.quantity or 0)
+                            for item in delivered_items), Decimal('0.00'))
+        recorded_expenses = db.session.query(db.func.coalesce(db.func.sum(StoreExpense.amount), 0)).scalar() or 0
+        estimated_net = gross_profit - Decimal(str(recorded_expenses or 0))
         return render_template('admin/dashboard.html',
             order_count=Order.query.count(), customer_count=User.query.filter_by(role='customer').count(),
             product_count=Product.query.filter_by(active=True).count(),
@@ -1742,7 +1770,8 @@ def create_app():
             status_breakdown=status_breakdown, payment_breakdown=payment_breakdown, orders=recent_orders,
             low_stock_products=low_stock_products, recent_reviews=recent_reviews,
             review_count=review_count, average_review_rating=round(float(average_review_rating), 1),
-            wallet_cashback_total=wallet_cashback_total)
+            wallet_cashback_total=wallet_cashback_total, gross_profit=gross_profit,
+            recorded_expenses=recorded_expenses, estimated_net=estimated_net)
 
     @app.route('/admin/coupons', methods=['GET', 'POST'])
     @admin_required
@@ -2083,6 +2112,42 @@ def create_app():
             suggestions.append({'product':product,'sold':int(sold),'action':action,'reason':reason})
         return render_template('admin/dynamic_pricing.html', suggestions=suggestions)
 
+    @app.route('/admin/notifications/broadcast', methods=['GET', 'POST'])
+    @admin_required
+    def admin_notification_broadcast():
+        if request.method == 'POST':
+            title = request.form.get('title', '').strip()[:140]
+            message = request.form.get('message', '').strip()[:500]
+            audience = request.form.get('audience', 'all')
+            if not title or not message or audience not in ('all', 'recent'):
+                flash('Enter a title, message and valid audience.', 'warning')
+                return redirect(url_for('admin_notification_broadcast'))
+            customers = User.query.filter_by(role='customer', active=True).all()
+            if audience == 'recent':
+                cutoff = datetime.utcnow() - timedelta(days=30)
+                recent_ids = {row[0] for row in db.session.query(Order.user_id).filter(Order.created_at >= cutoff).distinct().all()}
+                customers = [customer for customer in customers if customer.id in recent_ids]
+            db.session.add_all([Notification(user_id=customer.id, title=title, message=message,
+                category='announcement') for customer in customers])
+            db.session.commit()
+            flash(f'Announcement sent to {len(customers)} customer account(s).', 'success')
+            return redirect(url_for('admin_notification_broadcast'))
+        return render_template('admin/notifications_broadcast.html')
+
+    @app.get('/admin/inventory/reorder-suggestions')
+    @admin_required
+    def admin_reorder_suggestions():
+        low_products = Product.query.filter(Product.active.is_(True), Product.stock <= 10).order_by(Product.stock.asc()).all()
+        suggestions = []
+        for product in low_products:
+            matches = SupplierProduct.query.filter(
+                db.func.lower(SupplierProduct.product_name) == product.name.lower(),
+                SupplierProduct.available.is_(True)).all()
+            for item in matches:
+                suggestions.append({'product': product, 'supplier_item': item,
+                    'suggested_qty': max(int(item.min_qty or 1), 10 - int(product.stock or 0))})
+        return render_template('admin/reorder_suggestions.html', suggestions=suggestions, low_products=low_products)
+
     @app.get('/admin/growth-tools')
     @admin_required
     def admin_growth_tools():
@@ -2386,6 +2451,8 @@ def create_app():
             if order.delivery_partner_id and order.delivery_partner_id != previous_partner_id:
                 create_customer_notification(order, 'Delivery partner assigned', 'A delivery partner has been assigned to your order.')
             award_referral_points(order)
+            if status == 'Delivered' and previous_status != 'Delivered':
+                award_order_loyalty_points(order)
             db.session.commit()
             flash('Order updated.', 'success')
             return redirect(url_for('admin_orders'))
@@ -2465,6 +2532,15 @@ def create_app():
         flash('Purchase list generated. Add supplier and actual costs after purchasing.', 'success')
         return redirect(url_for('admin_purchases'))
 
+    @app.post('/admin/delivery-partners/<int:partner_id>/toggle')
+    @admin_required
+    def admin_delivery_partner_toggle(partner_id):
+        partner = User.query.filter_by(id=partner_id, role='delivery').first_or_404()
+        partner.active = not bool(partner.active)
+        db.session.commit()
+        flash(f'{partner.name} account is now {"active" if partner.active else "disabled"}.', 'success')
+        return redirect(url_for('admin_delivery_partners'))
+
     @app.route('/admin/delivery-partners', methods=['GET', 'POST'])
     @admin_required
     def admin_delivery_partners():
@@ -2538,6 +2614,8 @@ def create_app():
         if status == 'Delivered' and not DeliveryEarning.query.filter_by(order_id=order.id).first():
             db.session.add(DeliveryEarning(partner_id=current_user.id, order_id=order.id, amount=Decimal('25.00')))
         award_referral_points(order)
+        if status == 'Delivered':
+            award_order_loyalty_points(order)
         db.session.commit()
         flash('Delivery status updated.', 'success')
         return redirect(url_for('delivery_dashboard'))
