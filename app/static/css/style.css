@@ -180,3 +180,17 @@ html.tb-app-launch .tb-splash-loader{display:none!important}
  .tb-bottom-nav a{font-size:9px}
  .tb-bottom-nav a svg{width:20px;height:20px}
 }
+
+
+/* Premium gold glow for the VIP crown in mobile navigation. */
+@media(max-width:620px){
+ .tb-bottom-nav a[aria-label="VIP"]{color:#b8860b;font-weight:800;text-shadow:0 0 8px rgba(255,196,48,.38)}
+ .tb-bottom-nav a[aria-label="VIP"] svg{stroke:#d49b16;fill:rgba(255,195,48,.18);filter:drop-shadow(0 0 3px rgba(255,190,35,.78)) drop-shadow(0 0 7px rgba(255,190,35,.42));animation:tb-vip-gold-glow 2s ease-in-out infinite}
+ .tb-bottom-nav a[aria-label="VIP"].is-active{color:#a87500}
+ .tb-bottom-nav a[aria-label="VIP"].is-active svg{stroke:#c58b08;fill:rgba(255,190,35,.3)}
+}
+@keyframes tb-vip-gold-glow{
+ 0%,100%{filter:drop-shadow(0 0 2px rgba(255,190,35,.55)) drop-shadow(0 0 5px rgba(255,190,35,.25))}
+ 50%{filter:drop-shadow(0 0 4px rgba(255,190,35,.95)) drop-shadow(0 0 10px rgba(255,190,35,.65))}
+}
+@media(prefers-reduced-motion:reduce){.tb-bottom-nav a[aria-label="VIP"] svg{animation:none}}
