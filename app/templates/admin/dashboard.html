@@ -20,6 +20,13 @@
 <div class="an-stat-strip">
  <div><span>Customers</span><strong>{{ customer_count }}</strong></div><div><span>Active products</span><strong>{{ product_count }}</strong></div><div><span>Pending workflow</span><strong>{{ pending_count }}</strong></div><div><span>Low stock alerts</span><strong class="{% if low_stock %}an-warning{% endif %}">{{ low_stock }}</strong></div>
 </div>
+<div class="an-stat-strip an-review-summary">
+ <div><span>Customer reviews</span><strong>{{ review_count }}</strong></div>
+ <div><span>Average rating</span><strong>{% if review_count %}{{ average_review_rating }}/5 ★{% else %}—{% endif %}</strong></div>
+ <div><span>Wallet cashback</span><strong>1%</strong></div>
+ <div><span>Order tracking</span><strong>Live status</strong></div>
+</div>
+
 
 <div class="an-main-grid">
  <section class="an-panel">
@@ -48,6 +55,19 @@
 <section class="an-panel an-recent-panel">
  <div class="an-panel-head"><div><h2>Recent orders</h2><p>Latest customer activity</p></div><a href="{{ url_for('admin_orders') }}">View all →</a></div>
  <div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Total</th><th>Status</th></tr></thead><tbody>{% for order in orders %}<tr><td><strong>{{ order.order_number }}</strong></td><td>{{ order.customer_name }}</td><td>{{ order.created_at.strftime('%d %b, %I:%M %p') }}</td><td>{{ order.total|inr }}</td><td><span class="status-pill">{{ order.status }}</span></td></tr>{% else %}<tr><td colspan="5">No orders yet.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+<section class="an-panel an-recent-panel">
+ <div class="an-panel-head"><div><h2>Latest customer reviews</h2><p>Verified-purchase feedback from delivered orders</p></div><span class="an-tag">{{ review_count }} REVIEWS</span></div>
+ {% if recent_reviews %}
+ <div class="an-products">
+ {% for review in recent_reviews %}
+  <div class="an-product-row">
+   <div class="an-product-rank">★</div>
+   <div class="an-product-info"><strong>{{ review.product.name if review.product else 'Product' }} · {{ review.rating }}/5</strong><small>{{ review.user.name if review.user else 'Customer' }} · {{ review.created_at.strftime('%d %b %Y') }}</small>{% if review.comment %}<small>{{ review.comment[:180] }}</small>{% endif %}</div>
+  </div>
+ {% endfor %}
+ </div>
+ {% else %}<div class="an-empty">Customer reviews will appear here after delivered orders.</div>{% endif %}
 </section>
 <style>
 .an-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:23px}.an-head h1{font:800 clamp(28px,3vw,38px) 'Manrope';letter-spacing:-1.3px;margin:6px 0}.an-head h1 em{font-style:normal;color:#25804a}.an-head p{font-size:11px;color:#7b897e;margin:0}.an-add-btn{background:#155b34;color:#fff;text-decoration:none;padding:11px 15px;border-radius:9px;font-size:11px;font-weight:800;white-space:nowrap}
