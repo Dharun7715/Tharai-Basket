@@ -53,3 +53,77 @@ document.addEventListener('DOMContentLoaded', () => {
     location.reload();
   });
 });
+
+
+// Progressive Web App installation (Android/desktop prompt + iPhone/iPad guide).
+document.addEventListener('DOMContentLoaded', () => {
+  let deferredInstallPrompt = null;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (isStandalone()) return;
+
+  const actions = document.querySelector('.nav-actions');
+  if (!actions) return;
+
+  const installButton = document.createElement('button');
+  installButton.type = 'button';
+  installButton.className = 'install-app-btn';
+  installButton.textContent = 'Install App';
+  installButton.setAttribute('aria-label', 'Install Tharai Basket app');
+  installButton.hidden = true;
+  actions.insertBefore(installButton, actions.firstChild);
+
+  const help = document.createElement('div');
+  help.className = 'install-help-backdrop';
+  help.hidden = true;
+  help.innerHTML = `
+    <section class="install-help-card" role="dialog" aria-modal="true" aria-labelledby="install-help-title">
+      <button type="button" class="install-help-close" aria-label="Close">×</button>
+      <div class="install-help-icon">🛒</div>
+      <h2 id="install-help-title">Install Tharai Basket</h2>
+      <p class="install-help-intro">Add Tharai Basket to your home screen for quick access like an app.</p>
+      <div class="install-help-steps"></div>
+      <button type="button" class="btn btn-full install-help-done">Got it</button>
+    </section>`;
+  document.body.appendChild(help);
+  const steps = help.querySelector('.install-help-steps');
+
+  function showHelp() {
+    if (isIOS) {
+      steps.innerHTML = '<p><b>1.</b> Open this website in <b>Safari</b>.</p><p><b>2.</b> Tap the <b>Share</b> icon at the bottom.</p><p><b>3.</b> Choose <b>Add to Home Screen</b>, then tap <b>Add</b>.</p>';
+    } else {
+      steps.innerHTML = '<p><b>1.</b> Open the browser menu (⋮).</p><p><b>2.</b> Tap <b>Install app</b> or <b>Add to Home screen</b>.</p><p><b>3.</b> Confirm the installation.</p>';
+    }
+    help.hidden = false;
+    document.body.classList.add('install-help-open');
+  }
+  function closeHelp() {
+    help.hidden = true;
+    document.body.classList.remove('install-help-open');
+  }
+  help.querySelector('.install-help-close').addEventListener('click', closeHelp);
+  help.querySelector('.install-help-done').addEventListener('click', closeHelp);
+  help.addEventListener('click', event => { if (event.target === help) closeHelp(); });
+
+  if (isIOS) installButton.hidden = false;
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    installButton.hidden = false;
+  });
+  installButton.addEventListener('click', async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      installButton.hidden = true;
+    } else {
+      showHelp();
+    }
+  });
+  window.addEventListener('appinstalled', () => {
+    installButton.hidden = true;
+    closeHelp();
+  });
+});

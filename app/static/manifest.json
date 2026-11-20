@@ -1,10 +1,15 @@
 {
   "name": "Tharai Basket",
-  "short_name": "Tharai",
-  "description": "Groceries delivered across Tharamangalam",
+  "short_name": "Tharai Basket",
+  "description": "Daily essentials and home delivery across Tharamangalam.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait",
   "background_color": "#f6faf6",
   "theme_color": "#176b39",
   "icons": [

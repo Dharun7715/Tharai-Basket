@@ -37,3 +37,19 @@ html,body{max-width:100%;overflow-x:clip}
 
 /* Official Tharai Basket logo */
 .brand{gap:0}.brand-logo{display:block;width:154px;height:auto;max-height:70px;object-fit:contain}.brand-footer .brand-logo{width:174px;max-height:82px}@media(max-width:620px){.brand-logo{width:126px;max-height:58px}.brand-footer .brand-logo{width:154px;max-height:72px}}
+
+/* Mobile app installation */
+.install-app-btn{border:0;border-radius:999px;background:#f26a12;color:#fff;padding:9px 13px;font-size:12px;font-weight:800;white-space:nowrap;cursor:pointer;box-shadow:0 5px 14px rgba(242,106,18,.18)}
+.install-app-btn:hover{background:#d95708}
+.install-app-btn[hidden],.install-help-backdrop[hidden]{display:none!important}
+.install-help-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(10,25,15,.58);display:grid;place-items:center;padding:18px}
+.install-help-card{position:relative;width:min(100%,390px);background:#fff;border-radius:22px;padding:28px 24px 22px;box-shadow:0 24px 70px rgba(0,0,0,.25);text-align:center}
+.install-help-close{position:absolute;right:14px;top:10px;border:0;background:#f1f5f1;border-radius:50%;width:34px;height:34px;font-size:23px;cursor:pointer;color:#526057}
+.install-help-icon{font-size:42px;margin:5px 0 10px}
+.install-help-card h2{font-size:24px;margin:0 0 8px;color:#14532d}
+.install-help-intro{font-size:13px;color:#738077;margin-bottom:20px}
+.install-help-steps{text-align:left;background:#f4faf5;border-radius:13px;padding:13px 16px;margin-bottom:18px}
+.install-help-steps p{font-size:13px;margin:8px 0;color:#35463a;line-height:1.55}
+.install-help-steps b{color:#14532d}
+body.install-help-open{overflow:hidden}
+@media(max-width:620px){.nav-actions{gap:7px}.install-app-btn{padding:8px 10px;font-size:11px}.nav-icon{padding:8px 10px;font-size:11px}}
