@@ -986,6 +986,9 @@ def create_app():
         payment_rows = db.session.query(Order.payment_method, db.func.count(Order.id)).group_by(Order.payment_method).all()
         payment_breakdown = [{'label': label or 'Other', 'count': count} for label, count in payment_rows]
         recent_orders = Order.query.order_by(Order.created_at.desc()).limit(10).all()
+        low_stock_products = Product.query.filter(
+            Product.active.is_(True), Product.stock <= 5
+        ).order_by(Product.stock.asc(), Product.name.asc()).limit(6).all()
         return render_template('admin/dashboard.html',
             order_count=Order.query.count(), customer_count=User.query.filter_by(role='customer').count(),
             product_count=Product.query.filter_by(active=True).count(),
@@ -993,7 +996,8 @@ def create_app():
             total_sales=total_sales, monthly_revenue=monthly_revenue, today_revenue=today_revenue,
             delivered_count=delivered_query.count(), low_stock=Product.query.filter(Product.stock <= 5, Product.active.is_(True)).count(),
             daily_sales=daily_sales, max_daily_sales=max_daily_sales, top_products=top_products,
-            status_breakdown=status_breakdown, payment_breakdown=payment_breakdown, orders=recent_orders)
+            status_breakdown=status_breakdown, payment_breakdown=payment_breakdown, orders=recent_orders,
+            low_stock_products=low_stock_products)
 
     @app.route('/admin/coupons', methods=['GET', 'POST'])
     @admin_required
