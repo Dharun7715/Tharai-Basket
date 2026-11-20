@@ -114,7 +114,7 @@
   </div>
 </div>
 {% endif %}
-<nav class="tb-bottom-nav" aria-label="Quick navigation">
+<nav class="tb-bottom-nav{% if cart_count|int > 0 and request.endpoint != 'cart' %} has-cart-bar{% endif %}" aria-label="Quick navigation">
   <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}is-active{% endif %}" aria-label="Home">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
     <span>Home</span>
@@ -125,7 +125,11 @@
   </a>
   <a href="{{ url_for('my_orders') if current_user.is_authenticated and current_user.role == 'customer' else url_for('login') }}" aria-label="Orders">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l2 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z"/><path d="M4 7h16M9 11h6M9 15h6"/></svg>
-    <span>Orders</span>
+    <span>Order Again</span>
+  </a>
+  <a href="{{ url_for('account_membership') if current_user.is_authenticated and current_user.role == 'customer' else url_for('login') }}" aria-label="VIP membership" class="{% if request.endpoint == 'account_membership' %}is-active{% endif %}">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.2 1 5.9L12 16.5l-5.2 2.8 1-5.9L3.5 9.2l5.9-.9z"/><path d="M8.5 21h7"/></svg>
+    <span>VIP</span>
   </a>
 </nav>
 <div id="google_translate_element" hidden></div>
