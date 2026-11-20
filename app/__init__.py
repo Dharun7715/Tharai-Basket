@@ -56,7 +56,8 @@ def create_app():
 
     @app.context_processor
     def inject_globals():
-        return {'now': datetime.utcnow(), 'cart_count': sum(int(v) for v in session.get('cart', {}).values()), 'site_name': 'Tharai Basket'}
+        unread_notifications = Notification.query.filter_by(user_id=current_user.id, is_read=False).count() if current_user.is_authenticated and current_user.role == 'customer' else 0
+        return {'now': datetime.utcnow(), 'cart_count': sum(int(v) for v in session.get('cart', {}).values()), 'site_name': 'Tharai Basket', 'unread_notifications': unread_notifications}
 
     @app.template_filter('inr')
     def inr(value):
@@ -247,6 +248,18 @@ def create_app():
         delivery_partner = db.relationship('User', foreign_keys=[delivery_partner_id])
         items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan')
 
+    class Notification(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
+        title = db.Column(db.String(140), nullable=False)
+        message = db.Column(db.String(500), nullable=False)
+        category = db.Column(db.String(40), default='order')
+        is_read = db.Column(db.Boolean, default=False, nullable=False)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+        user = db.relationship('User', backref='notifications')
+        order = db.relationship('Order', backref='notifications')
+
     class OrderItem(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
@@ -300,6 +313,20 @@ def create_app():
     UserModel, AddressModel, CategoryModel, ProductModel = User, Address, Category, Product
     SupplierModel, SupplierProductModel, OrderModel, OrderItemModel = Supplier, SupplierProduct, Order, OrderItem
     PurchaseModel, PurchaseItemModel, CouponModel, DeliveryEarningModel = Purchase, PurchaseItem, Coupon, DeliveryEarning
+
+    def create_customer_notification(order, title, message, category='order'):
+        db.session.add(Notification(user_id=order.user_id, order_id=order.id,
+                                    title=title, message=message, category=category))
+
+    @app.get('/notifications')
+    @login_required
+    def notifications():
+        if current_user.role != 'customer':
+            abort(403)
+        items = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).limit(100).all()
+        Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
+        db.session.commit()
+        return render_template('notifications.html', notifications=items)
 
     @app.get('/')
     def index():
