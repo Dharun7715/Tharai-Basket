@@ -1771,10 +1771,10 @@ def create_app():
 
     def membership_plan_amount(tier, months):
         prices = {
-            ('Gold', 1): Decimal('0.00'),
-            ('Gold', 3): Decimal('0.00'),
-            ('Platinum', 1): Decimal('0.00'),
-            ('Platinum', 3): Decimal('0.00'),
+            ('Gold', 1): Decimal('300.00'),
+            ('Gold', 3): Decimal('800.00'),
+            ('Platinum', 1): Decimal('500.00'),
+            ('Platinum', 3): Decimal('1300.00'),
         }
         return prices.get((tier, months))
 
@@ -1796,10 +1796,10 @@ def create_app():
         pending_request = MembershipPayment.query.filter_by(user_id=current_user.id, status='Pending').order_by(
             MembershipPayment.created_at.desc()).first()
         plans = {
-            'Gold': {1: {'amount': Decimal('0.00'), 'qr': membership_qr_data(Decimal('0.00'), 'Gold', 1)},
-                     3: {'amount': Decimal('0.00'), 'qr': membership_qr_data(Decimal('0.00'), 'Gold', 3)}},
-            'Platinum': {1: {'amount': Decimal('0.00'), 'qr': membership_qr_data(Decimal('0.00'), 'Platinum', 1)},
-                         3: {'amount': Decimal('0.00'), 'qr': membership_qr_data(Decimal('0.00'), 'Platinum', 3)}},
+            'Gold': {1: {'amount': Decimal('300.00'), 'qr': membership_qr_data(Decimal('300.00'), 'Gold', 1)},
+                     3: {'amount': Decimal('800.00'), 'qr': membership_qr_data(Decimal('800.00'), 'Gold', 3)}},
+            'Platinum': {1: {'amount': Decimal('500.00'), 'qr': membership_qr_data(Decimal('500.00'), 'Platinum', 1)},
+                         3: {'amount': Decimal('1300.00'), 'qr': membership_qr_data(Decimal('1300.00'), 'Platinum', 3)}},
         }
         return render_template('membership.html', membership=membership, pending_request=pending_request,
                                plans=plans, upi_id='8838145515@sbi')
@@ -1812,18 +1812,15 @@ def create_app():
         months = request.form.get('months', type=int)
         upi_reference = request.form.get('upi_reference', '').strip()
         amount = membership_plan_amount(tier, months)
+        active_membership = current_vip_membership()
         if amount is None:
             flash('Choose a valid Gold or Platinum membership plan.', 'danger')
-        elif amount > 0 and (not upi_reference or len(upi_reference) < 6 or len(upi_reference) > 100):
+        elif active_membership:
+            flash('You already have an active membership. Use the upgrade option if you are a Gold member.', 'info')
+        elif not upi_reference or len(upi_reference) < 6 or len(upi_reference) > 100:
             flash('Enter the UPI transaction reference / UTR after payment.', 'warning')
-        elif amount > 0 and MembershipPayment.query.filter_by(user_id=current_user.id, status='Pending').first():
+        elif MembershipPayment.query.filter_by(user_id=current_user.id, status='Pending').first():
             flash('You already have a membership payment waiting for verification.', 'info')
-        elif amount == 0:
-            VipMembership.query.filter_by(user_id=current_user.id, active=True).update({'active': False})
-            db.session.add(VipMembership(user_id=current_user.id, tier=tier, starts_at=datetime.utcnow(),
-                ends_at=datetime.utcnow() + timedelta(days=30 * months), active=True))
-            db.session.commit()
-            flash(f'Free {tier} testing membership activated for {months} month(s)!', 'success')
         else:
             db.session.add(MembershipPayment(user_id=current_user.id, tier=tier, months=months,
                                              amount=amount, upi_reference=upi_reference[:100]))
@@ -1831,13 +1828,46 @@ def create_app():
             flash('Membership payment details submitted. Your plan will activate after store verification.', 'success')
         return redirect(url_for('account_membership'))
 
+    @app.post('/account/membership/upgrade')
+    @login_required
+    def membership_upgrade():
+        if current_user.role != 'customer': abort(403)
+        membership = current_vip_membership()
+        upi_reference = request.form.get('upi_reference', '').strip()
+        pending = MembershipPayment.query.filter_by(user_id=current_user.id, status='Pending').first()
+        if not membership or membership.tier != 'Gold':
+            flash('Only active Gold members can upgrade to Platinum.', 'danger')
+        elif pending:
+            flash('You already have a membership payment waiting for verification.', 'info')
+        elif not upi_reference or len(upi_reference) < 6 or len(upi_reference) > 100:
+            flash('Enter the UPI transaction reference / UTR after paying.', 'warning')
+        else:
+            total_seconds = max((membership.ends_at - membership.starts_at).total_seconds(), 1)
+            remaining_seconds = max((membership.ends_at - datetime.utcnow()).total_seconds(), 0)
+            base_gold = Decimal('800.00') if total_seconds > 45 * 86400 else Decimal('300.00')
+            base_platinum = Decimal('1300.00') if total_seconds > 45 * 86400 else Decimal('500.00')
+            upgrade_amount = ((base_platinum - base_gold) * Decimal(str(remaining_seconds / total_seconds))).quantize(Decimal('0.01'))
+            if upgrade_amount <= 0:
+                flash('Your Gold membership has expired. Please choose a new Platinum plan.', 'warning')
+            else:
+                db.session.add(MembershipPayment(user_id=current_user.id, tier='Platinum', months=0,
+                    amount=upgrade_amount, upi_reference=upi_reference[:100]))
+                db.session.commit()
+                flash(f'Platinum upgrade request submitted for ₹{upgrade_amount:.2f}. It will activate after verification.', 'success')
+        return redirect(url_for('account_membership'))
+
     @app.post('/admin/membership-requests/<int:payment_id>/approve')
     @admin_required
     def admin_membership_request_approve(payment_id):
         payment = MembershipPayment.query.filter_by(id=payment_id, status='Pending').first_or_404()
-        VipMembership.query.filter_by(user_id=payment.user_id, active=True).update({'active': False})
-        db.session.add(VipMembership(user_id=payment.user_id, tier=payment.tier,
-            starts_at=datetime.utcnow(), ends_at=datetime.utcnow() + timedelta(days=30 * payment.months), active=True))
+        existing_membership = VipMembership.query.filter_by(user_id=payment.user_id, active=True).filter(
+            VipMembership.ends_at > datetime.utcnow()).order_by(VipMembership.ends_at.desc()).first()
+        if payment.months == 0 and payment.tier == 'Platinum' and existing_membership and existing_membership.tier == 'Gold':
+            existing_membership.tier = 'Platinum'
+        else:
+            VipMembership.query.filter_by(user_id=payment.user_id, active=True).update({'active': False})
+            db.session.add(VipMembership(user_id=payment.user_id, tier=payment.tier,
+                starts_at=datetime.utcnow(), ends_at=datetime.utcnow() + timedelta(days=30 * payment.months), active=True))
         payment.status = 'Approved'
         payment.reviewed_at = datetime.utcnow()
         payment.reviewed_by = current_user.id
