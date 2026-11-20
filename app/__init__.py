@@ -1576,14 +1576,24 @@ def create_app():
     @admin_required
     def admin_gallery_add():
         product = Product.query.get_or_404(request.form.get('product_id', type=int))
+        image_url = request.form.get('image_url', '').strip()
         image = request.files.get('image')
-        if not image or not image.filename: flash('Choose an image.', 'warning'); return redirect(url_for('admin_growth_tools'))
-        filename = secure_filename(image.filename)
-        if Path(filename).suffix.lower() not in {'.jpg','.jpeg','.png','.webp'}:
-            flash('Use JPG, PNG or WEBP.', 'danger'); return redirect(url_for('admin_growth_tools'))
-        safe = f"{datetime.utcnow():%Y%m%d%H%M%S%f}_{filename}"
-        image.save(Path(app.config['UPLOAD_FOLDER']) / safe)
-        db.session.add(ProductGalleryImage(product_id=product.id, image_path=f'uploads/{safe}', alt_text=(request.form.get('alt_text') or product.name)[:180]))
+        if image_url:
+            if not image_url.startswith(('https://', 'http://')):
+                flash('Enter a valid https:// image URL.', 'danger'); return redirect(url_for('admin_growth_tools'))
+            stored_path = image_url
+        elif image and image.filename:
+            filename = secure_filename(image.filename)
+            if Path(filename).suffix.lower() not in {'.jpg','.jpeg','.png','.webp'}:
+                flash('Use JPG, PNG or WEBP.', 'danger'); return redirect(url_for('admin_growth_tools'))
+            safe = f"{datetime.utcnow():%Y%m%d%H%M%S%f}_{filename}"
+            image.save(Path(app.config['UPLOAD_FOLDER']) / safe)
+            stored_path = f'uploads/{safe}'
+        else:
+            flash('Provide an image URL or upload a JPG, PNG or WEBP image.', 'warning')
+            return redirect(url_for('admin_growth_tools'))
+        db.session.add(ProductGalleryImage(product_id=product.id, image_path=stored_path,
+                                            alt_text=(request.form.get('alt_text') or product.name)[:180]))
         db.session.commit()
         flash('Gallery image added. Note: local Render uploads may be lost on redeploy; durable image hosting is not yet configured.', 'success')
         return redirect(url_for('admin_growth_tools'))
