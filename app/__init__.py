@@ -1363,7 +1363,7 @@ def create_app():
                 flash('Please choose a valid available delivery date and time slot.', 'warning')
             elif subtotal < app.config['MIN_ORDER_VALUE']:
                 flash(f"Minimum order value is {app.config['CURRENCY']}{app.config['MIN_ORDER_VALUE']}.", 'warning')
-            elif payment == 'UPI' and not upi_reference:
+            elif payment == 'UPI' and total > 0 and not upi_reference:
                 flash('After paying by UPI, enter the UPI transaction reference / UTR.', 'warning')
             else:
                 # Re-check stock and calculate all prices on the server.
