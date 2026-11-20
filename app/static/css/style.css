@@ -192,3 +192,41 @@ html.tb-app-launch .tb-splash-loader{display:none!important}
  50%{filter:drop-shadow(0 0 5px rgba(255,190,35,1)) drop-shadow(0 0 13px rgba(255,190,35,.8))}
 }
 @media(prefers-reduced-motion:reduce){.tb-bottom-nav a[aria-label="VIP"] svg{animation:none}}
+
+
+/* Active Gold and Platinum members receive a premium gold storefront theme. */
+body.tb-vip-theme{
+ --forest:#765000;
+ --green:#b8860b;
+ --leaf:#fff0b8;
+ --mint:#fff9e8;
+ --ink:#33270d;
+ --muted:#83734b;
+ --line:#ead9a5;
+ --shadow:0 18px 50px rgba(142,103,10,.12);
+}
+body.tb-vip-theme h1 em,body.tb-vip-theme h2 em{color:#b8860b}
+body.tb-vip-theme .site-header{border-bottom-color:#ead9a5;background:rgba(255,252,241,.96)}
+body.tb-vip-theme .nav-icon,body.tb-vip-theme .tb-profile-icon{border-color:#ead9a5;background:#fff9e8;color:#936900}
+body.tb-vip-theme .tb-header-cart{border-color:#ead9a5!important;background:#fff8e2!important;color:#936900!important}
+body.tb-vip-theme .tb-view-cart-bar{background:linear-gradient(110deg,#8a6200,#c99b24);box-shadow:0 10px 30px rgba(142,103,10,.2)}
+body.tb-vip-theme .tb-view-cart-inner a{color:#765000}
+body.tb-vip-theme .btn:not(.btn-outline),body.tb-vip-theme .add-btn{background:linear-gradient(135deg,#9a7008,#d3a72d);border-color:#b88912;color:#fff}
+body.tb-vip-theme .btn.btn-outline{color:#765000;border-color:#dfc77f}
+body.tb-vip-theme .tb-home-toolbar,body.tb-vip-theme .product-card,body.tb-vip-theme .summary-card{border-color:#ead9a5}
+body.tb-vip-theme .tb-delivery-schedule,body.tb-vip-theme .tb-filter-toggle{background:#fff9e8;border-color:#ead9a5;color:#876000}
+body.tb-vip-theme .tb-filter-panel select,body.tb-vip-theme .tb-filter-panel input{border-color:#ead9a5}
+body.tb-vip-theme .tb-filter-panel button{background:#a77a0b}
+body.tb-vip-theme .tb-bottom-nav{border-top-color:#ead9a5}
+body.tb-vip-theme .tb-bottom-nav a.is-active{color:#9b7000}
+body.tb-vip-theme .tb-bottom-nav a[aria-label="VIP"]{color:#a97800}
+body.tb-vip-theme .tb-menu-head{background:linear-gradient(135deg,#fff4ce,#fffdf5);border-bottom-color:#ead9a5}
+body.tb-vip-theme .tb-menu-head strong{color:#765000}
+body.tb-vip-theme .tb-menu-links>a:hover{background:#fff7df;color:#765000}
+body.tb-vip-theme .tb-menu-links>a>span{color:#a77a0b}
+body.tb-vip-theme .tb-menu-label{color:#9a8249}
+body.tb-vip-theme .membership-plan{border-color:#e5cc80;background:linear-gradient(145deg,#fff9e8,#fffdf6)}
+body.tb-vip-theme .membership-pay-box{border-color:#e5cc80;background:#fff9e8}
+body.tb-vip-theme .membership-plan .eyebrow{color:#a77a0b}
+body.tb-vip-theme .membership-pending{border-color:#e5cc80;background:#fff8df}
+body.tb-vip-platinum{--forest:#765000;--green:#b8860b}
