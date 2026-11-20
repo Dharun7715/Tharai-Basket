@@ -367,6 +367,15 @@ def create_app():
         delivery_partner = db.relationship('User', foreign_keys=[delivery_partner_id])
         items = db.relationship('OrderItem', backref='order', cascade='all, delete-orphan')
 
+    class OrderStatusEvent(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, index=True)
+        status = db.Column(db.String(40), nullable=False)
+        note = db.Column(db.String(240), default='')
+        actor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+        created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+        actor = db.relationship('User')
+
     class DeliverySchedule(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, unique=True)
@@ -512,6 +521,13 @@ def create_app():
         db.session.add(Notification(user_id=order.user_id, order_id=order.id,
                                     title=title, message=message, category=category))
 
+    def record_order_status(order, status, note='', actor_id=None):
+        latest = OrderStatusEvent.query.filter_by(order_id=order.id).order_by(OrderStatusEvent.created_at.desc(), OrderStatusEvent.id.desc()).first()
+        if latest and latest.status == status:
+            return
+        db.session.add(OrderStatusEvent(order_id=order.id, status=status,
+            note=(note or '')[:240], actor_id=actor_id))
+
     def award_order_loyalty_points(order):
         if order.status != 'Delivered' or LoyaltyPoint.query.filter_by(order_id=order.id).first():
             return
@@ -542,12 +558,18 @@ def create_app():
         delivered_orders_count = Order.query.filter_by(user_id=current_user.id, status='Delivered').count()
         next_milestone = next((target for target in (100, 250, 500, 1000) if target > available_points), None)
         milestone_progress = min(100, round(available_points * 100 / next_milestone)) if next_milestone else 100
+        reward_tiers = [('Basket Starter', 0), ('Basket Saver', 250), ('Basket Champion', 750), ('Basket Legend', 1500)]
+        current_tier = max((tier for tier in reward_tiers if available_points >= tier[1]), key=lambda item: item[1])
+        next_tier = next((tier for tier in reward_tiers if tier[1] > available_points), None)
+        tier_progress = min(100, round((available_points-current_tier[1])*100/(next_tier[1]-current_tier[1]))) if next_tier else 100
         return render_template('account_tools.html', items=items, subscriptions=subscriptions, today_date=today_date,
                                wallet_balance=wallet_balance(current_user.id), transactions=transactions,
                                loyalty_points=available_points, loyalty_earned=loyalty_points,
                                referral_points=referral_points, redeemed_points=int(redeemed_points),
                                delivered_orders_count=delivered_orders_count,
-                               next_milestone=next_milestone, milestone_progress=milestone_progress)
+                               next_milestone=next_milestone, milestone_progress=milestone_progress,
+                               reward_tier=current_tier[0], next_reward_tier=next_tier[0] if next_tier else None,
+                               tier_progress=tier_progress, points_to_next_tier=(next_tier[1]-available_points) if next_tier else 0)
 
     @app.post('/account/shopping-list/add/<int:product_id>')
     @login_required
@@ -1643,6 +1665,7 @@ def create_app():
                     if restore_batch:
                         restore_batch.remaining_quantity += int(item.quantity or 0)
         order.status = 'Cancelled'
+        record_order_status(order, 'Cancelled', 'Customer cancelled the order', current_user.id)
         create_customer_notification(order, 'Order cancelled', 'Your order has been cancelled successfully.')
         db.session.commit()
         flash(f'Order {order.order_number} was cancelled. Item quantities have been returned to stock.', 'success')
@@ -1665,7 +1688,12 @@ def create_app():
         addable_products = []
         if current_user.role == 'customer' and order.user_id == current_user.id and order.status in ['Pending', 'Confirmed'] and order.delivery_partner_id is None and order.payment_method == 'COD' and order.payment_status == 'Pending':
             addable_products = Product.query.filter(Product.active.is_(True), Product.stock > 0).order_by(Product.name.asc()).limit(150).all()
-        return render_template('order_detail.html', order=order, addable_products=addable_products)
+        status_history = OrderStatusEvent.query.filter_by(order_id=order.id).order_by(OrderStatusEvent.created_at.asc(), OrderStatusEvent.id.asc()).all()
+        if not status_history:
+            # Legacy orders pre-date the event timeline; show their current status without inventing earlier timestamps.
+            status_history = [OrderStatusEvent(status=order.status, note='Current recorded status', created_at=order.created_at)]
+        return render_template('order_detail.html', order=order, addable_products=addable_products,
+                               status_history=status_history)
 
     @app.get('/order/<int:order_id>/invoice')
     @login_required
@@ -2207,13 +2235,24 @@ def create_app():
     def admin_reorder_suggestions():
         low_products = Product.query.filter(Product.active.is_(True), Product.stock <= 10).order_by(Product.stock.asc()).all()
         suggestions = []
+        demand_since = datetime.utcnow() - timedelta(days=30)
         for product in low_products:
+            sold_30d = db.session.query(db.func.coalesce(db.func.sum(OrderItem.quantity), 0)).join(
+                Order, Order.id == OrderItem.order_id
+            ).filter(Order.status == 'Delivered', Order.created_at >= demand_since,
+                     OrderItem.product_id == product.id).scalar() or 0
+            avg_daily_demand = float(sold_30d) / 30
+            target_stock = max(10, int(math.ceil(avg_daily_demand * 14)))
+            suggested_restock = max(0, target_stock - int(product.stock or 0))
             matches = SupplierProduct.query.filter(
                 db.func.lower(SupplierProduct.product_name) == product.name.lower(),
                 SupplierProduct.available.is_(True)).all()
             for item in matches:
+                suggested_qty = max(int(item.min_qty or 1), suggested_restock)
                 suggestions.append({'product': product, 'supplier_item': item,
-                    'suggested_qty': max(int(item.min_qty or 1), 10 - int(product.stock or 0))})
+                    'sold_30d': int(sold_30d), 'avg_daily_demand': round(avg_daily_demand, 2),
+                    'target_stock': target_stock, 'suggested_qty': suggested_qty,
+                    'estimated_cost': Decimal(str(item.wholesale_price or 0)) * suggested_qty})
         return render_template('admin/reorder_suggestions.html', suggestions=suggestions, low_products=low_products)
 
     @app.get('/admin/growth-tools')
@@ -2470,6 +2509,8 @@ def create_app():
             if status not in allowed:
                 abort(400)
             order.status = status
+            if status != previous_status:
+                record_order_status(order, status, f'Status updated by store team', current_user.id)
             partner_id = request.form.get('delivery_partner_id', type=int)
             if partner_id:
                 partner = User.query.filter_by(id=partner_id, role='delivery', active=True).first()
@@ -2575,6 +2616,7 @@ def create_app():
             abort(400)
         if purchase.order and purchase.status in ['Purchased', 'Received']:
             purchase.order.status = 'Purchased' if purchase.status == 'Purchased' else 'Packing'
+            record_order_status(purchase.order, purchase.order.status, 'Updated from supplier purchase record', current_user.id)
         db.session.commit()
         flash('Purchase record updated.', 'success')
         return redirect(url_for('admin_purchases'))
@@ -2596,6 +2638,7 @@ def create_app():
         for item in order.items:
             db.session.add(PurchaseItem(purchase_id=purchase.id, product_name=item.product_name, quantity=item.quantity, unit_cost=0))
         order.status = 'Purchase Required'
+        record_order_status(order, 'Purchase Required', 'Supplier purchase list generated', current_user.id)
         db.session.commit()
         flash('Purchase list generated. Add supplier and actual costs after purchasing.', 'success')
         return redirect(url_for('admin_purchases'))
@@ -2671,6 +2714,7 @@ def create_app():
             flash('This order cannot move to that status. Follow the delivery steps in order.', 'warning')
             return redirect(url_for('delivery_dashboard'))
         order.status = status
+        record_order_status(order, status, 'Updated by delivery partner', current_user.id)
         rider_status_messages = {
             'Picked Up': ('Order picked up', 'The delivery partner has collected your order.'),
             'Out for Delivery': ('Out for delivery', 'Your order is on the way!'),
