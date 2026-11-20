@@ -5,7 +5,7 @@
  <div class="container">
   <div class="tb-rider-head"><div><span class="eyebrow">THARAI BASKET / DELIVERY PARTNER</span><h1>Your delivery <em>hub.</em></h1><p>Manage assigned orders, reach customers and update delivery progress.</p></div><div class="tb-rider-profile"><span>🚴</span><div><strong>{{ current_user.name }}</strong><small>Delivery partner</small></div></div></div>
   <div class="tb-rider-stats">
-   <article><span>Active deliveries</span><strong>{{ active_orders|length }}</strong><small>Ready for pickup or on the way</small></article>
+   <article><span>Active deliveries</span><strong>{{ active_orders|length }}</strong><small>Pickup, transit or delivery</small></article>
    <article><span>Completed orders</span><strong>{{ completed_orders|length }}</strong><small>Successfully delivered</small></article>
    <article><span>Total earnings</span><strong>{{ total_earnings|inr }}</strong><small>Recorded delivery earnings</small></article>
    <article><span>Pending earnings</span><strong>{{ pending_earnings|inr }}</strong><small>Awaiting payout</small></article>
@@ -20,7 +20,7 @@
      <div class="tb-rider-customer"><div class="tb-customer-avatar">{{ o.customer_name[:1]|upper }}</div><div><strong>{{ o.customer_name }}</strong><small>{{ o.phone }}</small></div><a class="tb-call-customer" href="tel:{{ o.phone }}">☎ Call customer</a></div>
      <div class="tb-rider-address"><span>📍</span><p>{{ o.address_text }}</p></div>
      <div class="tb-rider-order-foot"><div><small>ORDER TOTAL</small><strong>{{ o.total|inr }}</strong></div><div><small>PAYMENT</small><strong>{{ o.payment_method }} · {{ o.payment_status }}</strong></div><a class="tb-map-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query={{ o.address_text|urlencode }}">Open map ↗</a></div>
-     <form method="post" action="{{ url_for('delivery_status', order_id=o.id) }}" class="tb-rider-update"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label for="delivery-status-{{ o.id }}">Update delivery status</label><select id="delivery-status-{{ o.id }}" name="status"><option value="Out for Delivery" {% if o.status == 'Out for Delivery' %}selected{% endif %}>Out for Delivery</option><option value="Delivered">Delivered</option></select><button type="submit">Save update →</button></form>
+     <form method="post" action="{{ url_for('delivery_status', order_id=o.id) }}" class="tb-rider-update"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label for="delivery-status-{{ o.id }}">Update delivery status</label><select id="delivery-status-{{ o.id }}" name="status" required>{% if o.status == 'Ready for Pickup' %}<option value="Picked Up">Confirm pickup</option>{% elif o.status == 'Picked Up' %}<option value="Out for Delivery">Start delivery</option>{% elif o.status == 'Out for Delivery' %}<option value="Delivered">Mark delivered</option>{% endif %}</select><button type="submit">Save update →</button></form>
     </article>
    {% else %}
     <div class="tb-rider-empty"><span>🛵</span><strong>No active deliveries right now</strong><p>New orders assigned by the store will appear here.</p></div>
