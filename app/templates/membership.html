@@ -42,9 +42,23 @@
 (() => {
  const tier=document.getElementById('membership-tier'), months=document.getElementById('membership-months');
  if(!tier || !months) return;
- const plans={{'Gold': {1:{amount:'300',qr:{{ plans['Gold'][1]['qr']|tojson }}},3:{amount:'800',qr:{{ plans['Gold'][3]['qr']|tojson }}}},'Platinum': {1:{amount:'500',qr:{{ plans['Platinum'][1]['qr']|tojson }}},3:{amount:'1300',qr:{{ plans['Platinum'][3]['qr']|tojson }}}}}};
- function update(){const p=plans[tier.value][months.value];document.getElementById('membership-pay-title').textContent=tier.value+' · '+months.value+' month'+(months.value==='1'?'':'s');document.getElementById('membership-pay-amount').textContent='₹'+p.amount;document.getElementById('membership-qr').src=p.qr;}
- tier.addEventListener('change',update);months.addEventListener('change',update);
+ const plans = {
+   Gold: {
+     1: {amount:'300', qr: "{{ plans['Gold'][1]['qr']|tojson }}"},
+     3: {amount:'800', qr: "{{ plans['Gold'][3]['qr']|tojson }}"}
+   },
+   Platinum: {
+     1: {amount:'500', qr: "{{ plans['Platinum'][1]['qr']|tojson }}"},
+     3: {amount:'1300', qr: "{{ plans['Platinum'][3]['qr']|tojson }}"}
+   }
+ };
+ function update(){
+   const p=plans[tier.value][months.value];
+   document.getElementById('membership-pay-title').textContent=tier.value+' · '+months.value+' month'+(months.value==='1'?'':'s');
+   document.getElementById('membership-pay-amount').textContent='₹'+p.amount;
+   document.getElementById('membership-qr').src=p.qr;
+ }
+ tier.addEventListener('change',update); months.addEventListener('change',update);
 })();
 </script>
 {% endblock %}
