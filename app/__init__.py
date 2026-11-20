@@ -199,6 +199,20 @@ def create_app():
         active = db.Column(db.Boolean, default=True, nullable=False)
         user = db.relationship('User')
 
+    class MembershipPayment(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        tier = db.Column(db.String(20), nullable=False)
+        months = db.Column(db.Integer, nullable=False, default=1)
+        amount = db.Column(db.Numeric(10, 2), nullable=False)
+        upi_reference = db.Column(db.String(100), nullable=False)
+        status = db.Column(db.String(20), nullable=False, default='Pending', index=True)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+        reviewed_at = db.Column(db.DateTime)
+        reviewed_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+        user = db.relationship('User', foreign_keys=[user_id])
+        reviewer = db.relationship('User', foreign_keys=[reviewed_by])
+
     class ProductReview(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
@@ -906,7 +920,7 @@ def create_app():
         if membership and membership.tier == 'Platinum':
             return Decimal('0.00')
         if membership and membership.tier == 'Gold':
-            return Decimal('200.00')
+            return Decimal('150.00')
         return Decimal(str(app.config['FREE_DELIVERY_THRESHOLD']))
 
     def calculate_delivery_fee(subtotal, membership=None):
@@ -1537,20 +1551,86 @@ def create_app():
         carts = AbandonedCart.query.filter_by(recovered_at=None).order_by(AbandonedCart.updated_at.desc()).limit(200).all()
         return render_template('admin/abandoned_carts.html', carts=carts)
 
+    def membership_plan_amount(tier, months):
+        prices = {
+            ('Gold', 1): Decimal('300.00'),
+            ('Gold', 3): Decimal('800.00'),
+            ('Platinum', 1): Decimal('500.00'),
+            ('Platinum', 3): Decimal('1300.00'),
+        }
+        return prices.get((tier, months))
+
+    def membership_qr_data(amount, tier, months):
+        params = {'pa': '8838145515@sbi', 'pn': 'DHARUN M',
+                  'am': f'{amount:.2f}', 'cu': 'INR',
+                  'tn': f'Tharai Basket {tier} {months} month membership'}
+        qr = qrcode.make('upi://pay?' + urlencode(params))
+        buffer = io.BytesIO()
+        qr.save(buffer, format='PNG')
+        return 'data:image/png;base64,' + base64.b64encode(buffer.getvalue()).decode('ascii')
+
     @app.get('/account/membership')
     @login_required
     def account_membership():
         if current_user.role != 'customer': abort(403)
         membership = VipMembership.query.filter_by(user_id=current_user.id, active=True).filter(
             VipMembership.ends_at > datetime.utcnow()).order_by(VipMembership.ends_at.desc()).first()
-        return render_template('membership.html', membership=membership)
+        pending_request = MembershipPayment.query.filter_by(user_id=current_user.id, status='Pending').order_by(
+            MembershipPayment.created_at.desc()).first()
+        plans = {
+            'Gold': {1: {'amount': Decimal('300.00'), 'qr': membership_qr_data(Decimal('300.00'), 'Gold', 1)},
+                     3: {'amount': Decimal('800.00'), 'qr': membership_qr_data(Decimal('800.00'), 'Gold', 3)}},
+            'Platinum': {1: {'amount': Decimal('500.00'), 'qr': membership_qr_data(Decimal('500.00'), 'Platinum', 1)},
+                         3: {'amount': Decimal('1300.00'), 'qr': membership_qr_data(Decimal('1300.00'), 'Platinum', 3)}},
+        }
+        return render_template('membership.html', membership=membership, pending_request=pending_request,
+                               plans=plans, upi_id='8838145515@sbi')
 
     @app.post('/account/membership/request')
     @login_required
     def membership_request():
         if current_user.role != 'customer': abort(403)
-        flash('VIP plans are activated by store approval. Please contact Tharai Basket.', 'info')
+        tier = request.form.get('tier', '').title()
+        months = request.form.get('months', type=int)
+        upi_reference = request.form.get('upi_reference', '').strip()
+        amount = membership_plan_amount(tier, months)
+        if amount is None:
+            flash('Choose a valid Gold or Platinum membership plan.', 'danger')
+        elif not upi_reference or len(upi_reference) < 6 or len(upi_reference) > 100:
+            flash('Enter the UPI transaction reference / UTR after payment.', 'warning')
+        elif MembershipPayment.query.filter_by(user_id=current_user.id, status='Pending').first():
+            flash('You already have a membership payment waiting for verification.', 'info')
+        else:
+            db.session.add(MembershipPayment(user_id=current_user.id, tier=tier, months=months,
+                                             amount=amount, upi_reference=upi_reference[:100]))
+            db.session.commit()
+            flash('Membership payment details submitted. Your plan will activate after store verification.', 'success')
         return redirect(url_for('account_membership'))
+
+    @app.post('/admin/membership-requests/<int:payment_id>/approve')
+    @admin_required
+    def admin_membership_request_approve(payment_id):
+        payment = MembershipPayment.query.filter_by(id=payment_id, status='Pending').first_or_404()
+        VipMembership.query.filter_by(user_id=payment.user_id, active=True).update({'active': False})
+        db.session.add(VipMembership(user_id=payment.user_id, tier=payment.tier,
+            starts_at=datetime.utcnow(), ends_at=datetime.utcnow() + timedelta(days=30 * payment.months), active=True))
+        payment.status = 'Approved'
+        payment.reviewed_at = datetime.utcnow()
+        payment.reviewed_by = current_user.id
+        db.session.commit()
+        flash(f'{payment.tier} membership activated for {payment.user.name}.', 'success')
+        return redirect(url_for('admin_growth_tools'))
+
+    @app.post('/admin/membership-requests/<int:payment_id>/reject')
+    @admin_required
+    def admin_membership_request_reject(payment_id):
+        payment = MembershipPayment.query.filter_by(id=payment_id, status='Pending').first_or_404()
+        payment.status = 'Rejected'
+        payment.reviewed_at = datetime.utcnow()
+        payment.reviewed_by = current_user.id
+        db.session.commit()
+        flash('Membership payment request rejected.', 'info')
+        return redirect(url_for('admin_growth_tools'))
 
     @app.get('/admin/dynamic-pricing')
     @admin_required
@@ -1574,7 +1654,8 @@ def create_app():
             products=Product.query.filter_by(active=True).order_by(Product.name).all(),
             combos=ComboOffer.query.order_by(ComboOffer.created_at.desc()).all(),
             sales=FlashSale.query.order_by(FlashSale.ends_at.desc()).all(),
-            customers=User.query.filter_by(role='customer', active=True).order_by(User.name).all())
+            customers=User.query.filter_by(role='customer', active=True).order_by(User.name).all(),
+            membership_requests=MembershipPayment.query.order_by(MembershipPayment.created_at.desc()).limit(100).all())
 
     @app.post('/admin/growth-tools/gallery')
     @admin_required
