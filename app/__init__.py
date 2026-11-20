@@ -772,23 +772,31 @@ def create_app():
 
     @app.post('/combo/<int:combo_id>/add')
     def combo_add_to_cart(combo_id):
-        combo = ComboOffer.query.filter_by(id=combo_id, active=True).first_or_404()
-        import json
-        try: ids = [int(x) for x in json.loads(combo.product_ids)]
-        except (ValueError, TypeError): abort(404)
-        products = Product.query.filter(Product.id.in_(ids), Product.active.is_(True), Product.stock > 0).all()
-        if len(products) != len(ids):
-            flash('Some combo products are unavailable. Please contact the store.', 'warning')
+        now_utc = datetime.utcnow()
+        combo = ComboOffer.query.filter_by(id=combo_id, active=True).filter(
+            db.or_(ComboOffer.starts_at.is_(None), ComboOffer.starts_at <= now_utc),
+            db.or_(ComboOffer.ends_at.is_(None), ComboOffer.ends_at > now_utc)
+        ).first_or_404()
+        try:
+            ids = list(dict.fromkeys(int(x) for x in __import__('json').loads(combo.product_ids)))
+        except (ValueError, TypeError):
+            abort(404)
+        products = Product.query.filter(Product.id.in_(ids), Product.active.is_(True)).all()
+        if len(ids) < 2 or len(products) != len(ids):
+            flash('This combo is not available right now.', 'warning')
             return redirect(url_for('index'))
         cart = session.get('cart', {})
         for product in products:
+            if product.stock < int(cart.get(str(product.id), 0)) + 1:
+                flash(f'Not enough stock for {product.name} to add this combo.', 'warning')
+                return redirect(url_for('cart'))
+        for product in products:
             key = str(product.id)
-            cart[key] = min(int(cart.get(key, 0)) + 1, product.stock)
+            cart[key] = int(cart.get(key, 0)) + 1
         session['cart'] = cart
         session['combo_offer_id'] = combo.id
-        session['combo_offer_price'] = str(combo.combo_price)
         save_customer_cart_snapshot()
-        flash('Combo items added. Combo discount will be confirmed by the store before payment.', 'info')
+        flash(f'{combo.title} added. The combo saving is included in your basket total.', 'success')
         return redirect(url_for('cart'))
 
     @app.post('/cart/add/<int:product_id>')
@@ -843,14 +851,45 @@ def create_app():
     def cart_data():
         cart = session.get('cart', {})
         rows, subtotal = [], Decimal('0.00')
+        now_utc = datetime.utcnow()
         for pid, qty in cart.items():
             product = Product.query.get(int(pid))
             if product and product.active and product.stock > 0:
-                quantity = min(int(qty), product.stock)
-                line = Decimal(str(product.price)) * quantity
+                quantity = min(max(1, int(qty)), product.stock)
+                sale = FlashSale.query.filter(
+                    FlashSale.product_id == product.id, FlashSale.active.is_(True),
+                    FlashSale.starts_at <= now_utc, FlashSale.ends_at > now_utc,
+                    FlashSale.sale_price > 0, FlashSale.sale_price < product.price
+                ).order_by(FlashSale.sale_price.asc()).first()
+                unit_price = Decimal(str(sale.sale_price if sale else product.price))
+                line = unit_price * quantity
                 subtotal += line
-                rows.append({'product': product, 'quantity': quantity, 'line_total': line})
+                rows.append({'product': product, 'quantity': quantity, 'unit_price': unit_price,
+                             'flash_sale': sale, 'line_total': line})
         return rows, subtotal
+
+    def active_cart_combo(rows):
+        combo_id = session.get('combo_offer_id')
+        if not combo_id:
+            return None, Decimal('0.00')
+        combo = ComboOffer.query.filter_by(id=combo_id, active=True).first()
+        if not combo:
+            session.pop('combo_offer_id', None)
+            return None, Decimal('0.00')
+        try:
+            ids = [int(value) for value in __import__('json').loads(combo.product_ids)]
+        except (ValueError, TypeError):
+            session.pop('combo_offer_id', None)
+            return None, Decimal('0.00')
+        quantities = {row['product'].id: row['quantity'] for row in rows}
+        row_map = {row['product'].id: row for row in rows}
+        if len(ids) < 2 or any(pid not in quantities for pid in ids):
+            session.pop('combo_offer_id', None)
+            return None, Decimal('0.00')
+        regular_bundle = sum((row_map[pid]['unit_price'] for pid in ids), Decimal('0.00'))
+        combo_price = Decimal(str(combo.combo_price))
+        discount = min(regular_bundle, max(Decimal('0.00'), regular_bundle - combo_price))
+        return combo, discount.quantize(Decimal('0.01'))
 
     def active_cart_coupon(subtotal):
         code = session.get('coupon_code')
