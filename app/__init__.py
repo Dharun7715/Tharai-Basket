@@ -1643,6 +1643,9 @@ def create_app():
         low_stock_products = Product.query.filter(
             Product.active.is_(True), Product.stock <= 5
         ).order_by(Product.stock.asc(), Product.name.asc()).limit(6).all()
+        recent_reviews = ProductReview.query.order_by(ProductReview.created_at.desc()).limit(8).all()
+        review_count = ProductReview.query.count()
+        average_review_rating = db.session.query(db.func.avg(ProductReview.rating)).scalar() or 0
         return render_template('admin/dashboard.html',
             order_count=Order.query.count(), customer_count=User.query.filter_by(role='customer').count(),
             product_count=Product.query.filter_by(active=True).count(),
@@ -1651,7 +1654,8 @@ def create_app():
             delivered_count=delivered_query.count(), low_stock=Product.query.filter(Product.stock <= 5, Product.active.is_(True)).count(),
             daily_sales=daily_sales, max_daily_sales=max_daily_sales, top_products=top_products,
             status_breakdown=status_breakdown, payment_breakdown=payment_breakdown, orders=recent_orders,
-            low_stock_products=low_stock_products)
+            low_stock_products=low_stock_products, recent_reviews=recent_reviews,
+            review_count=review_count, average_review_rating=round(float(average_review_rating), 1))
 
     @app.route('/admin/coupons', methods=['GET', 'POST'])
     @admin_required
@@ -2153,6 +2157,24 @@ def create_app():
                 existing = DeliveryEarning.query.filter_by(order_id=order.id).first()
                 if not existing:
                     db.session.add(DeliveryEarning(partner_id=order.delivery_partner_id, order_id=order.id, amount=Decimal('25.00')))
+            # Give customers 1% wallet cashback once an order is first marked delivered.
+            if status == 'Delivered' and previous_status != 'Delivered':
+                cashback_reference = f'ORDER-CASHBACK-{order.id}'
+                cashback_exists = WalletTransaction.query.filter_by(
+                    user_id=order.user_id, kind='Credit', reference=cashback_reference
+                ).first()
+                if not cashback_exists:
+                    cashback = (Decimal(str(order.subtotal or 0)) * Decimal('0.01')).quantize(Decimal('0.01'))
+                    if cashback > 0:
+                        db.session.add(WalletTransaction(
+                            user_id=order.user_id, amount=cashback, kind='Credit',
+                            reference=cashback_reference,
+                            description=f'1% cashback for delivered order {order.order_number}'
+                        ))
+                        create_customer_notification(
+                            order, 'Wallet cashback added',
+                            f'₹{cashback:.2f} cashback has been added to your Tharai Basket wallet.'
+                        )
             if status != previous_status:
                 status_messages = {
                     'Confirmed': ('Order confirmed', 'Your order has been confirmed by the Tharai Basket team.'),
