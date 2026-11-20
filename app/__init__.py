@@ -1264,7 +1264,7 @@ def create_app():
         if request.method == 'POST':
             order = Order.query.get_or_404(request.form.get('order_id', type=int))
             status = request.form.get('status', 'Pending')
-            allowed = ['Pending','Confirmed','Purchase Required','Purchased','Packing','Ready for Pickup','Out for Delivery','Delivered','Cancelled']
+            allowed = ['Pending','Confirmed','Purchase Required','Purchased','Packing','Ready for Pickup','Picked Up','Out for Delivery','Delivered','Cancelled']
             if status not in allowed:
                 abort(400)
             order.status = status
@@ -1275,6 +1275,8 @@ def create_app():
                     flash('Select a valid active delivery partner.', 'danger')
                     return redirect(url_for('admin_orders'))
                 order.delivery_partner_id = partner.id
+            else:
+                order.delivery_partner_id = None
             if status == 'Delivered' and order.delivery_partner_id:
                 existing = DeliveryEarning.query.filter_by(order_id=order.id).first()
                 if not existing:
@@ -1286,7 +1288,7 @@ def create_app():
         orders = Order.query.order_by(Order.created_at.desc()).all()
         partners = User.query.filter_by(role='delivery', active=True).all()
         return render_template('admin/orders.html', orders=orders, partners=partners,
-                               statuses=['Pending','Confirmed','Purchase Required','Purchased','Packing','Ready for Pickup','Out for Delivery','Delivered','Cancelled'])
+                               statuses=['Pending','Confirmed','Purchase Required','Purchased','Packing','Ready for Pickup','Picked Up','Out for Delivery','Delivered','Cancelled'])
 
     @app.route('/admin/suppliers', methods=['GET', 'POST'])
     @admin_required
@@ -1383,7 +1385,7 @@ def create_app():
     @delivery_required
     def delivery_dashboard():
         all_orders = Order.query.filter_by(delivery_partner_id=current_user.id).order_by(Order.created_at.desc()).all()
-        active_orders = [o for o in all_orders if o.status in ['Ready for Pickup', 'Out for Delivery']]
+        active_orders = [o for o in all_orders if o.status in ['Ready for Pickup', 'Picked Up', 'Out for Delivery']]
         completed_orders = [o for o in all_orders if o.status == 'Delivered']
         earnings = DeliveryEarning.query.filter_by(partner_id=current_user.id).order_by(DeliveryEarning.created_at.desc()).all()
         total_earnings = sum((Decimal(str(e.amount or 0)) for e in earnings), Decimal('0.00'))
@@ -1397,8 +1399,14 @@ def create_app():
     def delivery_status(order_id):
         order = Order.query.filter_by(id=order_id, delivery_partner_id=current_user.id).first_or_404()
         status = request.form.get('status')
-        if status not in ['Out for Delivery', 'Delivered']:
-            abort(400)
+        next_status = {
+            'Ready for Pickup': 'Picked Up',
+            'Picked Up': 'Out for Delivery',
+            'Out for Delivery': 'Delivered',
+        }.get(order.status)
+        if not next_status or status != next_status:
+            flash('This order cannot move to that status. Follow the delivery steps in order.', 'warning')
+            return redirect(url_for('delivery_dashboard'))
         order.status = status
         if status == 'Delivered' and not DeliveryEarning.query.filter_by(order_id=order.id).first():
             db.session.add(DeliveryEarning(partner_id=current_user.id, order_id=order.id, amount=Decimal('25.00')))
