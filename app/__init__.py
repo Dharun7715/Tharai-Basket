@@ -1,4 +1,5 @@
 import os
+import secrets
 import hmac
 import base64
 import io
@@ -170,6 +171,32 @@ def create_app():
         product = db.relationship('Product')
 
         __table_args__ = (db.UniqueConstraint('user_id', 'product_id', name='uq_review_user_product'),)
+
+    class ReferralCode(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+        code = db.Column(db.String(20), nullable=False, unique=True, index=True)
+        user = db.relationship('User')
+
+    class Referral(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        referrer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+        referred_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        referrer = db.relationship('User', foreign_keys=[referrer_id])
+        referred = db.relationship('User', foreign_keys=[referred_id])
+
+    class RewardTransaction(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        referral_id = db.Column(db.Integer, db.ForeignKey('referral.id'), nullable=False)
+        points = db.Column(db.Integer, nullable=False)
+        description = db.Column(db.String(180), nullable=False)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        user = db.relationship('User')
+        referral = db.relationship('Referral')
+
+        __table_args__ = (db.UniqueConstraint('user_id', 'referral_id', name='uq_reward_user_referral'),)
 
     class Supplier(db.Model):
         id = db.Column(db.Integer, primary_key=True)
@@ -364,17 +391,24 @@ def create_app():
             email = request.form.get('email', '').strip().lower()
             phone = request.form.get('phone', '').strip()
             password = request.form.get('password', '')
+            referral_code = request.form.get('referral_code', '').strip().upper()
+            referrer = ReferralCode.query.filter_by(code=referral_code).first() if referral_code else None
             if not name or not email or len(password) < 8:
                 flash('Enter your name, valid email and a password with at least 8 characters.', 'danger')
             elif User.query.filter_by(email=email).first():
                 flash('An account with this email already exists.', 'warning')
+            elif referral_code and (not referrer or referrer.user.role != 'customer'):
+                flash('That referral code is invalid. Check it and try again.', 'danger')
             else:
                 user = User(name=name, email=email, phone=phone, role='customer')
                 user.set_password(password)
                 db.session.add(user)
+                db.session.flush()
+                if referrer and referrer.user_id != user.id:
+                    db.session.add(Referral(referrer_id=referrer.user_id, referred_id=user.id))
                 db.session.commit()
                 login_user(user)
-                flash('Welcome to Tharai Basket!', 'success')
+                flash('Welcome to Tharai Basket! Your referral is linked. Rewards unlock after your first delivered order.', 'success')
                 return redirect(url_for('index'))
         return render_template('auth.html', mode='register')
 
@@ -410,7 +444,21 @@ def create_app():
                 flash('Your profile has been updated.', 'success')
                 return redirect(url_for('account'))
         addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.id.desc()).all()
-        return render_template('account.html', addresses=addresses)
+        referral_code = ReferralCode.query.filter_by(user_id=current_user.id).first()
+        if not referral_code:
+            for _ in range(5):
+                candidate = 'THARAI' + secrets.token_hex(3).upper()
+                if not ReferralCode.query.filter_by(code=candidate).first():
+                    referral_code = ReferralCode(user_id=current_user.id, code=candidate)
+                    db.session.add(referral_code)
+                    db.session.commit()
+                    break
+        reward_transactions = RewardTransaction.query.filter_by(user_id=current_user.id).order_by(RewardTransaction.created_at.desc()).all()
+        reward_points = sum(item.points for item in reward_transactions)
+        referral_count = Referral.query.filter_by(referrer_id=current_user.id).count()
+        return render_template('account.html', addresses=addresses, referral_code=referral_code,
+                               reward_transactions=reward_transactions, reward_points=reward_points,
+                               referral_count=referral_count)
 
     @app.post('/account/address/add')
     @login_required
@@ -1028,6 +1076,19 @@ def create_app():
         flash('Category disabled.', 'success')
         return redirect(url_for('admin_categories'))
 
+    def award_referral_points(order):
+        if order.status != 'Delivered':
+            return
+        referral = Referral.query.filter_by(referred_id=order.user_id).first()
+        if not referral:
+            return
+        if RewardTransaction.query.filter_by(user_id=referral.referrer_id, referral_id=referral.id).first():
+            return
+        db.session.add(RewardTransaction(user_id=referral.referrer_id, referral_id=referral.id,
+                                          points=100, description='Referral reward for a friend’s first delivered order'))
+        db.session.add(RewardTransaction(user_id=referral.referred_id, referral_id=referral.id,
+                                          points=100, description='Welcome reward for your first delivered order'))
+
     @app.route('/admin/orders', methods=['GET', 'POST'])
     @admin_required
     def admin_orders():
@@ -1049,6 +1110,7 @@ def create_app():
                 existing = DeliveryEarning.query.filter_by(order_id=order.id).first()
                 if not existing:
                     db.session.add(DeliveryEarning(partner_id=order.delivery_partner_id, order_id=order.id, amount=Decimal('25.00')))
+            award_referral_points(order)
             db.session.commit()
             flash('Order updated.', 'success')
             return redirect(url_for('admin_orders'))
@@ -1171,6 +1233,7 @@ def create_app():
         order.status = status
         if status == 'Delivered' and not DeliveryEarning.query.filter_by(order_id=order.id).first():
             db.session.add(DeliveryEarning(partner_id=current_user.id, order_id=order.id, amount=Decimal('25.00')))
+        award_referral_points(order)
         db.session.commit()
         flash('Delivery status updated.', 'success')
         return redirect(url_for('delivery_dashboard'))
