@@ -21,7 +21,7 @@
               <span id="tb-cart-qty-{{ row.product.id }}">{{ row.quantity }}</span>
               <button type="button" aria-label="Increase {{ row.product.name }}" onclick="updateCartQuantity({{ row.product.id }}, 1)">+</button>
             </div>
-            <strong class="tb-cart-line-price" id="tb-cart-line-{{ row.product.id }}">{{ row.line_total|inr }}</strong>
+            <strong class="tb-cart-line-price" id="tb-cart-line-{{ row.product.id }}">{{ row.line_total|inr }}{% if row.flash_sale %}<small style="display:block;color:#168348">Flash sale · {{ row.unit_price|inr }} each</small>{% endif %}</strong>
           </article>
         {% endfor %}
         </div>
@@ -61,8 +61,8 @@
             <div class="tb-summary-row"><span>Applied: <strong>{{ coupon.code }}</strong></span><form method="post" action="{{ url_for('coupon_remove') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="tb-remove-coupon" type="submit">Remove</button></form></div>
           {% endif %}
         </div>
-        <div class="tb-summary-row tb-discount-row" id="tb-cart-discount-row" {% if discount <= 0 %}hidden{% endif %}><span>Coupon discount</span><strong id="tb-cart-discount">-{{ discount|inr }}</strong></div>
-        <div class="tb-cart-total"><span>Total payable</span><strong id="tb-cart-total">{{ total|inr }}</strong></div>
+        <div class="tb-summary-row tb-discount-row" id="tb-cart-discount-row" {% if discount <= 0 %}hidden{% endif %}><span>Offers & discounts</span><strong id="tb-cart-discount">-{{ discount|inr }}</strong></div>
+        {% if combo and combo_discount > 0 %}<div class="tb-summary-row"><span>Combo saving · {{ combo.title }}</span><strong style="color:#168348">-{{ combo_discount|inr }}</strong></div>{% endif %}\n        <div class="tb-cart-total"><span>Total payable</span><strong id="tb-cart-total">{{ total|inr }}</strong></div>
         <a class="tb-checkout-button" href="{{ url_for('checkout') }}">Continue to checkout <span>→</span></a>
         <p class="tb-summary-footnote">Secure checkout · Fresh local delivery</p>
       </aside>
@@ -109,7 +109,7 @@ async function updateCartQuantity(productId, change) {
     document.getElementById('tb-cart-count').textContent = data.item_count + ' item(s)';
     document.getElementById('tb-free-delivery-note').textContent = Number(data.subtotal) >= 300 ? '✓ You’ve unlocked free delivery!' : 'Add ₹' + (300 - Number(data.subtotal)).toFixed(2) + ' more for free delivery.';
     const discountRow = document.getElementById('tb-cart-discount-row');
-    if (Number(data.discount) > 0 && data.coupon_code) {
+    if (Number(data.discount) > 0) {
       discountRow.hidden = false;
       document.getElementById('tb-cart-discount').textContent = '-₹' + Number(data.discount).toFixed(2);
     } else discountRow.hidden = true;
