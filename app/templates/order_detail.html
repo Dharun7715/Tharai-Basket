@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Track Order {{ order.order_number }} | Tharai Basket{% endblock %}
 {% block content %}
-{% set tracking_steps = ['Pending', 'Confirmed', 'Purchase Required', 'Purchased', 'Packing', 'Ready for Pickup', 'Out for Delivery', 'Delivered'] %}
+{% set tracking_steps = ['Pending', 'Confirmed', 'Purchase Required', 'Purchased', 'Packing', 'Ready for Pickup', 'Picked Up', 'Out for Delivery', 'Delivered'] %}
 {% set current_step = tracking_steps.index(order.status) if order.status in tracking_steps else -1 %}
 <section class="section">
   <div class="container narrow">
