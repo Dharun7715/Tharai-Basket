@@ -942,8 +942,8 @@ def create_app():
         if current_user.role != 'customer':
             abort(403)
         order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
-        if order.status != 'Pending':
-            flash('This order can no longer be cancelled online. Please contact the store team for help.', 'warning')
+        if order.delivery_partner_id is not None or order.status in ['Delivered', 'Cancelled']:
+            flash('This order can only be cancelled before a delivery partner is assigned. Please contact the store team for help.', 'warning')
             return redirect(url_for('order_detail', order_id=order.id))
         for item in order.items:
             if item.product_id:
