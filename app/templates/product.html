@@ -6,8 +6,8 @@
     <div class="detail-image">
       {% if gallery_images %}
       <div class="product-gallery">
-        <div class="product-gallery-main"><img id="product-gallery-main" src="{{ url_for('static', filename=gallery_images[0].image_path) }}" alt="{{ gallery_images[0].alt_text or product.name }}"></div>
-        <div class="product-gallery-thumbs">{% for image in gallery_images %}<button type="button" class="product-gallery-thumb" onclick="document.getElementById('product-gallery-main').src=this.dataset.src" data-src="{{ url_for('static', filename=image.image_path) }}" aria-label="View image {{ loop.index }}"><img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ image.alt_text or product.name }}"></button>{% endfor %}</div>
+        <div class="product-gallery-main"><img id="product-gallery-main" src="{{ gallery_images[0].image_path if gallery_images[0].image_path.startswith('http') else url_for('static', filename=gallery_images[0].image_path) }}" alt="{{ gallery_images[0].alt_text or product.name }}"></div>
+        <div class="product-gallery-thumbs">{% for image in gallery_images %}<button type="button" class="product-gallery-thumb" onclick="document.getElementById('product-gallery-main').src=this.dataset.src" data-src="{{ image.image_path if image.image_path.startswith('http') else url_for('static', filename=image.image_path) }}" aria-label="View image {{ loop.index }}"><img src="{{ url_for('static', filename=image.image_path) }}" alt="{{ image.alt_text or product.name }}"></button>{% endfor %}</div>
       </div>
       {% elif product.image %}<img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}">{% else %}<div class="product-placeholder">🛍️</div>{% endif %}
     </div>
