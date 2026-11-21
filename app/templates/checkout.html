@@ -26,17 +26,17 @@
           </label>{% endif %}
           <div class="tb-schedule-box">
             <div class="tb-schedule-heading"><span>🕒</span><div><strong>Schedule your delivery</strong><small>First slot is at least 2 hours after you place your order, rounded up to the next :00 or :30. New slots every 30 minutes.</small></div></div>
-            <div class="tb-schedule-fields">
-              <label>Delivery date
-                <input type="date" id="delivery-date" name="delivery_date" value="{{ delivery_date }}" min="{{ min_delivery_date }}" max="{{ max_delivery_date }}" required>
-              </label>
-              <label>Delivery time slot
-                <select id="delivery-slot" name="delivery_slot" required>
-                  {% for slot in delivery_slots %}<option value="{{ slot }}" {% if delivery_slot == slot %}selected{% endif %}>{{ slot }}</option>{% endfor %}
-                  {% if not delivery_slots %}<option value="">No slots available</option>{% endif %}
-                </select>
-              </label>
+            <input type="hidden" id="delivery-date" name="delivery_date" value="{{ delivery_date }}" min="{{ min_delivery_date }}" max="{{ max_delivery_date }}" required>
+            <div class="tb-checkout-day-picker">
+              <span class="tb-checkout-day-label">Choose delivery day</span>
+              <div class="tb-checkout-day-options" id="delivery-day-options" role="group" aria-label="Delivery day"></div>
             </div>
+            <label class="tb-checkout-time-label">Available delivery times
+              <select id="delivery-slot" name="delivery_slot" required>
+                {% for slot in delivery_slots %}<option value="{{ slot }}" {% if delivery_slot == slot %}selected{% endif %}>{{ slot }}</option>{% endfor %}
+                {% if not delivery_slots %}<option value="">No slots available</option>{% endif %}
+              </select>
+            </label>
             <small id="delivery-slot-help" role="status">Choose a date to see available 30-minute slots.</small>
           </div>
           <div class="tb-fields-grid">
@@ -125,7 +125,9 @@
 .tb-location-copy{flex:1;min-width:0}.tb-location-copy strong{font-size:12px}.tb-location-copy p{font-size:10px;color:#7d8a80;margin:3px 0}.tb-location-copy span{font-size:10px;color:#728176}
 .tb-location-button{white-space:nowrap;padding:10px 13px;font-size:11px}
 .tb-saved-address-select{display:grid;gap:7px;margin:-4px 0 15px;font-size:11px;font-weight:700;color:#526257}.tb-saved-address-select select{width:100%;border:1px solid #dfe8e0;border-radius:10px;padding:12px 13px;background:#fff;font:400 12px 'DM Sans';color:#24372a}
-.tb-schedule-box{margin:0 0 18px;padding:15px;background:#f5faf6;border:1px solid #e1ece2;border-radius:13px}.tb-schedule-heading{display:flex;align-items:center;gap:10px;margin-bottom:13px}.tb-schedule-heading>span{width:35px;height:35px;border-radius:10px;background:#e5f2e7;display:grid;place-items:center;font-size:19px}.tb-schedule-heading strong,.tb-schedule-heading small{display:block}.tb-schedule-heading strong{font-size:12px;color:#263b2c}.tb-schedule-heading small{font-size:10px;color:#7d8a80;margin-top:3px}.tb-schedule-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tb-schedule-fields label{display:grid;gap:7px;font-size:11px;font-weight:700;color:#526257}.tb-schedule-fields input,.tb-schedule-fields select{width:100%;border:1px solid #dfe8e0;border-radius:10px;padding:12px 13px;background:#fff;color:#24372a;font:400 12px 'DM Sans',sans-serif}.tb-schedule-box>small{display:block;color:#78867c;font-size:10px;margin-top:9px}..tb-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.tb-schedule-box{margin:0 0 18px;padding:15px;background:#f5faf6;border:1px solid #e1ece2;border-radius:13px}.tb-schedule-heading{display:flex;align-items:center;gap:10px;margin-bottom:13px}.tb-schedule-heading>span{width:35px;height:35px;border-radius:10px;background:#e5f2e7;display:grid;place-items:center;font-size:19px}.tb-schedule-heading strong,.tb-schedule-heading small{display:block}.tb-schedule-heading strong{font-size:12px;color:#263b2c}.tb-schedule-heading small{font-size:10px;color:#7d8a80;margin-top:3px}.tb-schedule-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tb-schedule-fields label{display:grid;gap:7px;font-size:11px;font-weight:700;color:#526257}.tb-schedule-fields input,.tb-schedule-fields select{width:100%;border:1px solid #dfe8e0;border-radius:10px;padding:12px 13px;background:#fff;color:#24372a;font:400 12px 'DM Sans',sans-serif}
+.tb-checkout-day-picker{display:grid;gap:8px;margin:2px 0 13px}.tb-checkout-day-label,.tb-checkout-time-label{font-size:11px;font-weight:700;color:#526257}.tb-checkout-day-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.tb-checkout-day-option{min-height:48px;padding:7px 5px;border:1px solid #dfe8e0;border-radius:10px;background:#fff;color:#405846;font:700 11px 'DM Sans',sans-serif;cursor:pointer}.tb-checkout-day-option span{display:block;font-size:9px;font-weight:500;color:#819086;margin-top:3px}.tb-checkout-day-option.is-active{border-color:#267342;background:#edf7ef;color:#176b39;box-shadow:inset 0 0 0 1px #267342}.tb-checkout-time-label{display:grid;gap:7px}.tb-checkout-time-label select{width:100%;border:1px solid #dfe8e0;border-radius:10px;padding:12px 13px;background:#fff;color:#24372a;font:400 12px 'DM Sans',sans-serif}
+.tb-schedule-box>small{display:block;color:#78867c;font-size:10px;margin-top:9px}..tb-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
 .tb-fields-grid label,.tb-payment-select,.tb-upi-panel label{display:grid;gap:7px;font-size:11px;font-weight:700;color:#526257}
 .tb-fields-grid input,.tb-fields-grid textarea,.tb-payment-select select,.tb-upi-panel input{width:100%;border:1px solid #dfe8e0;border-radius:10px;padding:12px 13px;font:400 12px 'DM Sans',sans-serif;color:#24372a;background:#fff;outline:none;transition:.2s}
 .tb-fields-grid input:focus,.tb-fields-grid textarea:focus,.tb-payment-select select:focus,.tb-upi-panel input:focus{border-color:#65a978;box-shadow:0 0 0 3px #eaf5ec}
@@ -246,6 +248,30 @@ function detectDeliveryLocation() {
 const deliveryDateInput = document.getElementById('delivery-date');
 const deliverySlotSelect = document.getElementById('delivery-slot');
 const deliverySlotHelp = document.getElementById('delivery-slot-help');
+const deliveryDayOptions = document.getElementById('delivery-day-options');
+function renderDeliveryDays() {
+  if (!deliveryDateInput || !deliveryDayOptions) return;
+  deliveryDayOptions.innerHTML = '';
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+  for (let offset = 0; offset < 4; offset++) {
+    const day = new Date(base);
+    day.setDate(base.getDate() + offset);
+    const key = day.getFullYear() + '-' + String(day.getMonth() + 1).padStart(2, '0') + '-' + String(day.getDate()).padStart(2, '0');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'tb-checkout-day-option' + (deliveryDateInput.value === key ? ' is-active' : '');
+    const title = offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : day.toLocaleDateString('en-IN', {day:'2-digit', month:'2-digit', year:'numeric'});
+    button.innerHTML = title + (offset >= 2 ? '<span>Day ' + (offset + 1) + '</span>' : '<span>' + day.toLocaleDateString('en-IN', {weekday:'short'}) + '</span>');
+    button.setAttribute('aria-pressed', deliveryDateInput.value === key ? 'true' : 'false');
+    button.addEventListener('click', () => {
+      deliveryDateInput.value = key;
+      renderDeliveryDays();
+      loadDeliverySlots('');
+    });
+    deliveryDayOptions.appendChild(button);
+  }
+}
 async function loadDeliverySlots(preferredSlot) {
   if (!deliveryDateInput || !deliverySlotSelect) return;
   deliverySlotSelect.disabled = true;
@@ -290,8 +316,10 @@ if (deliveryDateInput && deliverySlotSelect) {
       preferredSlot = hour12 + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
     }
   }
+  renderDeliveryDays();
   loadDeliverySlots(preferredSlot);
   deliveryDateInput.addEventListener('change', () => {
+    renderDeliveryDays();
     const current = localStorage.getItem('tb_delivery_slot') || '';
     const savedTime = current.startsWith(deliveryDateInput.value + '|') ? current.split('|')[1] : '';
     let preferred = '';
