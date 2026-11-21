@@ -1907,6 +1907,54 @@ def create_app():
         flash(f'Coupon {coupon.code} is now {"active" if coupon.active else "inactive"}.', 'success')
         return redirect(url_for('admin_coupons'))
 
+    @app.get('/admin/stock-prediction')
+    @admin_required
+    def admin_stock_prediction():
+        # A transparent rule-based forecast: recent 30-day demand, 7-day lead time,
+        # and a 3-day safety buffer. It is a planning aid, not an ML guarantee.
+        today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+        since = datetime.utcnow() - timedelta(days=30)
+        products = Product.query.filter_by(active=True).order_by(Product.name.asc()).all()
+        forecast_rows = []
+        for product in products:
+            sales_rows = db.session.query(
+                db.func.coalesce(db.func.sum(OrderItem.quantity), 0),
+                db.func.count(db.distinct(Order.id))
+            ).join(Order, Order.id == OrderItem.order_id).filter(
+                OrderItem.product_id == product.id,
+                Order.created_at >= since,
+                Order.status != 'Cancelled'
+            ).first()
+            units_sold = int(sales_rows[0] or 0)
+            order_count = int(sales_rows[1] or 0)
+            daily_demand = Decimal(units_sold) / Decimal('30')
+            # Reorder point covers 10 days of estimated demand (7 lead + 3 buffer).
+            target_stock = int(math.ceil(float(daily_demand * Decimal('10'))))
+            current_stock = int(product.stock or 0)
+            suggested_qty = max(0, target_stock - current_stock)
+            if current_stock <= 0:
+                priority = 'Urgent'
+            elif suggested_qty > 0 and current_stock <= target_stock * 0.5:
+                priority = 'High'
+            elif suggested_qty > 0:
+                priority = 'Medium'
+            else:
+                priority = 'Healthy'
+            confidence = 'High' if order_count >= 10 else ('Medium' if order_count >= 3 else 'Low')
+            forecast_rows.append({
+                'product': product, 'units_sold': units_sold, 'order_count': order_count,
+                'daily_demand': round(float(daily_demand), 2), 'target_stock': target_stock,
+                'suggested_qty': suggested_qty, 'priority': priority, 'confidence': confidence
+            })
+        forecast_rows.sort(key=lambda row: (
+            {'Urgent': 0, 'High': 1, 'Medium': 2, 'Healthy': 3}[row['priority']],
+            -row['suggested_qty'], row['product'].name.lower()
+        ))
+        return render_template('admin/stock_prediction.html', rows=forecast_rows,
+            urgent_count=sum(1 for row in forecast_rows if row['priority'] == 'Urgent'),
+            reorder_count=sum(1 for row in forecast_rows if row['suggested_qty'] > 0),
+            forecast_date=today.strftime('%d %b %Y'))
+
     @app.get('/admin/inventory')
     @admin_required
     def admin_inventory():
