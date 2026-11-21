@@ -1018,9 +1018,12 @@ def create_app():
                 db.session.flush()
                 if referrer and referrer.user_id != user.id:
                     db.session.add(Referral(referrer_id=referrer.user_id, referred_id=user.id))
+                db.session.add(Notification(user_id=user.id, title='Welcome to Tharai Basket!',
+                    message='Your first order above ₹300 gets ₹50 off, and orders above ₹200 get free delivery. From your second order, delivery is free above ₹300.',
+                    category='offers'))
                 db.session.commit()
                 login_user(user)
-                flash('Welcome to Tharai Basket! Your referral is linked. Rewards unlock after your first delivered order.', 'success')
+                flash('Welcome to Tharai Basket! Your first-order offers are ready.', 'success')
                 return redirect(url_for('index'))
         return render_template('auth.html', mode='register')
 
@@ -1280,22 +1283,33 @@ def create_app():
             VipMembership.ends_at > datetime.utcnow()
         ).order_by(VipMembership.ends_at.desc()).first()
 
-    def delivery_threshold_for_membership(membership=None):
+    def is_first_order_customer(user_id):
+        return not Order.query.filter_by(user_id=user_id).first()
+
+    def delivery_threshold_for_membership(membership=None, user_id=None):
         if membership and membership.tier == 'Platinum':
             return Decimal('0.00')
         if membership and membership.tier == 'Gold':
             return Decimal('150.00')
-        return Decimal(str(app.config['FREE_DELIVERY_THRESHOLD']))
+        if user_id is not None:
+            return Decimal('200.00') if is_first_order_customer(user_id) else Decimal('300.00')
+        return Decimal('300.00')
 
-    def calculate_delivery_fee(subtotal, membership=None):
-        threshold = delivery_threshold_for_membership(membership)
-        if membership and membership.tier == 'Gold':
-            return Decimal('0.00') if subtotal > threshold else Decimal(str(app.config['DELIVERY_FEE']))
-        return Decimal('0.00') if subtotal >= threshold else Decimal(str(app.config['DELIVERY_FEE']))
+    def calculate_delivery_fee(subtotal, membership=None, user_id=None):
+        threshold = delivery_threshold_for_membership(membership, user_id)
+        if membership and membership.tier == 'Platinum':
+            return Decimal('0.00')
+        return Decimal('0.00') if subtotal > threshold else Decimal(str(app.config['DELIVERY_FEE']))
+
+    def first_order_welcome_discount(user_id, subtotal):
+        return Decimal('50.00') if is_first_order_customer(user_id) and subtotal > Decimal('300.00') else Decimal('0.00')
 
     def active_cart_coupon(subtotal):
         code = session.get('coupon_code')
         if not code:
+            return None, Decimal('0.00')
+        if code == 'THARAI50':
+            session.pop('coupon_code', None)
             return None, Decimal('0.00')
         coupon = Coupon.query.filter_by(code=code, active=True).first()
         if not coupon or subtotal < Decimal(str(coupon.min_order or 0)):
@@ -1343,8 +1357,8 @@ def create_app():
             return jsonify({'empty': True, 'redirect': url_for('cart')})
         applied_coupon_code = session.get('coupon_code')
         membership = current_vip_membership()
-        threshold = delivery_threshold_for_membership(membership)
-        fee = calculate_delivery_fee(subtotal, membership)
+        threshold = delivery_threshold_for_membership(membership, current_user.id)
+        fee = calculate_delivery_fee(subtotal, membership, current_user.id)
         coupon, coupon_discount = active_cart_coupon(subtotal)
         active_combo, combo_discount = active_cart_combo(rows)
         reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
@@ -1353,7 +1367,8 @@ def create_app():
         available_reward_points = max(0, reward_credits - int(reward_spent or 0))
         # 100 reward points = ₹1. Redeem only whole-rupee point blocks.
         reward_discount = min(Decimal(available_reward_points // 100), subtotal) if session.get('use_rewards') else Decimal('0.00')
-        discount = min(subtotal, coupon_discount + reward_discount + combo_discount)
+        welcome_discount = first_order_welcome_discount(current_user.id, subtotal)
+        discount = min(subtotal, coupon_discount + reward_discount + combo_discount + welcome_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
         upi_params = {'pa': '8838145515@sbi', 'pn': 'Tharai Basket', 'am': f'{total:.2f}',
                       'cu': 'INR', 'tn': 'Tharai Basket order payment'}
@@ -1369,6 +1384,7 @@ def create_app():
             'delivery_label': 'FREE' if fee == 0 else f'₹{fee:.2f}',
             'free_delivery_threshold': f'{delivery_threshold_for_membership(current_vip_membership()):.2f}',
             'discount': f'{discount:.2f}', 'coupon_discount': f'{coupon_discount:.2f}',
+            'welcome_discount': f'{welcome_discount:.2f}', 'is_first_order': is_first_order_customer(current_user.id),
             'reward_discount': f'{reward_discount:.2f}', 'combo_discount': f'{combo_discount:.2f}',
             'combo_title': active_combo.title if active_combo else None, 'coupon_code': coupon.code if coupon else None,
             'total': f'{total:.2f}', 'upi_qr_data': qr_data,
@@ -1383,6 +1399,9 @@ def create_app():
             abort(403)
         _, subtotal = cart_data()
         code = request.form.get('coupon_code', '').strip().upper()
+        if code == 'THARAI50':
+            flash('The ₹50 first-order offer is applied automatically on eligible baskets.', 'info')
+            return redirect(url_for('cart'))
         coupon = Coupon.query.filter_by(code=code, active=True).first() if code else None
         if not coupon:
             flash('Invalid or inactive coupon code.', 'danger')
@@ -1403,9 +1422,10 @@ def create_app():
     @app.get('/cart')
     def cart():
         rows, subtotal = cart_data()
-        threshold = app.config['FREE_DELIVERY_THRESHOLD']
         membership = current_vip_membership()
-        fee = calculate_delivery_fee(subtotal, membership)
+        first_order = bool(current_user.is_authenticated and current_user.role == 'customer' and is_first_order_customer(current_user.id))
+        threshold = delivery_threshold_for_membership(membership, current_user.id if current_user.is_authenticated and current_user.role == 'customer' else None)
+        fee = calculate_delivery_fee(subtotal, membership, current_user.id if current_user.is_authenticated and current_user.role == 'customer' else None)
         coupon, coupon_discount = active_cart_coupon(subtotal)
         active_combo, combo_discount = active_cart_combo(rows)
         if current_user.is_authenticated and current_user.role == 'customer':
@@ -1421,11 +1441,13 @@ def create_app():
         else:
             use_rewards = bool(session.get('use_rewards'))
         reward_discount = min(Decimal(available_reward_points), subtotal) if use_rewards else Decimal('0.00')
-        discount = min(subtotal, coupon_discount + reward_discount + combo_discount)
+        welcome_discount = first_order_welcome_discount(current_user.id, subtotal) if current_user.is_authenticated and current_user.role == 'customer' else Decimal('0.00')
+        discount = min(subtotal, coupon_discount + reward_discount + combo_discount + welcome_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
         return render_template('cart.html', rows=rows, subtotal=subtotal, delivery_fee=fee,
                                total=total, threshold=threshold, coupon=coupon, discount=discount,
                                coupon_discount=coupon_discount, reward_discount=reward_discount,
+                               welcome_discount=welcome_discount, first_order=first_order,
                                combo=active_combo, combo_discount=combo_discount, membership=membership)
 
     @app.get('/api/delivery-check')
@@ -1484,9 +1506,10 @@ def create_app():
         if not rows:
             flash('Your basket is empty.', 'warning')
             return redirect(url_for('cart'))
-        threshold = app.config['FREE_DELIVERY_THRESHOLD']
         membership = current_vip_membership()
-        fee = calculate_delivery_fee(subtotal, membership)
+        first_order = is_first_order_customer(current_user.id)
+        threshold = delivery_threshold_for_membership(membership, current_user.id)
+        fee = calculate_delivery_fee(subtotal, membership, current_user.id)
         coupon, coupon_discount = active_cart_coupon(subtotal)
         active_combo, combo_discount = active_cart_combo(rows)
         reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
@@ -1499,7 +1522,8 @@ def create_app():
         else:
             use_rewards = bool(session.get('use_rewards'))
         reward_discount = min(Decimal(available_reward_points), subtotal) if use_rewards else Decimal('0.00')
-        discount = min(subtotal, coupon_discount + reward_discount + combo_discount)
+        welcome_discount = first_order_welcome_discount(current_user.id, subtotal)
+        discount = min(subtotal, coupon_discount + reward_discount + combo_discount + welcome_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
         wallet_opted = request.values.get('use_wallet') == '1'
         wallet_available = wallet_balance(current_user.id)
@@ -1571,7 +1595,8 @@ def create_app():
                 reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
                 available_reward_points = max(0, reward_credits - int(reward_spent or 0))
                 reward_discount = min(Decimal(available_reward_points), subtotal) if session.get('use_rewards') else Decimal('0.00')
-                discount = min(subtotal, coupon_discount + reward_discount + combo_discount)
+                welcome_discount = first_order_welcome_discount(current_user.id, subtotal)
+                discount = min(subtotal, coupon_discount + reward_discount + combo_discount + welcome_discount)
                 total = max(Decimal('0.00'), subtotal + fee - discount)
                 wallet_used = min(wallet_balance(current_user.id), total) if request.form.get('use_wallet') == '1' else Decimal('0.00')
                 total = max(Decimal('0.00'), total - wallet_used)
@@ -1596,6 +1621,10 @@ def create_app():
                     spin_claim.used_at = datetime.utcnow()
                     spin_claim.order_id = order.id
                 create_customer_notification(order, 'Order placed successfully', f'Your order {order.order_number} has been received. Requested delivery: {delivery_date} at {delivery_slot}. We will confirm it shortly.')
+                if welcome_discount > 0:
+                    create_customer_notification(order, '₹50 welcome offer applied', 'Your first-order ₹50 discount has been applied automatically. Thank you for choosing Tharai Basket!', 'offers')
+                if fee == 0:
+                    create_customer_notification(order, 'Free delivery unlocked', 'Free delivery has been applied to this order. Happy shopping!', 'offers')
                 for row in rows:
                     p = row['product']
                     db.session.add(OrderItem(order_id=order.id, product_id=p.id, product_name=p.name,
@@ -1650,6 +1679,7 @@ def create_app():
         return render_template('checkout.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=total,
                                spin_claim=spin_claim if subtotal > Decimal('200.00') else None,
                                coupon=coupon, discount=discount, reward_discount=reward_discount,
+                               welcome_discount=welcome_discount, first_order=first_order, free_delivery_threshold=threshold,
                                membership=membership, combo=active_combo, combo_discount=combo_discount,
                                available_reward_points=available_reward_points, use_rewards=use_rewards,
                                wallet_balance=wallet_available, wallet_opted=wallet_opted, wallet_used=wallet_preview,
@@ -1720,7 +1750,7 @@ def create_app():
             batch.remaining_quantity -= used
             remaining_to_allocate -= used
         order.subtotal = Decimal(str(order.subtotal or 0)) + Decimal(str(product.price)) * quantity
-        order.delivery_fee = calculate_delivery_fee(order.subtotal, current_vip_membership())
+        order.delivery_fee = calculate_delivery_fee(order.subtotal, current_vip_membership(), current_user.id)
         order.total = max(Decimal('0.00'), Decimal(str(order.subtotal)) + Decimal(str(order.delivery_fee or 0)) - Decimal(str(order.discount or 0)))
         create_customer_notification(order, 'Items added to your order', f'{quantity} × {product.name} was added. Your updated order total is ₹{order.total:.2f}.')
         db.session.commit()
@@ -1917,6 +1947,18 @@ def create_app():
             StoreExpense.expense_date >= (today - timedelta(days=29)).strftime('%Y-%m-%d')).scalar() or 0
         last_30_net = last_30_gross_profit - Decimal(str(last_30_expenses or 0))
         latest_order_id = db.session.query(db.func.coalesce(db.func.max(Order.id), 0)).scalar() or 0
+        ordered_customers = set()
+        first_offer_orders = 0
+        first_offer_cost = Decimal('0.00')
+        for promo_order in Order.query.order_by(Order.created_at.asc(), Order.id.asc()).all():
+            is_first_promo_order = promo_order.user_id not in ordered_customers
+            ordered_customers.add(promo_order.user_id)
+            if is_first_promo_order and Decimal(str(promo_order.subtotal or 0)) > Decimal('300.00'):
+                first_offer_orders += 1
+                first_offer_cost += Decimal('50.00')
+        delivered_delivery_fees = db.session.query(db.func.coalesce(db.func.sum(Order.delivery_fee), 0)).filter(
+            Order.status == 'Delivered').scalar() or 0
+        free_delivery_order_count = Order.query.filter(Order.delivery_fee == 0, Order.status != 'Cancelled').count()
         delivered_order_count = delivered_query.count()
         average_order_value = (Decimal(str(total_sales or 0)) / delivered_order_count) if delivered_order_count else Decimal('0.00')
         repeat_customer_count = db.session.query(Order.user_id).filter(
@@ -1943,7 +1985,10 @@ def create_app():
             repeat_customer_rate=repeat_customer_rate,
             last_30_gross_profit=last_30_gross_profit, last_30_expenses=last_30_expenses,
             last_30_net=last_30_net,
-            latest_order_id=latest_order_id)
+            latest_order_id=latest_order_id,
+            first_offer_orders=first_offer_orders, first_offer_cost=first_offer_cost,
+            free_delivery_order_count=free_delivery_order_count,
+            delivered_delivery_fees=Decimal(str(delivered_delivery_fees or 0)))
 
     @app.get('/admin/orders/poll')
     @admin_required
@@ -2354,7 +2399,7 @@ def create_app():
             title = request.form.get('title', '').strip()[:140]
             message = request.form.get('message', '').strip()[:500]
             audience = request.form.get('audience', 'all')
-            if not title or not message or audience not in ('all', 'recent'):
+            if not title or not message or audience not in ('all', 'recent', 'no_orders'):
                 flash('Enter a title, message and valid audience.', 'warning')
                 return redirect(url_for('admin_notification_broadcast'))
             customers = User.query.filter_by(role='customer', active=True).all()
@@ -2362,6 +2407,9 @@ def create_app():
                 cutoff = datetime.utcnow() - timedelta(days=30)
                 recent_ids = {row[0] for row in db.session.query(Order.user_id).filter(Order.created_at >= cutoff).distinct().all()}
                 customers = [customer for customer in customers if customer.id in recent_ids]
+            elif audience == 'no_orders':
+                ordered_ids = {row[0] for row in db.session.query(Order.user_id).distinct().all()}
+                customers = [customer for customer in customers if customer.id not in ordered_ids]
             db.session.add_all([Notification(user_id=customer.id, title=title, message=message,
                 category='announcement') for customer in customers])
             db.session.commit()
