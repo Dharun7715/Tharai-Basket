@@ -1099,9 +1099,9 @@ def create_app():
             anniversary_locked = bool(current_user.anniversary_date)
             if not name or len(name) > 120 or len(phone) > 20:
                 flash('Enter a valid name and phone number.', 'danger')
-            elif birthday_locked and birthday_input != current_user.birthday_date:
+            elif birthday_locked and birthday_input and birthday_input != current_user.birthday_date:
                 flash('Birthday date is locked after saving. Contact support if it needs correction.', 'danger')
-            elif anniversary_locked and anniversary_input != current_user.anniversary_date:
+            elif anniversary_locked and anniversary_input and anniversary_input != current_user.anniversary_date:
                 flash('Anniversary date is locked after saving. Contact support if it needs correction.', 'danger')
             elif not valid_special_date(birthday_input) or not valid_special_date(anniversary_input):
                 flash('Please enter valid special dates that are not in the future.', 'danger')
