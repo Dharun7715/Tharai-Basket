@@ -38,6 +38,11 @@ def create_app():
         SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL', f"sqlite:///{Path(app.instance_path) / 'tharai_basket.db'}"),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         MAX_CONTENT_LENGTH=5 * 1024 * 1024,
+        # Keep customers signed in across browser restarts for 30 days.
+        REMEMBER_COOKIE_DURATION=timedelta(days=30),
+        REMEMBER_COOKIE_SECURE=True,
+        REMEMBER_COOKIE_HTTPONLY=True,
+        REMEMBER_COOKIE_SAMESITE='Lax',
         UPLOAD_FOLDER=str(BASE_DIR / 'static' / 'uploads'),
         FREE_DELIVERY_THRESHOLD=Decimal(os.environ.get('FREE_DELIVERY_THRESHOLD', '300')),
         DELIVERY_FEE=Decimal(os.environ.get('DELIVERY_FEE', '25')),
@@ -1063,18 +1068,24 @@ def create_app():
                     message='Your first order above ₹300 gets ₹50 off, and orders above ₹200 get free delivery. From your second order, delivery is free above ₹300.',
                     category='offers'))
                 db.session.commit()
-                login_user(user)
+                login_user(user, remember=True)
                 flash('Welcome to Tharai Basket! Your first-order offers are ready.', 'success')
                 return redirect(url_for('index'))
         return render_template('auth.html', mode='register')
 
     @app.route('/login', methods=['GET', 'POST'])
     def login():
+        if current_user.is_authenticated:
+            if current_user.role == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            if current_user.role == 'delivery':
+                return redirect(url_for('delivery_dashboard'))
+            return redirect(request.args.get('next') or url_for('index'))
         if request.method == 'POST':
             email = request.form.get('email', '').strip().lower()
             user = User.query.filter_by(email=email, active=True).first()
             if user and user.check_password(request.form.get('password', '')):
-                login_user(user)
+                login_user(user, remember=True)
                 if user.role == 'admin':
                     return redirect(url_for('admin_dashboard'))
                 if user.role == 'delivery':
