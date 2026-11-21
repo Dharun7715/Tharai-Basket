@@ -107,6 +107,8 @@ def create_app():
         name = db.Column(db.String(120), nullable=False)
         email = db.Column(db.String(180), unique=True, nullable=False, index=True)
         phone = db.Column(db.String(20), default='')
+        birthday_date = db.Column(db.String(10), nullable=True)
+        anniversary_date = db.Column(db.String(10), nullable=True)
         password_hash = db.Column(db.String(255), nullable=False)
         role = db.Column(db.String(20), default='customer', nullable=False)
         active = db.Column(db.Boolean, default=True)
@@ -1042,6 +1044,39 @@ def create_app():
             flash('Incorrect email or password.', 'danger')
         return render_template('auth.html', mode='login')
 
+    def issue_special_day_gifts(user):
+        local_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+        occasions = [
+            ('birthday', user.birthday_date, 'Happy Birthday! Here is your ₹50 Tharai Basket gift card.'),
+            ('anniversary', user.anniversary_date, 'Happy Anniversary! Here is your ₹50 Tharai Basket gift card.')
+        ]
+        issued = []
+        for occasion, saved_date, message in occasions:
+            if not saved_date:
+                continue
+            try:
+                special_date = datetime.strptime(saved_date, '%Y-%m-%d').date()
+            except ValueError:
+                continue
+            if (special_date.month, special_date.day) != (local_today.month, local_today.day):
+                continue
+            reference = f'SPECIALDAY-{user.id}-{occasion.upper()}-{local_today.year}'
+            if WalletTransaction.query.filter_by(user_id=user.id, reference=reference).first():
+                continue
+            db.session.add(WalletTransaction(
+                user_id=user.id, amount=Decimal('50.00'), kind='Credit',
+                reference=reference,
+                description=f'₹50 {occasion.title()} Gift Card'
+            ))
+            db.session.add(Notification(
+                user_id=user.id, title=f'Your ₹50 {occasion.title()} Gift Card is here!',
+                message=message, category='offers'
+            ))
+            issued.append(occasion)
+        if issued:
+            db.session.commit()
+        return issued
+
     @app.route('/account', methods=['GET', 'POST'])
     @login_required
     def account():
@@ -1050,14 +1085,37 @@ def create_app():
         if request.method == 'POST':
             name = request.form.get('name', '').strip()
             phone = request.form.get('phone', '').strip()
+            birthday_input = request.form.get('birthday_date', '').strip()
+            anniversary_input = request.form.get('anniversary_date', '').strip()
+            def valid_special_date(value):
+                if not value:
+                    return True
+                try:
+                    parsed = datetime.strptime(value, '%Y-%m-%d').date()
+                    return parsed <= datetime.now(ZoneInfo('Asia/Kolkata')).date()
+                except ValueError:
+                    return False
+            birthday_locked = bool(current_user.birthday_date)
+            anniversary_locked = bool(current_user.anniversary_date)
             if not name or len(name) > 120 or len(phone) > 20:
                 flash('Enter a valid name and phone number.', 'danger')
+            elif birthday_locked and birthday_input != current_user.birthday_date:
+                flash('Birthday date is locked after saving. Contact support if it needs correction.', 'danger')
+            elif anniversary_locked and anniversary_input != current_user.anniversary_date:
+                flash('Anniversary date is locked after saving. Contact support if it needs correction.', 'danger')
+            elif not valid_special_date(birthday_input) or not valid_special_date(anniversary_input):
+                flash('Please enter valid special dates that are not in the future.', 'danger')
             else:
                 current_user.name = name
                 current_user.phone = phone
+                if not birthday_locked and birthday_input:
+                    current_user.birthday_date = birthday_input
+                if not anniversary_locked and anniversary_input:
+                    current_user.anniversary_date = anniversary_input
                 db.session.commit()
                 flash('Your profile has been updated.', 'success')
                 return redirect(url_for('account'))
+        issue_special_day_gifts(current_user)
         addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.id.desc()).all()
         referral_code = ReferralCode.query.filter_by(user_id=current_user.id).first()
         if not referral_code:
@@ -3012,6 +3070,14 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        # Add the optional profile date columns to existing installations without
+        # requiring a destructive database reset.
+        user_columns = {column['name'] for column in db.inspect(db.engine).get_columns('user')}
+        with db.engine.begin() as connection:
+            if 'birthday_date' not in user_columns:
+                connection.execute(db.text('ALTER TABLE "user" ADD COLUMN birthday_date VARCHAR(10)'))
+            if 'anniversary_date' not in user_columns:
+                connection.execute(db.text('ALTER TABLE "user" ADD COLUMN anniversary_date VARCHAR(10)'))
 
         # Idempotently prepare an editable starter grocery catalogue.
         # Starter items are hidden and have placeholder prices/zero stock until the admin reviews them.
