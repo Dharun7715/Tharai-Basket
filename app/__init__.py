@@ -1555,8 +1555,9 @@ def create_app():
         welcome_discount = first_order_welcome_discount(current_user.id, subtotal) if current_user.is_authenticated and current_user.role == 'customer' else Decimal('0.00')
         discount = min(subtotal, coupon_discount + reward_discount + combo_discount + welcome_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
+        welcome_offer_remaining = max(Decimal('0.00'), Decimal('300.01') - subtotal)
         return render_template('cart.html', rows=rows, subtotal=subtotal, delivery_fee=fee,
-                               total=total, threshold=threshold, coupon=coupon, discount=discount,
+                               total=total, threshold=threshold, welcome_offer_remaining=welcome_offer_remaining, coupon=coupon, discount=discount,
                                coupon_discount=coupon_discount, reward_discount=reward_discount,
                                welcome_discount=welcome_discount, first_order=first_order,
                                combo=active_combo, combo_discount=combo_discount, membership=membership)
