@@ -97,6 +97,19 @@
       </form>
     </section>
     {% endif %}
+    {% if current_user.role == 'customer' and order_issues %}
+    <section class="form-card" style="margin-top:18px">
+      <h3>Your quality report updates</h3>
+      {% for issue in order_issues %}
+      <article style="padding:12px 0;border-bottom:1px solid #e5ece6">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong>{{ issue.issue_type }}</strong><span class="status-pill">{{ issue.status }}</span></div>
+        {% if issue.description %}<p class="muted tiny">{{ issue.description }}</p>{% endif %}
+        {% if issue.admin_note %}<p style="margin:8px 0"><strong>Team response:</strong> {{ issue.admin_note }}</p>{% else %}<p class="muted tiny">Our team will update this report here.</p>{% endif %}
+        <small class="muted">Submitted {{ issue.created_at.strftime('%d %b %Y · %I:%M %p') }}</small>
+      </article>
+      {% endfor %}
+    </section>
+    {% endif %}
     <div class="form-card" style="margin-top:18px">
       <h3>Delivery details</h3>
       {% if order.delivery_schedule %}<p><strong>Scheduled delivery:</strong> {{ order.delivery_schedule.delivery_date }} · {{ order.delivery_schedule.delivery_slot }}</p>{% endif %}
