@@ -71,7 +71,7 @@
           <div class="tb-offer-top"><span>THARAI BASKET OFFERS</span><span>✦ AUTOMATIC</span></div>
           {% if first_order %}
             <div class="tb-offer-main"><div><small>FIRST ORDER</small><strong>₹50 OFF</strong></div><div class="tb-offer-tag">₹300+</div></div>
-            {% if welcome_discount > 0 %}<p>✓ Your ₹50 first-order discount is already applied.</p>{% else %}<p>Spend {{ (300.01 - subtotal)|inr }} more to unlock the ₹50 first-order discount.</p>{% endif %}
+            {% if welcome_discount > 0 %}<p>✓ Your ₹50 first-order discount is already applied.</p>{% else %}<p>Spend {{ welcome_offer_remaining|inr }} more to unlock the ₹50 first-order discount.</p>{% endif %}
             <p>Free delivery on your first order above ₹200.</p>
           {% else %}
             <div class="tb-offer-main"><div><small>EVERY ORDER</small><strong>FREE DELIVERY</strong></div><div class="tb-offer-tag">₹300+</div></div>
