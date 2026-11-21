@@ -1073,6 +1073,13 @@ def create_app():
                                   Order.status == 'Delivered').first()) is not None
             existing_review = ProductReview.query.filter_by(user_id=current_user.id, product_id=product.id).first()
         existing_price_alert = ProductPriceAlert.query.filter_by(user_id=current_user.id, product_id=product.id, active=True).first() if current_user.is_authenticated and current_user.role == 'customer' else None
+        if existing_price_alert and Decimal(str(product.price or 0)) <= Decimal(str(existing_price_alert.target_price)):
+            db.session.add(Notification(user_id=current_user.id, title=f'Price drop: {product.name}',
+                message=f'{product.name} is now {product.price|inr if False else product.price}. Your target price has been reached. Open Tharai Basket to shop.',
+                category='price-alerts'))
+            existing_price_alert.active = False
+            db.session.commit()
+            existing_price_alert = None
         return render_template('product.html', product=product, existing_price_alert=existing_price_alert, is_wishlisted=is_wishlisted,
                                reviews=reviews, review_count=review_count, average_rating=average_rating,
                                rating_distribution=rating_distribution,
