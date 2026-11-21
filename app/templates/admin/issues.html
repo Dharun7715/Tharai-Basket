@@ -1,0 +1,32 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Quality Reports | Tharai Basket{% endblock %}
+{% block admin_content %}
+<div class="an-head"><div><span class="eyebrow">CUSTOMER CARE / QUALITY PROMISE</span><h1>Quality <em>reports.</em></h1><p>Review delivered-order complaints and record the resolution.</p></div></div>
+<div class="an-stat-strip">
+{% for status in allowed_statuses %}<div><span>{{ status }}</span><strong>{{ counts.get(status, 0) }}</strong></div>{% endfor %}
+</div>
+<nav style="display:flex;gap:8px;flex-wrap:wrap;margin:18px 0">
+{% for status in ['Open'] + allowed_statuses[1:] + ['All'] %}<a class="btn btn-small {% if status_filter == status %} {% else %}btn-outline{% endif %}" href="{{ url_for('admin_issues', status=status) }}">{{ status }}</a>{% endfor %}
+</nav>
+{% if issues %}
+<div style="display:grid;gap:14px">
+{% for issue in issues %}
+<article class="an-panel" style="padding:18px">
+<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+<div><strong>Order {{ issue.order.order_number }}</strong><p class="muted tiny" style="margin:5px 0">{{ issue.user.name }} · {{ issue.user.phone or issue.user.email }} · {{ issue.created_at.strftime('%d %b %Y, %I:%M %p') }}</p></div>
+<span class="status-pill">{{ issue.status }}</span>
+</div>
+<p><strong>{{ issue.issue_type }}</strong></p>
+<p style="white-space:pre-wrap">{{ issue.description or 'No additional details provided.' }}</p>
+{% if issue.photo_path %}<a href="{{ url_for('static', filename=issue.photo_path) }}" target="_blank" rel="noopener">View customer photo ↗</a>{% endif %}
+<form method="post" action="{{ url_for('admin_issue_update', issue_id=issue.id) }}" style="display:grid;gap:10px;margin-top:14px">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="return_status" value="{{ status_filter }}">
+<label>Resolution status<select name="status" required>{% for status in allowed_statuses %}<option value="{{ status }}" {% if issue.status == status %}selected{% endif %}>{{ status }}</option>{% endfor %}</select></label>
+<label>Customer response / internal resolution note<textarea name="admin_note" rows="3" maxlength="1000" placeholder="Explain what action was taken or what the customer should expect...">{{ issue.admin_note or '' }}</textarea></label>
+<button class="btn btn-small" type="submit">Save update & notify customer</button>
+</form>
+</article>
+{% endfor %}
+</div>
+{% else %}<div class="an-empty">No quality reports in this status.</div>{% endif %}
+{% endblock %}
