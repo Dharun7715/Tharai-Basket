@@ -38,8 +38,10 @@ def create_app():
         SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL', f"sqlite:///{Path(app.instance_path) / 'tharai_basket.db'}"),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         MAX_CONTENT_LENGTH=5 * 1024 * 1024,
-        # Keep customers signed in across browser restarts for 30 days.
-        REMEMBER_COOKIE_DURATION=timedelta(days=30),
+        # Keep users signed in until they explicitly log out. Refresh the persistent
+        # remember cookie on authenticated requests so active users stay signed in.
+        REMEMBER_COOKIE_DURATION=timedelta(days=3650),
+        REMEMBER_COOKIE_REFRESH_EACH_REQUEST=True,
         REMEMBER_COOKIE_SECURE=True,
         REMEMBER_COOKIE_HTTPONLY=True,
         REMEMBER_COOKIE_SAMESITE='Lax',
