@@ -68,11 +68,15 @@
 
       <aside class="tb-checkout-side">
         <section class="tb-offer-card">
-          <div class="tb-offer-top"><span>WELCOME OFFER</span><span>✦ LIMITED OFFER</span></div>
-          <div class="tb-offer-main"><div><small>GET FLAT</small><strong>₹50 OFF</strong></div><div class="tb-offer-tag">₹500+</div></div>
-          <p>On orders worth ₹500 or more. Apply this coupon in your basket.</p>
-          <div class="tb-offer-code"><span>THARAI50</span><form method="post" action="{{ url_for('coupon_apply') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="coupon_code" value="THARAI50"><button type="submit">Apply offer</button></form></div>
-          {% if coupon and coupon.code == 'THARAI50' %}<small class="tb-offer-applied">✓ Coupon applied successfully</small>{% else %}<small class="tb-offer-hint">Apply now — you’ll return to your basket to review the discount.</small>{% endif %}
+          <div class="tb-offer-top"><span>THARAI BASKET OFFERS</span><span>✦ AUTOMATIC</span></div>
+          {% if first_order %}
+            <div class="tb-offer-main"><div><small>FIRST ORDER</small><strong>₹50 OFF</strong></div><div class="tb-offer-tag">₹300+</div></div>
+            {% if welcome_discount > 0 %}<p>✓ Your ₹50 first-order discount is already applied.</p>{% else %}<p>Spend {{ (300.01 - subtotal)|inr }} more to unlock the ₹50 first-order discount.</p>{% endif %}
+            <p>Free delivery on your first order above ₹200.</p>
+          {% else %}
+            <div class="tb-offer-main"><div><small>EVERY ORDER</small><strong>FREE DELIVERY</strong></div><div class="tb-offer-tag">₹300+</div></div>
+            <p>Your first-order ₹50 offer has been used. Free delivery starts above ₹300.</p>
+          {% endif %}
         </section>
 
         <section class="tb-order-card" style="padding:17px">
@@ -97,7 +101,7 @@
             <div class="tb-discount-line" id="checkout-discount-row" {% if discount <= 0 %}hidden{% endif %}><span>{% if combo %}Offers & combo savings{% else %}Offers & discounts{% endif %}{% if coupon %} · {{ coupon.code }}{% endif %}{% if reward_discount > 0 %} + Rewards{% endif %}</span><strong id="checkout-discount">-{{ discount|inr }}</strong></div>
           </div>
           <div class="tb-grand-total"><span>Total payable</span><strong id="checkout-total">{{ total|inr }}</strong></div>
-          <div class="tb-delivery-note">🚚 Free delivery on orders of ₹300 or more. Otherwise, delivery is ₹25 within Tharamangalam.</div>
+          <div class="tb-delivery-note">🚚 {% if first_order %}First order: free delivery above ₹200. ₹50 off above ₹300.{% else %}From your second order: free delivery above ₹300. No first-order discount.{% endif %}</div>
         </section>
         <div class="tb-trust-row"><span>✓ Fresh everyday essentials</span><span>✓ Local delivery in Tharamangalam</span></div>
       </aside>
