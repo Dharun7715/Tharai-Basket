@@ -5,29 +5,37 @@
   <div class="container" style="max-width:900px">
     <div class="section-heading">
       <div><span class="eyebrow">THARAI BASKET REWARDS</span><h1>Spin & <em>Win.</em></h1>
-      <p class="muted">Spin without a daily limit. Every spin has an independent 0.5% chance to win.</p></div>
+      <p class="muted">Spin once, then your next spin unlocks after 24 hours.</p></div>
     </div>
 
     <div class="tb-spin-card">
       <div class="tb-spin-pointer" aria-hidden="true">▼</div>
       <div class="tb-spin-wheel-wrap">
         <div class="tb-spin-wheel" id="tb-spin-wheel" {% if wheel_rotation is not none %}data-rotation="{{ wheel_rotation }}"{% endif %}>
-          <div class="tb-spin-wheel-ring"></div>
+          <div class="tb-spin-wheel-ring">
+            <span class="tb-wheel-label label-sugar">🎁<small>SUGAR</small></span>
+            <span class="tb-wheel-label label-milk">🥛<small>MILK</small></span>
+            <span class="tb-wheel-label label-maida">🌾<small>MAIDA</small></span>
+            <span class="tb-wheel-label label-none">⛔<small>NONE</small></span>
+          </div>
           <div class="tb-spin-wheel-center"><span>TB</span><small>SPIN</small></div>
         </div>
       </div>
       <div class="tb-spin-copy">
-        <span class="tb-spin-chance">0.5% WINNING CHANCE</span>
         <h2>Ready to try your luck?</h2>
-        <p>One winning segment among 200 wheel segments. The result is securely decided by the server on every spin.</p>
-        <div class="tb-spin-prizes">
-          <span>🎁 Sugar 500g</span><span>🥛 Milk 500ml</span><span>🌾 Maida 500g</span>
-        </div>
+        <p>Four possible results are shown on the wheel. Give it a spin and see where it lands.</p>
+        {% if remaining_seconds > 0 %}
+          <div class="tb-spin-timer" id="tb-spin-timer" data-seconds="{{ remaining_seconds }}">
+            <small>NEXT SPIN IN</small><strong id="tb-spin-countdown">--:--:--</strong>
+          </div>
+        {% endif %}
         <form method="post" id="tb-spin-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn tb-spin-button" id="tb-spin-button" type="submit">🎡 SPIN THE WHEEL</button>
+          <button class="btn tb-spin-button" id="tb-spin-button" type="submit" {% if remaining_seconds > 0 %}disabled{% endif %}>
+            {% if remaining_seconds > 0 %}SPIN LOCKED{% else %}🎡 SPIN THE WHEEL{% endif %}
+          </button>
         </form>
-        <small class="tb-spin-note">Unlimited attempts · 1 in 200 chance on each spin</small>
+        <small class="tb-spin-note">One spin every 24 hours</small>
       </div>
     </div>
 
@@ -40,7 +48,7 @@
           <div><a class="btn" href="{{ url_for('cart') }}">Go to basket</a></div>
         {% else %}
           <div class="tb-spin-result-icon">🍀</div><h2>Not this time!</h2>
-          <p>The wheel landed on a non-winning segment. You can spin again right away — no daily limit.</p>
+          <p>The wheel landed on NONE. Your next spin will be available when the timer ends.</p>
         {% endif %}
       </div>
     {% endif %}
@@ -71,15 +79,21 @@
 .tb-spin-card{position:relative;display:grid;grid-template-columns:minmax(280px,1fr) minmax(260px,1fr);align-items:center;gap:28px;padding:34px;border:1px solid #dcebdd;border-radius:26px;background:linear-gradient(145deg,#f7fcf7,#fff);box-shadow:0 18px 50px rgba(24,76,42,.09);overflow:hidden}
 .tb-spin-wheel-wrap{position:relative;display:grid;place-items:center;padding:16px}
 .tb-spin-wheel{position:relative;width:min(100%,340px);aspect-ratio:1;border-radius:50%;border:10px solid #fff;box-shadow:0 8px 30px rgba(24,55,32,.2),inset 0 0 0 2px #b6d3b9;transform:rotate(0deg);will-change:transform}
-.tb-spin-wheel-ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(#f5c94a 0deg 1.8deg,transparent 1.8deg),repeating-conic-gradient(#277b49 0deg 1.8deg,#e9f3e9 1.8deg 3.6deg);border:3px solid #fff}
+.tb-spin-wheel-ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from -45deg,#f5c94a 0deg 90deg,#277b49 90deg 180deg,#8bc5e8 180deg 270deg,#e9ece8 270deg 360deg);border:3px solid #fff}
 .tb-spin-wheel-ring:after{content:"";position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(255,255,255,.85)}
-.tb-spin-wheel-center{position:absolute;z-index:2;left:50%;top:50%;width:86px;height:86px;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;background:#fff;border:6px solid #e6c35b;box-shadow:0 4px 14px rgba(0,0,0,.18);color:#176b39}
+.tb-wheel-label{position:absolute;z-index:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:25px;font-weight:900;color:#183b25;text-shadow:0 1px 0 rgba(255,255,255,.5)}
+.tb-wheel-label small{font-size:10px;letter-spacing:1px}
+.label-sugar{top:13%;left:50%;transform:translateX(-50%)}
+.label-milk{top:50%;right:11%;transform:translateY(-50%)}
+.label-maida{bottom:12%;left:50%;transform:translateX(-50%)}
+.label-none{top:50%;left:11%;transform:translateY(-50%)}
+.tb-spin-wheel-center{position:absolute;z-index:2;left:50%;top:50%;width:82px;height:82px;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;background:#fff;border:6px solid #e6c35b;box-shadow:0 4px 14px rgba(0,0,0,.18);color:#176b39}
 .tb-spin-wheel-center span{font:900 26px Manrope,sans-serif;letter-spacing:-2px}.tb-spin-wheel-center small{font-size:9px;font-weight:900;letter-spacing:2px}
 .tb-spin-pointer{position:absolute;z-index:5;left:calc(25% - 15px);top:calc(50% - 190px);font-size:34px;line-height:1;color:#e14d32;text-shadow:0 2px 4px #fff}
-.tb-spin-copy{text-align:center}.tb-spin-chance{display:inline-block;padding:8px 13px;border-radius:99px;background:#e5f4e7;color:#176b39;font-size:11px;font-weight:900;letter-spacing:1px}
-.tb-spin-copy h2{font:800 25px Manrope,sans-serif;color:#203d2a;margin:14px 0 8px}.tb-spin-copy p{color:#66766b;font-size:14px;line-height:1.6}
-.tb-spin-prizes{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:18px 0}.tb-spin-prizes span{padding:8px 10px;border:1px solid #e0eae1;border-radius:12px;background:#fff;font-size:12px;font-weight:700}
-.tb-spin-button{min-width:220px;min-height:52px;font-weight:900;letter-spacing:.5px}.tb-spin-note{display:block;margin-top:12px;color:#748278;font-size:11px}
+.tb-spin-copy{text-align:center}.tb-spin-copy h2{font:800 25px Manrope,sans-serif;color:#203d2a;margin:14px 0 8px}.tb-spin-copy p{color:#66766b;font-size:14px;line-height:1.6}
+.tb-spin-timer{display:flex;flex-direction:column;gap:4px;width:max-content;min-width:170px;margin:18px auto;padding:12px 20px;border-radius:14px;background:#edf6ee;color:#176b39}
+.tb-spin-timer small{font-size:10px;font-weight:900;letter-spacing:1.4px}.tb-spin-timer strong{font-size:25px;font-variant-numeric:tabular-nums}
+.tb-spin-button{min-width:220px;min-height:52px;font-weight:900;letter-spacing:.5px}.tb-spin-button:disabled{opacity:.55;cursor:not-allowed}.tb-spin-note{display:block;margin-top:12px;color:#748278;font-size:11px}
 .tb-spin-result{margin-top:22px;padding:24px;border-radius:20px;text-align:center;border:1px solid #dfe9df;background:#f7faf7}.tb-spin-result.is-win{background:#f0faf0;border-color:#91c99a}.tb-spin-result.is-tryagain{background:#fffaf1;border-color:#f0dfb8}.tb-spin-result h2{font:800 22px Manrope,sans-serif;margin:4px 0 8px}.tb-spin-result p{color:#657469}.tb-spin-result-icon{font-size:36px}
 .tb-spin-claim{display:flex;align-items:center;gap:16px;margin-top:20px;padding:20px;border:1px solid #a8d3ae;border-radius:18px;background:#f2faf2}.tb-spin-claim h2{margin:0 0 5px;font:800 18px Manrope}.tb-spin-claim p{margin:0 0 4px}.tb-spin-claim small{color:#68796c}.tb-spin-claim .btn{margin-left:auto;white-space:nowrap}
 .tb-spin-history{margin-top:26px;padding:22px;border:1px solid #e3ebe4;border-radius:18px;background:#fff}.tb-spin-history h2{font:800 19px Manrope;margin:0 0 12px}.tb-spin-history-row{display:flex;justify-content:space-between;gap:15px;padding:12px 0;border-bottom:1px solid #edf1ed;font-size:13px}.tb-spin-history-row:last-child{border-bottom:0}
@@ -90,10 +104,22 @@
   const wheel=document.getElementById('tb-spin-wheel');
   const form=document.getElementById('tb-spin-form');
   const button=document.getElementById('tb-spin-button');
-  if(form&&button){form.addEventListener('submit',function(){button.disabled=true;button.textContent='SPINNING…';});}
+  if(form&&button&&!button.disabled){form.addEventListener('submit',function(){button.disabled=true;button.textContent='SPINNING…';});}
   if(wheel&&wheel.dataset.rotation){
     const target=Number(wheel.dataset.rotation);
     requestAnimationFrame(()=>requestAnimationFrame(()=>{wheel.style.transition='transform 5.2s cubic-bezier(.12,.72,.12,1)';wheel.style.transform='rotate('+target+'deg)';}));
+  }
+  const timer=document.getElementById('tb-spin-timer');
+  const output=document.getElementById('tb-spin-countdown');
+  if(timer&&output){
+    let left=Number(timer.dataset.seconds)||0;
+    const tick=()=>{
+      const h=Math.floor(left/3600),m=Math.floor((left%3600)/60),s=left%60;
+      output.textContent=[h,m,s].map(v=>String(v).padStart(2,'0')).join(':');
+      if(left<=0){window.location.reload();return;}
+      left-=1;
+    };
+    tick();setInterval(tick,1000);
   }
 })();
 </script>
