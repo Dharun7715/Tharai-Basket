@@ -2372,6 +2372,18 @@ def create_app():
         db.session.commit(); flash(f'{tier} membership activated for {customer.name}.', 'success')
         return redirect(url_for('admin_growth_tools'))
 
+    @app.post('/admin/products/testing/set-stock')
+    @admin_required
+    def admin_products_set_test_stock():
+        # Explicit, admin-only testing helper. This changes product stock counts only;
+        # historical orders and stock-batch expiry records are left untouched.
+        products = Product.query.all()
+        for product in products:
+            product.stock = 10
+        db.session.commit()
+        flash(f'TEST STOCK UPDATE: {len(products)} products now show 10 units each. Restore real stock before accepting live orders.', 'warning')
+        return redirect(url_for('admin_products'))
+
     @app.route('/admin/products', methods=['GET', 'POST'])
     @admin_required
     def admin_products():
