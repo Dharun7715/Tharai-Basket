@@ -1420,9 +1420,9 @@ def create_app():
         return coupon, min(subtotal, max(Decimal('0.00'), discount)).quantize(Decimal('0.01'))
 
     @app.post('/api/checkout/quantity/<int:product_id>')
-    @login_required
     def checkout_update_quantity(product_id):
-        if current_user.role != 'customer':
+        # Guest baskets are supported too; only signed-in non-customer roles are blocked.
+        if current_user.is_authenticated and current_user.role != 'customer':
             abort(403)
         product = Product.query.filter_by(id=product_id, active=True).first_or_404()
         cart = session.get('cart', {})
@@ -1435,12 +1435,15 @@ def create_app():
             return jsonify({'error': 'Invalid quantity change.'}), 400
         if change not in [-1, 1]:
             return jsonify({'error': 'Invalid quantity change.'}), 400
+
         quantity = int(cart.get(key, 0)) + change
         if quantity <= 0:
             cart.pop(key, None)
             session['cart'] = cart
+            session.pop('combo_offer_id', None)
             if not cart:
                 session.pop('coupon_code', None)
+                save_customer_cart_snapshot()
                 return jsonify({'empty': True, 'redirect': url_for('cart')})
         else:
             if quantity > product.stock:
@@ -1448,25 +1451,36 @@ def create_app():
             cart[key] = quantity
             session['cart'] = cart
 
+        save_customer_cart_snapshot()
         rows, subtotal = cart_data()
         if not rows:
             session.pop('coupon_code', None)
             return jsonify({'empty': True, 'redirect': url_for('cart')})
-        applied_coupon_code = session.get('coupon_code')
-        membership = current_vip_membership()
-        threshold = delivery_threshold_for_membership(membership, current_user.id)
-        fee = calculate_delivery_fee(subtotal, membership, current_user.id)
+
+        customer_id = current_user.id if current_user.is_authenticated else None
+        membership = current_vip_membership() if customer_id else None
+        threshold = delivery_threshold_for_membership(membership, customer_id)
+        fee = calculate_delivery_fee(subtotal, membership, customer_id)
         coupon, coupon_discount = active_cart_coupon(subtotal)
         active_combo, combo_discount = active_cart_combo(rows)
-        reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=current_user.id).all())
-        reward_credits += sum(item.points for item in LoyaltyPoint.query.filter_by(user_id=current_user.id).all())
-        reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
-        available_reward_points = max(0, reward_credits - int(reward_spent or 0))
-        # 100 reward points = ₹1. Redeem only whole-rupee point blocks.
-        reward_discount = min(Decimal(available_reward_points // 100), subtotal) if session.get('use_rewards') else Decimal('0.00')
-        welcome_discount = first_order_welcome_discount(current_user.id, subtotal)
+
+        available_reward_points = 0
+        reward_discount = Decimal('0.00')
+        welcome_discount = Decimal('0.00')
+        is_first_order = False
+        if customer_id:
+            reward_credits = sum(item.points for item in RewardTransaction.query.filter_by(user_id=customer_id).all())
+            reward_credits += sum(item.points for item in LoyaltyPoint.query.filter_by(user_id=customer_id).all())
+            reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=customer_id).scalar()
+            available_reward_points = max(0, reward_credits - int(reward_spent or 0))
+            # 100 reward points = ₹1. Redeem only whole-rupee point blocks.
+            reward_discount = min(Decimal(available_reward_points // 100), subtotal) if session.get('use_rewards') else Decimal('0.00')
+            welcome_discount = first_order_welcome_discount(customer_id, subtotal)
+            is_first_order = is_first_order_customer(customer_id)
+
         discount = min(subtotal, coupon_discount + reward_discount + combo_discount + welcome_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
+        applied_coupon_code = session.get('coupon_code')
         upi_params = {'pa': '8838145515@sbi', 'pn': 'Tharai Basket', 'am': f'{total:.2f}',
                       'cu': 'INR', 'tn': 'Tharai Basket order payment'}
         qr = qrcode.make('upi://pay?' + urlencode(upi_params))
@@ -1479,9 +1493,9 @@ def create_app():
             'line_total': f"{current_row['line_total']:.2f}" if current_row else '0.00',
             'subtotal': f'{subtotal:.2f}', 'delivery_fee': f'{fee:.2f}',
             'delivery_label': 'FREE' if fee == 0 else f'₹{fee:.2f}',
-            'free_delivery_threshold': f'{delivery_threshold_for_membership(current_vip_membership(), current_user.id):.2f}',
+            'free_delivery_threshold': f'{threshold:.2f}',
             'discount': f'{discount:.2f}', 'coupon_discount': f'{coupon_discount:.2f}',
-            'welcome_discount': f'{welcome_discount:.2f}', 'is_first_order': is_first_order_customer(current_user.id),
+            'welcome_discount': f'{welcome_discount:.2f}', 'is_first_order': is_first_order,
             'reward_discount': f'{reward_discount:.2f}', 'combo_discount': f'{combo_discount:.2f}',
             'combo_title': active_combo.title if active_combo else None, 'coupon_code': coupon.code if coupon else None,
             'total': f'{total:.2f}', 'upi_qr_data': qr_data,
