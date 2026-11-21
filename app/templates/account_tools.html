@@ -3,6 +3,18 @@
 {% block content %}
 <section class="section"><div class="container">
   <div class="section-heading"><div><span class="eyebrow">YOUR SHOPPING COMPANION</span><h1>My <em>tools.</em></h1><p class="muted">Shopping lists, repeat baskets and wallet rewards in one place.</p></div></div>
+  <section class="tb-tools-card tb-family-budget">
+    <div class="tb-tools-card-head"><div><span class="eyebrow">SMART SAVINGS</span><h2>Monthly Family Budget</h2><p>Keep track of grocery spending for this month.</p></div><span style="font-size:28px">📊</span></div>
+    <form method="post" action="{{ url_for('save_family_budget') }}" class="tb-budget-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Monthly budget (₹)<input type="number" name="amount" min="100" max="1000000" step="1" value="{{ family_budget.amount if family_budget else '' }}" placeholder="Example: 5000" required></label>
+      <button class="btn btn-small" type="submit">Save budget</button>
+    </form>
+    {% if family_budget %}
+    <div class="tb-budget-stats"><div><small>Budget</small><strong>{{ family_budget.amount|inr }}</strong></div><div><small>Spent this month</small><strong>{{ monthly_grocery_spend|inr }}</strong></div><div><small>Remaining</small><strong>{{ budget_remaining|inr }}</strong></div></div>
+    <div class="tb-budget-track"><i style="width:{{ budget_percent }}%"></i></div><small class="muted">{{ budget_percent }}% of your monthly budget used</small>
+    {% else %}<p class="muted tiny">Set a monthly target to start tracking your household grocery spend.</p>{% endif %}
+  </section>
   <section class="tb-rewards-dashboard"><div class="tb-rewards-top"><div><span class="eyebrow">THARAI REWARDS</span><h2>{{ loyalty_points }} <small>points</small></h2><p>Earn 5 points per ₹100 as a regular customer, 10 points with Gold, or 20 points with Platinum. Redeem 100 points for ₹1 off at checkout when you choose.</p></div><div class="tb-rewards-medal">🏅</div></div><div class="tb-reward-tier"><span>YOUR REWARDS LEVEL</span><strong>{{ reward_tier }}</strong>{% if next_reward_tier %}<small>{{ points_to_next_tier }} points to {{ next_reward_tier }}</small>{% else %}<small>Top rewards level unlocked</small>{% endif %}<div class="tb-tier-track"><i style="width:{{ tier_progress }}%"></i></div></div><div class="tb-rewards-stats"><div><small>Points earned</small><strong>{{ loyalty_earned + referral_points }}</strong></div><div><small>Points redeemed</small><strong>{{ redeemed_points }}</strong></div><div><small>Delivered orders</small><strong>{{ delivered_orders_count }}</strong></div></div><div class="tb-milestone"><div><strong>{% if next_milestone %}Next milestone: {{ next_milestone }} points{% else %}All milestones reached{% endif %}</strong><span>{{ milestone_progress }}%</span></div><div class="tb-milestone-track"><i style="width:{{ milestone_progress }}%"></i></div><small>{% if next_milestone %}{{ [next_milestone - loyalty_points, 0]|max }} more points to reach this milestone{% else %}Keep earning points on delivered orders{% endif %}</small></div></section>
   <div class="tb-tools-grid">
     <section class="tb-tools-card"><span class="eyebrow">SMART SHOPPING LIST</span><h2>Saved essentials</h2><p class="muted tiny">Save products and add the whole list to your basket whenever you need it.</p>
