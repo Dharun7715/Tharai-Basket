@@ -487,7 +487,8 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
     <div class="tb-search-row">
       <form class="tb-home-search" method="get" action="{{ url_for('index') }}#shop" role="search">
         <span class="tb-search-glass" aria-hidden="true">⌕</span>
-        <input type="search" id="tb-home-search-input" name="q" value="{{ search_query }}" placeholder="Search for groceries…" aria-label="Search products">
+        <input type="search" id="tb-home-search-input" name="q" value="{{ search_query }}" placeholder="Search for groceries…" aria-label="Search products" autocomplete="off" aria-controls="tb-search-suggestions" aria-expanded="false">
+        <div class="tb-search-suggestions" id="tb-search-suggestions" hidden role="listbox" aria-label="Product suggestions"></div>
         <button class="tb-voice-search" id="tb-home-voice" type="button" aria-label="Search by voice" title="Search by voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></svg></button>
         <button class="tb-parchi-scan" id="tb-parchi-open" type="button" aria-label="Scan grocery list" title="Scan handwritten or printed grocery list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2m10 0h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M7 12h10M7 9h10M7 15h6"/></svg></button>
       </form>
@@ -517,6 +518,42 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
       recognition.addEventListener('error',()=>{btn.classList.remove('is-listening');btn.setAttribute('aria-label','Search by voice');});
     })();
     </script>
+    <script>
+    (function(){
+      const input=document.getElementById('tb-home-search-input');
+      const box=document.getElementById('tb-search-suggestions');
+      if(!input||!box)return;
+      let timer=null,controller=null,active=-1;
+      function close(){box.hidden=true;box.innerHTML='';input.setAttribute('aria-expanded','false');active=-1;}
+      function show(items){
+        box.innerHTML='';
+        if(!items.length){close();return;}
+        items.forEach((item,index)=>{
+          const a=document.createElement('a');a.href=item.url;a.className='tb-search-suggestion';a.setAttribute('role','option');
+          const main=document.createElement('span');main.className='tb-search-suggestion-main';
+          const name=document.createElement('strong');name.textContent=item.name;
+          const detail=document.createElement('small');detail.textContent=(item.brand?item.brand+' · ':'')+item.unit;
+          main.append(name,detail);
+          const price=document.createElement('span');price.className='tb-search-suggestion-price';price.textContent=item.in_stock?'₹'+Number(item.price).toFixed(2):'Out of stock';
+          a.append(main,price);box.appendChild(a);
+        });
+        box.hidden=false;input.setAttribute('aria-expanded','true');
+      }
+      input.addEventListener('input',()=>{
+        clearTimeout(timer);
+        const q=input.value.trim();
+        if(q.length<2){close();return;}
+        timer=setTimeout(async()=>{
+          if(controller)controller.abort();controller=new AbortController();
+          try{const response=await fetch('/api/product-suggestions?q='+encodeURIComponent(q),{signal:controller.signal,headers:{'Accept':'application/json'},cache:'no-store'});if(!response.ok)return;const data=await response.json();show(data.suggestions||[]);}
+          catch(error){if(error.name!=='AbortError')close();}
+        },180);
+      });
+      input.addEventListener('keydown',event=>{if(event.key==='Escape')close();});
+      document.addEventListener('click',event=>{if(!event.target.closest('.tb-home-search'))close();});
+      input.form.addEventListener('submit',close);
+    })();
+    </script>
     <form class="tb-filter-panel" id="tb-filter-panel" method="get" action="{{ url_for('index') }}#shop">
       <input type="hidden" name="q" value="{{ search_query }}">
       <label>Category<select name="category"><option value="">All categories</option>{% for category in categories %}<option value="{{ category.id }}" {% if selected_category_id == category.id %}selected{% endif %}>{{ category.name }}</option>{% endfor %}</select></label>
@@ -526,6 +563,15 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
       <label class="tb-filter-check"><input type="checkbox" name="in_stock" value="1" {% if in_stock %}checked{% endif %}> In stock only</label>
       <button type="submit">Apply filters</button>
     </form>
+    <nav class="tb-category-strip" aria-label="Shop by category">
+      <a class="tb-category-chip {% if not selected_category_id %}is-active{% endif %}" href="{{ url_for('index') }}#shop"><span>🛍️</span><small>All</small></a>
+      {% for category in categories %}
+      <a class="tb-category-chip {% if selected_category_id == category.id %}is-active{% endif %}" href="{{ url_for('index', category=category.id) }}#shop">
+        <span>{% set category_name = category.name|lower %}{% if 'fruit' in category_name %}🍎{% elif 'vegetable' in category_name or 'veg' in category_name %}🥬{% elif 'dairy' in category_name or 'milk' in category_name %}🥛{% elif 'snack' in category_name %}🍪{% elif 'rice' in category_name or 'grain' in category_name %}🌾{% elif 'oil' in category_name %}🫒{% elif 'drink' in category_name or 'beverage' in category_name %}🥤{% elif 'personal' in category_name %}🧴{% else %}🛒{% endif %}</span>
+        <small>{{ category.name }}</small>
+      </a>
+      {% endfor %}
+    </nav>
     <div class="tb-parchi-modal" id="tb-parchi-modal" hidden>
       <section class="tb-parchi-dialog" role="dialog" aria-modal="true" aria-labelledby="tb-parchi-title">
         <div class="tb-parchi-head"><div><strong id="tb-parchi-title">Parchi Scanner</strong><div class="muted" style="font-size:11px;margin-top:3px">Photo-la irukkura grocery list-ah scan pannunga</div></div><button type="button" id="tb-parchi-close" aria-label="Close">×</button></div>
@@ -675,7 +721,21 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
           {% if current_user.is_authenticated and current_user.role == 'customer' %}
           <form method="post" action="{{ url_for('shopping_list_add', product_id=product.id) }}" style="margin-bottom:8px"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="add-btn" type="submit">＋ Save to shopping list</button></form>
           {% endif %}
-          <form method="post" action="{{ url_for('cart_add', product_id=product.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="quantity" value="1"><button class="add-btn" type="submit" {% if product.stock <= 0 %}disabled{% endif %}>{% if product.stock > 0 %}+ Add to basket{% else %}Out of stock{% endif %}</button></form>
+          {% if product.stock > 0 %}
+          <form method="post" action="{{ url_for('cart_add', product_id=product.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="quantity" value="1"><button class="add-btn" type="submit">+ Add to basket</button></form>
+          {% else %}
+          <div class="tb-oos-label">Currently unavailable</div>
+          {% if out_of_stock_alternatives.get(product.id) %}
+          <div class="tb-oos-alternatives"><strong>Try these instead</strong>
+            {% for alternative in out_of_stock_alternatives.get(product.id, []) %}
+            <div class="tb-oos-alternative">
+              <a href="{{ url_for('product_detail', product_id=alternative.id) }}">{{ alternative.name }} <small>{{ alternative.unit }}</small></a>
+              <form method="post" action="{{ url_for('cart_add', product_id=alternative.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="quantity" value="1"><button type="submit">Add</button></form>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% endif %}
         </div>
       </article>
       {% else %}
