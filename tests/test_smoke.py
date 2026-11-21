@@ -40,6 +40,22 @@ class TharaiBasketSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["status"], "ok")
 
+    def test_security_headers_are_present(self):
+        response = self.client.get("/health")
+        self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertEqual(response.headers.get("X-Frame-Options"), "SAMEORIGIN")
+        self.assertEqual(response.headers.get("Referrer-Policy"), "strict-origin-when-cross-origin")
+
+    def test_admin_quality_reports_requires_admin_login(self):
+        response = self.client.get("/admin/issues")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response.headers.get("Location", ""))
+
+    def test_backup_cli_creates_sqlite_backup(self):
+        result = self.app.test_cli_runner().invoke(args=["backup-db"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Database backup created:", result.output)
+
     def test_homepage_loads(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
