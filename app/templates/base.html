@@ -79,6 +79,7 @@ body{padding-bottom:82px!important}.tb-bottom-nav.has-cart-bar{bottom:55px!impor
       <a href="{{ url_for('wishlist') }}"><span>♡</span> Wishlist</a>
       <a href="{{ url_for('account_membership') }}"><span>✦</span> VIP membership</a>
       <a href="{{ url_for('account_tools') }}"><span>✧</span> My tools</a>
+      <a href="{{ url_for('spin_and_win') }}"><span>🎁</span> Spin & Win</a>
       <a href="{{ url_for('notifications') }}"><span>🔔</span> Notifications {% if unread_notifications %}<small>{{ unread_notifications }}</small>{% endif %}</a>
       {% elif current_user.role == 'admin' %}
       <div class="tb-menu-label">ADMIN</div>
