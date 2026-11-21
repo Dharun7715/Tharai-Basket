@@ -104,6 +104,30 @@
  </section>
 </div>
 
+
+<section class="an-main-grid" style="margin-top:15px">
+ <div class="an-panel">
+  <div class="an-panel-head"><div><h2>Category performance · 30 days</h2><p>Delivered sales grouped by product category</p></div><span class="an-tag">TOP CATEGORIES</span></div>
+  {% if category_performance %}
+  <div class="an-breakdown">{% for item in category_performance %}<div class="an-break-row"><span>{{ item.name }} · {{ item.units }} units</span><strong>₹{{ '%.0f'|format(item.revenue) }}</strong></div>{% endfor %}</div>
+  {% else %}<div class="an-empty">Category sales will appear after delivered orders.</div>{% endif %}
+ </div>
+ <div class="an-panel">
+  <div class="an-panel-head"><div><h2>Busy order hours</h2><p>When customers place orders · last 30 days</p></div><span class="an-tag">PEAK TIMES</span></div>
+  {% if peak_order_hours %}
+  <div class="an-breakdown">{% for item in peak_order_hours %}<div class="an-break-row"><span>{{ item.label }}</span><strong>{{ item.count }} orders</strong></div>{% endfor %}</div>
+  {% else %}<div class="an-empty">Order timing insights will appear when orders arrive.</div>{% endif %}
+ </div>
+</section>
+<section class="an-panel an-recent-panel">
+ <div class="an-panel-head"><div><h2>Abandoned cart recovery</h2><p>Signed-in customer baskets waiting for follow-up</p></div><a href="{{ url_for('admin_abandoned_carts') }}">Manage carts →</a></div>
+ <div class="an-stat-strip" style="margin:0">
+  <div><span>Open carts</span><strong>{{ abandoned_cart_count }}</strong></div>
+  <div><span>Recovered carts</span><strong>{{ recovered_cart_count }}</strong></div>
+  <div><span>Follow-up</span><strong>WhatsApp</strong></div>
+  <div><span>Tracking</span><strong>Automatic</strong></div>
+ </div>
+</section>
 <section class="an-panel an-recent-panel">
  <div class="an-panel-head"><div><h2>Recent orders</h2><p>Latest customer activity</p></div><a href="{{ url_for('admin_orders') }}">View all →</a></div>
  <div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Total</th><th>Status</th></tr></thead><tbody>{% for order in orders %}<tr><td><strong>{{ order.order_number }}</strong></td><td>{{ order.customer_name }}</td><td>{{ order.created_at.strftime('%d %b, %I:%M %p') }}</td><td>{{ order.total|inr }}</td><td><span class="status-pill">{{ order.status }}</span></td></tr>{% else %}<tr><td colspan="5">No orders yet.</td></tr>{% endfor %}</tbody></table></div>
