@@ -1,8 +1,20 @@
 {% extends 'admin/base_admin.html' %}
 {% block title %}Abandoned Carts | Tharai Basket{% endblock %}
 {% block admin_content %}
-<div class="admin-top"><div><span class="eyebrow">CUSTOMER FOLLOW-UP</span><h1>Abandoned <em>carts.</em></h1><p class="muted">Carts saved by signed-in customers who have not completed checkout.</p></div></div>
-<div class="admin-panel"><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Email</th><th>Phone</th><th>Saved cart data</th><th>Last updated</th></tr></thead><tbody>
-{% for cart in carts %}<tr><td><strong>{{ cart.user.name if cart.user else 'Customer' }}</strong></td><td>{{ cart.user.email if cart.user else '—' }}</td><td>{% if cart.user and cart.user.phone %}<a class="table-action" href="https://wa.me/{{ cart.user.phone|replace('+','')|replace(' ','') }}?text={{ ('Hi ' ~ cart.user.name ~ ', you still have items in your Tharai Basket. You can continue shopping here: https://tharai-basket.onrender.com/cart')|urlencode }}" target="_blank" rel="noopener">WhatsApp customer ↗</a>{% else %}—{% endif %}</td><td><code style="white-space:normal;word-break:break-word">{{ cart.cart_data }}</code></td><td>{{ cart.updated_at.strftime('%d %b %Y, %I:%M %p') }}</td></tr>{% else %}<tr><td colspan="5">No abandoned carts captured yet. Only logged-in customer carts are tracked.</td></tr>{% endfor %}
+<div class="admin-top"><div><span class="eyebrow">CUSTOMER FOLLOW-UP</span><h1>Abandoned <em>carts.</em></h1><p class="muted">Signed-in customer baskets saved before checkout. Follow up to help customers complete their order.</p></div></div>
+<div class="an-kpi-grid" style="margin-bottom:18px">
+ <div class="an-kpi"><span>Open carts</span><strong>{{ open_count }}</strong><small>Waiting for customer checkout</small></div>
+ <div class="an-kpi"><span>Recovered carts</span><strong>{{ recovered_count }}</strong><small>Completed order from saved basket</small></div>
+</div>
+<div class="admin-panel"><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Email</th><th>WhatsApp follow-up</th><th>Saved basket</th><th>Last updated</th></tr></thead><tbody>
+{% for cart in carts %}
+<tr>
+ <td><strong>{{ cart.user.name if cart.user else 'Customer' }}</strong></td>
+ <td>{{ cart.user.email if cart.user else '—' }}</td>
+ <td>{% if cart.user and cart.user.phone %}<a class="table-action" href="https://wa.me/{{ cart.user.phone|replace('+','')|replace(' ','') }}?text={{ ('Hi ' ~ cart.user.name ~ ', your Tharai Basket is saved. You can continue your shopping here: https://tharai-basket.onrender.com/cart')|urlencode }}" target="_blank" rel="noopener">Message customer ↗</a>{% else %}Phone unavailable{% endif %}</td>
+ <td><code style="white-space:normal;word-break:break-word">{{ cart.cart_data }}</code></td>
+ <td>{{ cart.updated_at.strftime('%d %b %Y, %I:%M %p') }}</td>
+</tr>
+{% else %}<tr><td colspan="5">No open abandoned carts right now. Only signed-in customer baskets are tracked.</td></tr>{% endfor %}
 </tbody></table></div></div>
 {% endblock %}
