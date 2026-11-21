@@ -919,8 +919,21 @@ def create_app():
                 db.or_(ComboOffer.starts_at.is_(None), ComboOffer.starts_at <= now_utc),
                 db.or_(ComboOffer.ends_at.is_(None), ComboOffer.ends_at > now_utc)).order_by(ComboOffer.created_at.desc()).limit(4).all()
         wishlist_product_ids = set()
+        buy_again_products = []
         if current_user.is_authenticated and current_user.role == 'customer':
             wishlist_product_ids = {item.product_id for item in WishlistItem.query.filter_by(user_id=current_user.id).all()}
+            last_delivered_order = Order.query.filter_by(
+                user_id=current_user.id, status='Delivered'
+            ).order_by(Order.created_at.desc(), Order.id.desc()).first()
+            if last_delivered_order:
+                last_product_ids = list(dict.fromkeys(
+                    item.product_id for item in last_delivered_order.items if item.product_id
+                ))
+                if last_product_ids:
+                    last_product_map = {item.id: item for item in Product.query.filter(
+                        Product.id.in_(last_product_ids), Product.active.is_(True), Product.stock > 0
+                    ).all()}
+                    buy_again_products = [last_product_map[pid] for pid in last_product_ids if pid in last_product_map]
         filters_active = bool(search_query or category_id or min_price or max_price or in_stock or sort != 'recommended')
         return render_template('index.html', categories=categories, products=products,
                                show_location_picker=show_location_picker,
@@ -931,7 +944,8 @@ def create_app():
                                min_price=min_price, max_price=max_price, sort=sort,
                                in_stock=in_stock, filters_active=filters_active, recently_viewed=recently_viewed,
                                 recommended_products=recommended_products, active_flash_sales=active_flash_sales,
-                                active_combo_offers=active_combo_offers, vip_membership=vip_membership)
+                                active_combo_offers=active_combo_offers, vip_membership=vip_membership,
+                               buy_again_products=buy_again_products)
 
     @app.get('/product/<int:product_id>')
     def product_detail(product_id):
@@ -2103,6 +2117,20 @@ def create_app():
                 top_product_totals[key]['quantity'] += int(item.quantity or 0)
                 top_product_totals[key]['revenue'] += Decimal(str(item.unit_price or 0)) * int(item.quantity or 0)
         top_products = sorted(top_product_totals.values(), key=lambda item: item['quantity'], reverse=True)[:5]
+        profit_by_product = {}
+        for item in delivered_items:
+            key = item.product_name
+            if key not in profit_by_product:
+                profit_by_product[key] = {'name': key, 'quantity': 0, 'revenue': Decimal('0.00'), 'profit': Decimal('0.00')}
+            qty = int(item.quantity or 0)
+            line_revenue = Decimal(str(item.unit_price or 0)) * qty
+            line_profit = (Decimal(str(item.unit_price or 0)) - Decimal(str(item.purchase_cost or 0))) * qty
+            profit_by_product[key]['quantity'] += qty
+            profit_by_product[key]['revenue'] += line_revenue
+            profit_by_product[key]['profit'] += line_profit
+        most_profitable_products = sorted(
+            profit_by_product.values(), key=lambda item: item['profit'], reverse=True
+        )[:5]
         status_rows = db.session.query(Order.status, db.func.count(Order.id)).group_by(Order.status).all()
         status_breakdown = [{'label': label, 'count': count} for label, count in status_rows]
         payment_rows = db.session.query(Order.payment_method, db.func.count(Order.id)).group_by(Order.payment_method).all()
@@ -2179,6 +2207,7 @@ def create_app():
             total_sales=total_sales, monthly_revenue=monthly_revenue, today_revenue=today_revenue,
             delivered_count=delivered_query.count(), low_stock=Product.query.filter(Product.stock <= 5, Product.active.is_(True)).count(),
             daily_sales=daily_sales, max_daily_sales=max_daily_sales, top_products=top_products,
+            most_profitable_products=most_profitable_products,
             status_breakdown=status_breakdown, payment_breakdown=payment_breakdown, orders=recent_orders,
             low_stock_products=low_stock_products, recent_reviews=recent_reviews,
             review_count=review_count, average_review_rating=round(float(average_review_rating), 1),
