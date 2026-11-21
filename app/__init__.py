@@ -529,11 +529,20 @@ def create_app():
     def award_order_loyalty_points(order):
         if order.status != 'Delivered' or LoyaltyPoint.query.filter_by(order_id=order.id).first():
             return
-        points = int(Decimal(str(order.subtotal or 0)) // Decimal('100'))
+        membership = VipMembership.query.filter_by(user_id=order.user_id, active=True).filter(
+            VipMembership.ends_at > datetime.utcnow()
+        ).order_by(VipMembership.ends_at.desc()).first()
+        points_per_hundred = 2 if membership and membership.tier == 'Platinum' else (
+            1 if membership and membership.tier == 'Gold' else 0
+        )
+        if points_per_hundred <= 0:
+            return
+        points = int(Decimal(str(order.subtotal or 0)) // Decimal('100')) * points_per_hundred
         if points > 0:
             db.session.add(LoyaltyPoint(user_id=order.user_id, order_id=order.id, points=points))
+            tier_label = f" {membership.tier}" if membership else ""
             create_customer_notification(order, 'Loyalty points earned',
-                f'You earned {points} Tharai points for this delivered order. 100 points = ₹100 reward value at checkout.', 'rewards')
+                f'You earned {points} Tharai points with your{tier_label} membership. 1 point = ₹1 reward value at checkout.', 'rewards')
 
     def wallet_balance(user_id):
         credits = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter_by(user_id=user_id, kind='Credit').scalar()
