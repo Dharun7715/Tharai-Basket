@@ -57,7 +57,7 @@
           </label>
           <div id="upi-payment-panel" class="tb-upi-panel" style="display:none">
             <div><h3>Pay using any UPI app</h3><p>Scan the QR using Google Pay, PhonePe, Paytm or BHIM.</p></div>
-            <div class="tb-qr-wrap"><img id="checkout-upi-qr" src="{{ upi_qr_data }}" alt="Dynamic UPI payment QR for ₹{{ '%.2f'|format(total) }}"><div><strong class="tb-qr-amount" id="checkout-upi-amount">₹{{ '%.2f'|format(total) }}</strong><span>{{ upi_id }}</span><small>Exact payable amount</small></div></div>
+            <div class="tb-qr-wrap"><img id="checkout-upi-qr" src="{{ upi_qr_data }}" alt="Dynamic UPI payment QR for ₹{{ '%.2f'|format(total) }}"><div><strong class="tb-qr-amount" id="checkout-upi-amount">₹{{ '%.2f'|format(total) }}</strong><span>Tharai Basket</span><small>Exact payable amount</small></div></div>
             <label>UPI transaction reference / UTR<input name="upi_reference" id="upi-reference" placeholder="Enter UTR after payment" autocomplete="off"></label>
             <small class="tb-payment-footnote">Your order will remain awaiting UPI verification until the store confirms the payment.</small>
           </div>
