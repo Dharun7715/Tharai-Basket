@@ -3529,7 +3529,7 @@ def create_app():
             if 'admin_note' not in issue_columns:
                 connection.execute(db.text("ALTER TABLE order_issue ADD COLUMN admin_note VARCHAR(1000) DEFAULT ''"))
             if 'updated_at' not in issue_columns:
-                connection.execute(db.text("ALTER TABLE order_issue ADD COLUMN updated_at DATETIME"))
+                connection.execute(db.text("ALTER TABLE order_issue ADD COLUMN updated_at TIMESTAMP"))
 
         # Idempotently prepare an editable starter grocery catalogue.
         # Starter items are hidden and have placeholder prices/zero stock until the admin reviews them.
