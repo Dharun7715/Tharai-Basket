@@ -1578,10 +1578,11 @@ def create_app():
         if current_user.role != 'customer':
             abort(403)
         _, subtotal = cart_data()
+        return_to = 'checkout' if request.form.get('next_page') == 'checkout' else 'cart'
         code = request.form.get('coupon_code', '').strip().upper()
         if code == 'THARAI50':
             flash('The ₹50 first-order offer is applied automatically on eligible baskets.', 'info')
-            return redirect(url_for('cart'))
+            return redirect(url_for(return_to))
         coupon = Coupon.query.filter_by(code=code, active=True).first() if code else None
         if not coupon:
             flash('Invalid or inactive coupon code.', 'danger')
@@ -1590,14 +1591,14 @@ def create_app():
         else:
             session['coupon_code'] = coupon.code
             flash(f'Coupon {coupon.code} applied successfully!', 'success')
-        return redirect(url_for('cart'))
+        return redirect(url_for(return_to))
 
     @app.post('/coupon/remove')
     @login_required
     def coupon_remove():
         session.pop('coupon_code', None)
         flash('Coupon removed.', 'info')
-        return redirect(url_for('cart'))
+        return redirect(url_for('checkout' if request.form.get('next_page') == 'checkout' else 'cart'))
 
     @app.get('/cart')
     def cart():
