@@ -1,1 +1,100 @@
-{% extends 'base.html' %}{% block title %}Spin & Win | Tharai Basket{% endblock %}{% block content %}<section class="section"><div class="container" style="max-width:850px"><div class="section-heading"><div><span class="eyebrow">THARAI BASKET REWARDS</span><h1>Spin & <em>Win.</em></h1><p class="muted">Spin as many times as you like. Every spin has an independent 1-in-200 chance to win.</p></div></div><div class="tb-tools-card" style="text-align:center;padding:32px"><div style="font-size:64px">🎡</div><h2>Try your luck</h2><p>Possible prizes: Sugar 500g, Milk 500ml or Maida 500g.</p><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" style="min-width:180px">Spin now</button></form>{% if result %}<div style="margin-top:22px;padding:18px;border-radius:14px;background:#f1f8f1">{% if result.prize %}<h2>🎉 You won {{ result.prize }}!</h2><p>Claim it within 24 hours on an order with a basket subtotal strictly above ₹200. Your prize is free.</p><strong>Expires: {{ result.expires_at.strftime('%d %b %Y, %I:%M %p') }}</strong>{% else %}<h2>Not this time!</h2><p>Try another spin. There is no daily spin limit.</p>{% endif %}</div>{% endif %}</div>{% if active_claim %}<div class="tb-tools-card" style="margin-top:20px"><h2>🎁 Your active free prize</h2><p><strong>{{ active_claim.prize }}</strong> · Use it on a basket subtotal above ₹200.</p><p class="muted tiny">Valid until {{ active_claim.expires_at.strftime('%d %b %Y, %I:%M %p') }}. It will be applied automatically at checkout when eligible.</p><a class="btn" href="{{ url_for('cart') }}">Go to basket</a></div>{% endif %}<div class="tb-tools-card" style="margin-top:20px"><h2>Your recent spins</h2>{% for item in history %}<div class="tb-tool-row"><span>{{ item.created_at.strftime('%d %b %Y, %I:%M %p') }}</span><strong>{% if item.prize %}Won: {{ item.prize }}{% else %}No prize{% endif %}{% if item.used_at %} · Claimed{% elif item.prize and item.expires_at > now %} · Claim available{% elif item.prize %} · Expired{% endif %}</strong></div>{% else %}<p class="muted tiny">No spins yet.</p>{% endfor %}</div></div></section>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Spin & Win | Tharai Basket{% endblock %}
+{% block content %}
+<section class="section tb-spin-page">
+  <div class="container" style="max-width:900px">
+    <div class="section-heading">
+      <div><span class="eyebrow">THARAI BASKET REWARDS</span><h1>Spin & <em>Win.</em></h1>
+      <p class="muted">Spin without a daily limit. Every spin has an independent 0.5% chance to win.</p></div>
+    </div>
+
+    <div class="tb-spin-card">
+      <div class="tb-spin-pointer" aria-hidden="true">▼</div>
+      <div class="tb-spin-wheel-wrap">
+        <div class="tb-spin-wheel" id="tb-spin-wheel" {% if wheel_rotation is not none %}data-rotation="{{ wheel_rotation }}"{% endif %}>
+          <div class="tb-spin-wheel-ring"></div>
+          <div class="tb-spin-wheel-center"><span>TB</span><small>SPIN</small></div>
+        </div>
+      </div>
+      <div class="tb-spin-copy">
+        <span class="tb-spin-chance">0.5% WINNING CHANCE</span>
+        <h2>Ready to try your luck?</h2>
+        <p>One winning segment among 200 wheel segments. The result is securely decided by the server on every spin.</p>
+        <div class="tb-spin-prizes">
+          <span>🎁 Sugar 500g</span><span>🥛 Milk 500ml</span><span>🌾 Maida 500g</span>
+        </div>
+        <form method="post" id="tb-spin-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn tb-spin-button" id="tb-spin-button" type="submit">🎡 SPIN THE WHEEL</button>
+        </form>
+        <small class="tb-spin-note">Unlimited attempts · 1 in 200 chance on each spin</small>
+      </div>
+    </div>
+
+    {% if result %}
+      <div class="tb-spin-result {% if result.prize %}is-win{% else %}is-tryagain{% endif %}" role="status" aria-live="polite">
+        {% if result.prize %}
+          <div class="tb-spin-result-icon">🎉</div><h2>Congratulations! You won {{ result.prize }}!</h2>
+          <p>Claim your free prize within 24 hours. Your order basket subtotal must be strictly above ₹200.</p>
+          <strong>Expires: {{ result.expires_at.strftime('%d %b %Y, %I:%M %p') }}</strong>
+          <div><a class="btn" href="{{ url_for('cart') }}">Go to basket</a></div>
+        {% else %}
+          <div class="tb-spin-result-icon">🍀</div><h2>Not this time!</h2>
+          <p>The wheel landed on a non-winning segment. You can spin again right away — no daily limit.</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if active_claim %}
+      <div class="tb-spin-claim">
+        <div style="font-size:30px">🎁</div><div><h2>Your free prize is waiting</h2>
+        <p><strong>{{ active_claim.prize }}</strong> · Add it free to an order with a subtotal above ₹200.</p>
+        <small>Expires {{ active_claim.expires_at.strftime('%d %b %Y, %I:%M %p') }}. It will be applied automatically at eligible checkout.</small></div>
+        <a class="btn" href="{{ url_for('cart') }}">Claim prize</a>
+      </div>
+    {% endif %}
+
+    <div class="tb-spin-history">
+      <h2>Your recent spins</h2>
+      {% for item in history %}
+        <div class="tb-spin-history-row">
+          <span>{{ item.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+          <strong>{% if item.prize %}🏆 {{ item.prize }}{% else %}No prize{% endif %}
+            {% if item.used_at %} · Claimed{% elif item.prize and item.expires_at > now %} · Claim available{% elif item.prize %} · Expired{% endif %}</strong>
+        </div>
+      {% else %}<p class="muted">Your spins will appear here.</p>{% endfor %}
+    </div>
+  </div>
+</section>
+
+<style>
+.tb-spin-card{position:relative;display:grid;grid-template-columns:minmax(280px,1fr) minmax(260px,1fr);align-items:center;gap:28px;padding:34px;border:1px solid #dcebdd;border-radius:26px;background:linear-gradient(145deg,#f7fcf7,#fff);box-shadow:0 18px 50px rgba(24,76,42,.09);overflow:hidden}
+.tb-spin-wheel-wrap{position:relative;display:grid;place-items:center;padding:16px}
+.tb-spin-wheel{position:relative;width:min(100%,340px);aspect-ratio:1;border-radius:50%;border:10px solid #fff;box-shadow:0 8px 30px rgba(24,55,32,.2),inset 0 0 0 2px #b6d3b9;transform:rotate(0deg);will-change:transform}
+.tb-spin-wheel-ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(#f5c94a 0deg 1.8deg,transparent 1.8deg),repeating-conic-gradient(#277b49 0deg 1.8deg,#e9f3e9 1.8deg 3.6deg);border:3px solid #fff}
+.tb-spin-wheel-ring:after{content:"";position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(255,255,255,.85)}
+.tb-spin-wheel-center{position:absolute;z-index:2;left:50%;top:50%;width:86px;height:86px;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;background:#fff;border:6px solid #e6c35b;box-shadow:0 4px 14px rgba(0,0,0,.18);color:#176b39}
+.tb-spin-wheel-center span{font:900 26px Manrope,sans-serif;letter-spacing:-2px}.tb-spin-wheel-center small{font-size:9px;font-weight:900;letter-spacing:2px}
+.tb-spin-pointer{position:absolute;z-index:5;left:calc(25% - 15px);top:calc(50% - 190px);font-size:34px;line-height:1;color:#e14d32;text-shadow:0 2px 4px #fff}
+.tb-spin-copy{text-align:center}.tb-spin-chance{display:inline-block;padding:8px 13px;border-radius:99px;background:#e5f4e7;color:#176b39;font-size:11px;font-weight:900;letter-spacing:1px}
+.tb-spin-copy h2{font:800 25px Manrope,sans-serif;color:#203d2a;margin:14px 0 8px}.tb-spin-copy p{color:#66766b;font-size:14px;line-height:1.6}
+.tb-spin-prizes{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:18px 0}.tb-spin-prizes span{padding:8px 10px;border:1px solid #e0eae1;border-radius:12px;background:#fff;font-size:12px;font-weight:700}
+.tb-spin-button{min-width:220px;min-height:52px;font-weight:900;letter-spacing:.5px}.tb-spin-note{display:block;margin-top:12px;color:#748278;font-size:11px}
+.tb-spin-result{margin-top:22px;padding:24px;border-radius:20px;text-align:center;border:1px solid #dfe9df;background:#f7faf7}.tb-spin-result.is-win{background:#f0faf0;border-color:#91c99a}.tb-spin-result.is-tryagain{background:#fffaf1;border-color:#f0dfb8}.tb-spin-result h2{font:800 22px Manrope,sans-serif;margin:4px 0 8px}.tb-spin-result p{color:#657469}.tb-spin-result-icon{font-size:36px}
+.tb-spin-claim{display:flex;align-items:center;gap:16px;margin-top:20px;padding:20px;border:1px solid #a8d3ae;border-radius:18px;background:#f2faf2}.tb-spin-claim h2{margin:0 0 5px;font:800 18px Manrope}.tb-spin-claim p{margin:0 0 4px}.tb-spin-claim small{color:#68796c}.tb-spin-claim .btn{margin-left:auto;white-space:nowrap}
+.tb-spin-history{margin-top:26px;padding:22px;border:1px solid #e3ebe4;border-radius:18px;background:#fff}.tb-spin-history h2{font:800 19px Manrope;margin:0 0 12px}.tb-spin-history-row{display:flex;justify-content:space-between;gap:15px;padding:12px 0;border-bottom:1px solid #edf1ed;font-size:13px}.tb-spin-history-row:last-child{border-bottom:0}
+@media(max-width:700px){.tb-spin-card{grid-template-columns:1fr;padding:22px 15px;gap:8px}.tb-spin-wheel{width:min(78vw,310px)}.tb-spin-pointer{left:calc(50% - 15px);top:12px}.tb-spin-claim{align-items:flex-start;flex-wrap:wrap}.tb-spin-claim .btn{margin-left:0}.tb-spin-history-row{flex-direction:column;gap:4px}}
+</style>
+<script>
+(function(){
+  const wheel=document.getElementById('tb-spin-wheel');
+  const form=document.getElementById('tb-spin-form');
+  const button=document.getElementById('tb-spin-button');
+  if(form&&button){form.addEventListener('submit',function(){button.disabled=true;button.textContent='SPINNING…';});}
+  if(wheel&&wheel.dataset.rotation){
+    const target=Number(wheel.dataset.rotation);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{wheel.style.transition='transform 5.2s cubic-bezier(.12,.72,.12,1)';wheel.style.transform='rotate('+target+'deg)';}));
+  }
+})();
+</script>
+{% endblock %}
