@@ -14,8 +14,11 @@ document.addEventListener('DOMContentLoaded', function () {
  const dateKey=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
  const timeLabel=value=>{const [h,m]=value.split(':').map(Number);const ap=h>=12?'PM':'AM';return (h%12||12)+':'+pad(m)+' '+ap;};
  function dayLabel(date){
-  const today=dateKey(new Date()), tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
-  return date===today?'Today':date===dateKey(tomorrow)?'Tomorrow':new Date(date+'T00:00:00').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short'});
+  const today=new Date();today.setHours(0,0,0,0);
+  const target=new Date(date+'T00:00:00');const diff=Math.round((target-today)/86400000);
+  if(diff===0)return 'Today';
+  if(diff===1)return 'Tomorrow';
+  return target.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'});
  }
  function updateCaption(value){
   if(!value){caption.textContent='Choose a time slot';return;}
@@ -24,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
  async function buildSlots(){
   slotsBox.innerHTML='<p class="tb-delivery-note">Loading available slots…</p>';
   const now=new Date(), dates=[];
-  for(let i=0;i<=7;i++){const d=new Date(now);d.setDate(d.getDate()+i);dates.push(dateKey(d));}
+  for(let i=0;i<4;i++){const d=new Date(now);d.setDate(d.getDate()+i);dates.push(dateKey(d));}
   const saved=localStorage.getItem('tb_delivery_slot')||'';
   const groups=await Promise.all(dates.map(async date=>{
    try{const response=await fetch('/api/delivery-slots?date='+encodeURIComponent(date));const data=await response.json();return {date,slots:response.ok&&Array.isArray(data.slots)?data.slots:[]};}
