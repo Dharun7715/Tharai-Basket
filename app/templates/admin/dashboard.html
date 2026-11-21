@@ -89,6 +89,21 @@
  </section>
 </div>
 
+<div class="an-main-grid an-lower-grid">
+ <section class="an-panel">
+  <div class="an-panel-head"><div><h2>Most profitable products</h2><p>Delivered sales less recorded purchase cost · All time</p></div></div>
+  {% if most_profitable_products %}
+  <div class="an-products">{% for item in most_profitable_products %}
+   <div class="an-product-row"><div class="an-product-rank">{{ loop.index }}</div><div class="an-product-info"><strong>{{ item.name }}</strong><small>{{ item.quantity }} units · Revenue {{ item.revenue|inr }}</small></div><strong>{{ item.profit|inr }}</strong></div>
+  {% endfor %}</div>
+  {% else %}<div class="an-empty">Product profit appears after delivered orders with recorded purchase costs.</div>{% endif %}
+ </section>
+ <section class="an-panel">
+  <div class="an-panel-head"><div><h2>Profit data note</h2><p>How to read this ranking</p></div></div>
+  <div class="an-empty" style="line-height:1.7">This ranking uses each delivered order item's recorded selling price and purchase cost. If a purchase cost was missing or entered as ₹0, that product's displayed profit may be overstated. Store expenses and discounts are not allocated to individual products here.</div>
+ </section>
+</div>
+
 <section class="an-panel an-recent-panel">
  <div class="an-panel-head"><div><h2>Recent orders</h2><p>Latest customer activity</p></div><a href="{{ url_for('admin_orders') }}">View all →</a></div>
  <div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Total</th><th>Status</th></tr></thead><tbody>{% for order in orders %}<tr><td><strong>{{ order.order_number }}</strong></td><td>{{ order.customer_name }}</td><td>{{ order.created_at.strftime('%d %b, %I:%M %p') }}</td><td>{{ order.total|inr }}</td><td><span class="status-pill">{{ order.status }}</span></td></tr>{% else %}<tr><td colspan="5">No orders yet.</td></tr>{% endfor %}</tbody></table></div>
