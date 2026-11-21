@@ -479,7 +479,7 @@ def create_app():
         except (TypeError, ValueError):
             return []
         today = local_now.date()
-        if selected_date < today or selected_date > today + timedelta(days=7):
+        if selected_date < today or selected_date > today + timedelta(days=3):
             return []
         if selected_date == today:
             base_time = order_time or local_now.replace(tzinfo=None)
@@ -1572,7 +1572,7 @@ def create_app():
                                saved_addresses=saved_addresses, upi_qr_data=upi_qr_data, 
                                delivery_date=delivery_date, delivery_slots=delivery_slots, delivery_slot=delivery_slot,
                                min_delivery_date=local_today.strftime('%Y-%m-%d'),
-                               max_delivery_date=(local_today + timedelta(days=7)).strftime('%Y-%m-%d'))
+                               max_delivery_date=(local_today + timedelta(days=3)).strftime('%Y-%m-%d'))
     @app.post('/order/<int:order_id>/buy-again')
     @login_required
     def buy_again(order_id):
