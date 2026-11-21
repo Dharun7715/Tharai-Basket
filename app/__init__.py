@@ -509,10 +509,8 @@ def create_app():
         return slots
 
     @app.get('/api/delivery-slots')
-    @login_required
     def delivery_slots_api():
-        if current_user.role != 'customer':
-            abort(403)
+        # Public availability lookup is needed by the home-page slot picker.
         date_value = request.args.get('date', '')
         return jsonify({'date': date_value, 'slots': available_delivery_slots(date_value),
                         'capacity_per_slot': max(1, int((DeliverySlotSetting.query.first() or DeliverySlotSetting(capacity=5)).capacity))})
