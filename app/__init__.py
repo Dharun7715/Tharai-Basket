@@ -1285,7 +1285,7 @@ def create_app():
         reward_discount = min(Decimal(available_reward_points), subtotal) if session.get('use_rewards') else Decimal('0.00')
         discount = min(subtotal, coupon_discount + reward_discount + combo_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
-        upi_params = {'pa': '8838145515@sbi', 'pn': 'DHARUN M', 'am': f'{total:.2f}',
+        upi_params = {'pa': '8838145515@sbi', 'pn': 'Tharai Basket', 'am': f'{total:.2f}',
                       'cu': 'INR', 'tn': 'Tharai Basket order payment'}
         qr = qrcode.make('upi://pay?' + urlencode(upi_params))
         buffer = io.BytesIO()
@@ -1443,7 +1443,7 @@ def create_app():
         # Create a dynamic UPI QR with this checkout's exact payable amount.
         upi_params = {
             'pa': '8838145515@sbi',
-            'pn': 'DHARUN M',
+            'pn': 'Tharai Basket',
             'am': f'{total:.2f}',
             'cu': 'INR',
             'tn': 'Tharai Basket order payment',
@@ -1571,7 +1571,7 @@ def create_app():
                                membership=membership, combo=active_combo, combo_discount=combo_discount,
                                available_reward_points=available_reward_points, use_rewards=use_rewards,
                                wallet_balance=wallet_available, wallet_opted=wallet_opted, wallet_used=wallet_preview,
-                               saved_addresses=saved_addresses, upi_qr_data=upi_qr_data, upi_id='8838145515@sbi',
+                               saved_addresses=saved_addresses, upi_qr_data=upi_qr_data, 
                                delivery_date=delivery_date, delivery_slots=delivery_slots, delivery_slot=delivery_slot,
                                min_delivery_date=local_today.strftime('%Y-%m-%d'),
                                max_delivery_date=(local_today + timedelta(days=7)).strftime('%Y-%m-%d'))
@@ -2082,7 +2082,7 @@ def create_app():
         return prices.get((tier, months))
 
     def membership_qr_data(amount, tier, months):
-        params = {'pa': '8838145515@sbi', 'pn': 'DHARUN M',
+        params = {'pa': '8838145515@sbi', 'pn': 'Tharai Basket',
                   'am': f'{amount:.2f}', 'cu': 'INR',
                   'tn': f'Tharai Basket {tier} {months} month membership'}
         qr = qrcode.make('upi://pay?' + urlencode(params))
@@ -2114,7 +2114,7 @@ def create_app():
             upgrade_amount = ((base_platinum - base_gold) * Decimal(str(remaining_seconds / total_seconds))).quantize(Decimal('0.01'))
             upgrade_qr = membership_qr_data(upgrade_amount, 'Platinum Upgrade', 0) if upgrade_amount > 0 else None
         return render_template('membership.html', membership=membership, pending_request=pending_request,
-                               plans=plans, upi_id='8838145515@sbi',
+                               plans=plans, 
                                upgrade_amount=upgrade_amount, upgrade_qr=upgrade_qr)
 
     @app.post('/account/membership/request')
