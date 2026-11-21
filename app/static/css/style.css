@@ -549,3 +549,17 @@ body.tb-customer-ui{--tb-deep:#123d28;--tb-primary:#176b39;--tb-soft:#edf7ef;--t
  .tb-customer-ui .category-card strong{font-size:10px;line-height:1.2}
  .tb-customer-ui .category-card small{font-size:9px}
 }
+
+
+/* Visibility fix: floating basket count must remain readable over the bar. */
+.tb-customer-ui .tb-view-cart-bar{
+ background:#176b39!important;color:#fff!important;border:1px solid #176b39!important;
+ border-radius:12px!important;box-shadow:0 8px 24px rgba(12,55,26,.25)!important;
+}
+.tb-customer-ui .tb-view-cart-inner{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;width:100%!important}
+.tb-customer-ui .tb-view-cart-count{display:block!important;visibility:visible!important;opacity:1!important;color:#fff!important;font-size:13px!important;font-weight:800!important;line-height:1.3!important;text-align:left!important;flex:1 1 auto!important}
+.tb-customer-ui .tb-view-cart-inner a{display:inline-flex!important;visibility:visible!important;opacity:1!important;flex:0 0 auto!important;margin-left:auto!important;background:#fff!important;color:#176b39!important;border:0!important;font-weight:900!important}
+@media(max-width:620px){
+ .tb-customer-ui .tb-view-cart-bar{left:0!important;right:0!important;bottom:calc(62px + env(safe-area-inset-bottom))!important;transform:none!important;width:100%!important;height:58px!important;padding:7px 14px!important;border-radius:0!important}
+ .tb-customer-ui .tb-view-cart-count{font-size:13px!important}
+}
