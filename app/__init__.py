@@ -1078,21 +1078,14 @@ def create_app():
     @app.route('/login', methods=['GET', 'POST'])
     def login():
         if current_user.is_authenticated:
-            if current_user.role == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            if current_user.role == 'delivery':
-                return redirect(url_for('delivery_dashboard'))
-            return redirect(request.args.get('next') or url_for('index'))
+            return redirect(url_for('index'))
         if request.method == 'POST':
             email = request.form.get('email', '').strip().lower()
             user = User.query.filter_by(email=email, active=True).first()
             if user and user.check_password(request.form.get('password', '')):
                 login_user(user, remember=True)
-                if user.role == 'admin':
-                    return redirect(url_for('admin_dashboard'))
-                if user.role == 'delivery':
-                    return redirect(url_for('delivery_dashboard'))
-                return redirect(request.args.get('next') or url_for('index'))
+                # Always return to the customer-facing homepage after login.
+                return redirect(url_for('index'))
             flash('Incorrect email or password.', 'danger')
         return render_template('auth.html', mode='login')
 
