@@ -245,6 +245,24 @@
 .tb-checkout-coupon.tb-coupon-sidebar .tb-checkout-coupon-form input{background:#fff!important;color:#202820!important;border:1px solid #cbd8cd!important;min-height:44px!important}
 .tb-checkout-coupon.tb-coupon-sidebar .tb-checkout-coupon-form input::placeholder{color:#66736a!important;opacity:1!important}
 .tb-checkout-coupon.tb-coupon-sidebar .tb-checkout-coupon-form button{background:#176b39!important;color:#fff!important;min-height:44px!important}
+
+/* Force the automatic offer card to high contrast (remove washed-out look) */
+.tb-checkout-side .tb-offer-card{
+ opacity:1!important;visibility:visible!important;filter:none!important;
+ background:linear-gradient(115deg,#ffe36a 0%,#ffd43b 100%)!important;
+ color:#202820!important;border:1px solid #e7bd25!important;
+ box-shadow:0 5px 16px rgba(125,94,0,.13)!important;
+}
+.tb-checkout-side .tb-offer-card .tb-offer-top,
+.tb-checkout-side .tb-offer-card .tb-offer-main small,
+.tb-checkout-side .tb-offer-card>p,
+.tb-checkout-side .tb-offer-card .tb-offer-applied,
+.tb-checkout-side .tb-offer-card .tb-offer-hint{
+ color:#443812!important;opacity:1!important;
+}
+.tb-checkout-side .tb-offer-card .tb-offer-main strong{color:#17251a!important;opacity:1!important;text-shadow:none!important}
+.tb-checkout-side .tb-offer-card .tb-offer-tag{color:#26321f!important;border:1px solid #8b741d!important;background:#fff4bf!important}
+.tb-checkout-side .tb-offer-card *{opacity:1!important;filter:none!important}
 </style>
 <script>
 async function changeCheckoutQuantity(productId, change) {
