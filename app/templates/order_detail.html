@@ -82,6 +82,21 @@
       <div class="summary-line"><span>Delivery</span><strong>{{ order.delivery_fee|inr }}</strong></div>
       <div class="summary-total"><span>Total</span><strong>{{ order.total|inr }}</strong></div>
     </div>
+    {% if current_user.role == 'customer' and current_user.id == order.user_id and order.status == 'Delivered' %}
+    <section class="form-card tb-quality-claim" style="margin-top:18px">
+      <h3>Product Quality Promise</h3>
+      <p class="muted tiny">Wrong, damaged or missing item? Send our team a report with details and an optional photo.</p>
+      <form method="post" enctype="multipart/form-data" action="{{ url_for('report_order_issue', order_id=order.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>What went wrong?
+          <select name="issue_type" required><option value="">Choose an issue</option><option>Damaged item</option><option>Wrong item</option><option>Missing item</option><option>Quality concern</option></select>
+        </label>
+        <label style="display:block;margin-top:10px">Tell us more<textarea name="description" maxlength="1000" rows="3" placeholder="Product name and issue details..."></textarea></label>
+        <label style="display:block;margin-top:10px">Photo (optional, JPG/PNG/WEBP, max 5 MB)<input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></label>
+        <button class="btn btn-small" type="submit" style="margin-top:12px">Submit issue report</button>
+      </form>
+    </section>
+    {% endif %}
     <div class="form-card" style="margin-top:18px">
       <h3>Delivery details</h3>
       {% if order.delivery_schedule %}<p><strong>Scheduled delivery:</strong> {{ order.delivery_schedule.delivery_date }} · {{ order.delivery_schedule.delivery_slot }}</p>{% endif %}
