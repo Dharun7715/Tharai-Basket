@@ -246,27 +246,69 @@ function detectDeliveryLocation() {
 const deliveryDateInput = document.getElementById('delivery-date');
 const deliverySlotSelect = document.getElementById('delivery-slot');
 const deliverySlotHelp = document.getElementById('delivery-slot-help');
-if (deliveryDateInput && deliverySlotSelect) {
-  deliveryDateInput.addEventListener('change', async () => {
-    deliverySlotSelect.disabled = true;
-    deliverySlotHelp.textContent = 'Loading available delivery slots…';
-    try {
-      const response = await fetch('/api/delivery-slots?date=' + encodeURIComponent(deliveryDateInput.value));
-      const data = await response.json();
-      deliverySlotSelect.innerHTML = '';
-      if (!response.ok || !data.slots || !data.slots.length) {
-        const option = new Option('No slots available for this date', '');
-        deliverySlotSelect.add(option);
-        deliverySlotHelp.textContent = 'Please choose another date.';
-      } else {
-        data.slots.forEach(slot => deliverySlotSelect.add(new Option(slot, slot)));
-        deliverySlotHelp.textContent = data.slots.length + ' available slots. Choose the time that suits you.';
-      }
-    } catch (error) {
-      deliverySlotHelp.textContent = 'Could not load slots. Please refresh and try again.';
-    } finally {
-      deliverySlotSelect.disabled = false;
+async function loadDeliverySlots(preferredSlot) {
+  if (!deliveryDateInput || !deliverySlotSelect) return;
+  deliverySlotSelect.disabled = true;
+  deliverySlotHelp.textContent = 'Loading available delivery slots…';
+  try {
+    const response = await fetch('/api/delivery-slots?date=' + encodeURIComponent(deliveryDateInput.value));
+    const data = await response.json();
+    deliverySlotSelect.innerHTML = '';
+    if (!response.ok || !Array.isArray(data.slots) || !data.slots.length) {
+      deliverySlotSelect.add(new Option('No slots available for this date', ''));
+      deliverySlotHelp.textContent = 'Please choose another date.';
+      return;
     }
+    data.slots.forEach(slot => deliverySlotSelect.add(new Option(slot, slot)));
+    if (preferredSlot && data.slots.includes(preferredSlot)) {
+      deliverySlotSelect.value = preferredSlot;
+      deliverySlotHelp.textContent = '✓ Your home-page delivery slot has been selected. You can change it here.';
+    } else {
+      deliverySlotHelp.textContent = data.slots.length + ' available slots. Choose the time that suits you.';
+      if (preferredSlot) {
+        localStorage.removeItem('tb_delivery_slot');
+        deliverySlotHelp.textContent = 'Your previous slot is no longer available. Please choose another time.';
+      }
+    }
+  } catch (error) {
+    deliverySlotSelect.innerHTML = '';
+    deliverySlotSelect.add(new Option('Could not load slots', ''));
+    deliverySlotHelp.textContent = 'Could not load slots. Please refresh and try again.';
+  } finally {
+    deliverySlotSelect.disabled = false;
+  }
+}
+if (deliveryDateInput && deliverySlotSelect) {
+  const saved = localStorage.getItem('tb_delivery_slot') || '';
+  let preferredSlot = '';
+  if (saved.includes('|')) {
+    const [savedDate, savedTime] = saved.split('|');
+    if (savedDate >= deliveryDateInput.min && savedDate <= deliveryDateInput.max) {
+      deliveryDateInput.value = savedDate;
+      const [h, m] = savedTime.split(':').map(Number);
+      const hour12 = h % 12 || 12;
+      preferredSlot = hour12 + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+    }
+  }
+  loadDeliverySlots(preferredSlot);
+  deliveryDateInput.addEventListener('change', () => {
+    const current = localStorage.getItem('tb_delivery_slot') || '';
+    const savedTime = current.startsWith(deliveryDateInput.value + '|') ? current.split('|')[1] : '';
+    let preferred = '';
+    if (savedTime) {
+      const [h, m] = savedTime.split(':').map(Number);
+      preferred = (h % 12 || 12) + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+    }
+    loadDeliverySlots(preferred);
+  });
+  deliverySlotSelect.addEventListener('change', () => {
+    const selected = deliverySlotSelect.value;
+    if (!selected) return;
+    const match = selected.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return;
+    let hour = Number(match[1]) % 12;
+    if (match[3].toUpperCase() === 'PM') hour += 12;
+    localStorage.setItem('tb_delivery_slot', deliveryDateInput.value + '|' + String(hour).padStart(2, '0') + ':' + match[2]);
   });
 }
 function fillSavedAddress(select) {
