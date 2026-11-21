@@ -487,3 +487,65 @@ body.tb-customer-ui{--tb-deep:#123d28;--tb-primary:#176b39;--tb-soft:#edf7ef;--t
  .tb-customer-ui .site-footer{padding-bottom:90px}
 }
 @media(prefers-reduced-motion:reduce){.tb-customer-ui *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+
+/* Tharai Basket quick-commerce storefront refresh — Blinkit-inspired, original brand styling */
+.tb-customer-ui{--tb-yellow:#f7d447;--tb-yellow-soft:#fff8d8;--tb-green:#16833b;--tb-ink:#17221b;--tb-muted:#68736b}
+.tb-customer-ui body,.tb-customer-ui{background:#f7f8f5;color:var(--tb-ink)}
+.tb-customer-ui .site-header{height:76px;background:#fff;border-bottom:1px solid #eceee8;box-shadow:0 2px 12px rgba(20,35,22,.035)}
+.tb-customer-ui .site-header .nav-wrap{max-width:1280px}
+.tb-customer-ui .brand-logo{max-height:48px;object-fit:contain}
+.tb-customer-ui .site-header .tb-header-cart{background:var(--tb-yellow);border-color:var(--tb-yellow);color:#202820;border-radius:13px;width:46px;height:42px}
+.tb-customer-ui .site-header .tb-header-cart .count-pill{background:#16833b;color:#fff}
+.tb-customer-ui .tb-bottom-nav{border-top:1px solid #eceee8!important;box-shadow:0 -5px 20px rgba(20,35,22,.08)!important}
+.tb-customer-ui .tb-bottom-nav a.is-active{color:#16833b!important}
+.tb-customer-ui .tb-view-cart-bar{border:0;border-radius:16px;background:#fff;box-shadow:0 8px 28px rgba(20,35,22,.16)}
+.tb-customer-ui .tb-view-cart-bar a,.tb-customer-ui .btn,.tb-customer-ui .add-btn{background:#16833b!important;color:#fff!important;border-color:#16833b!important}
+.tb-customer-ui .btn:hover,.tb-customer-ui .add-btn:hover{background:#0f6d2e!important}
+.tb-customer-ui .section{padding-top:42px;padding-bottom:48px}
+.tb-customer-ui .section-heading h2,.tb-customer-ui .tb-products-heading h2{font-size:clamp(22px,3vw,30px);letter-spacing:-.8px;color:#202a22}
+.tb-customer-ui .eyebrow{color:#16833b;letter-spacing:.1em}
+.tb-customer-ui .tb-shop-filters{background:#fff;border:1px solid #eceee8;border-radius:16px;box-shadow:0 5px 20px rgba(20,35,22,.045);padding:16px}
+.tb-customer-ui .tb-filter-search input,.tb-customer-ui .tb-filter-field input,.tb-customer-ui .tb-filter-field select{background:#f7f8f5;border-color:#e5e9e3;border-radius:10px}
+.tb-customer-ui .tb-filter-search button.tb-search-submit{background:var(--tb-yellow)!important;color:#202820!important;border-radius:0 10px 10px 0}
+.tb-customer-ui .tb-filter-search button.tb-voice-search{background:#fff8d8;border-color:#f0df8d;color:#202820}
+.tb-customer-ui .tb-stock-filter input{accent-color:#16833b}
+.tb-customer-ui .product-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.tb-customer-ui .product-card{border:1px solid #eceee8;border-radius:14px;box-shadow:0 3px 12px rgba(20,35,22,.035);transition:box-shadow .18s,transform .18s}
+.tb-customer-ui .product-card:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(20,35,22,.09)}
+.tb-customer-ui .product-image{height:auto;aspect-ratio:1/1;background:#f5f6f2}
+.tb-customer-ui .product-info{padding:12px}
+.tb-customer-ui .product-info>small{font-size:10px;color:#7a847c}
+.tb-customer-ui .product-info h3{font-size:13px;line-height:1.35;min-height:35px;color:#202a22}
+.tb-customer-ui .product-price{margin:7px 0 10px}
+.tb-customer-ui .product-price strong{font-size:15px;color:#202820}
+.tb-customer-ui .product-info .add-btn{min-height:36px;padding:8px 7px;border-radius:9px;background:#fff!important;color:#16833b!important;border:1px solid #16833b!important;font-size:12px;font-weight:800}
+.tb-customer-ui .product-info .add-btn:hover{background:#16833b!important;color:#fff!important}
+.tb-customer-ui .discount-tag{background:var(--tb-yellow);color:#2a2a20;border-radius:5px;font-size:9px}
+.tb-customer-ui .category-card{border:1px solid #eceee8;border-radius:14px;background:#fff;padding:15px;box-shadow:0 3px 12px rgba(20,35,22,.025)}
+.tb-customer-ui .category-icon{width:58px;height:58px;background:#fff8d8;border-radius:14px}
+.tb-customer-ui .category-card strong{font-size:13px}
+.tb-customer-ui .tb-seasonal-card{border-radius:16px;background:linear-gradient(105deg,#f8d84b,#f4c82c);color:#202820;box-shadow:none}
+.tb-customer-ui .tb-seasonal-copy>span,.tb-customer-ui .tb-seasonal-copy p{color:#4a452c}
+.tb-customer-ui .tb-seasonal-copy h2{color:#202820}
+.tb-customer-ui .tb-seasonal-copy a{background:#16833b;color:#fff}
+.tb-customer-ui .summary-card,.tb-customer-ui .form-card,.tb-customer-ui .cart-items,.tb-customer-ui .auth-card{border-color:#eceee8;border-radius:16px;box-shadow:0 4px 18px rgba(20,35,22,.045)}
+.tb-customer-ui .summary-note{background:#fff8d8;color:#65551c}
+.tb-customer-ui .site-footer{background:#fff;border-top:1px solid #eceee8}
+.tb-customer-ui .flash-success{background:#eaf7ed;color:#176b32}
+@media(max-width:1100px){.tb-customer-ui .product-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:760px){
+ .tb-customer-ui .site-header{height:64px}
+ .tb-customer-ui .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .tb-customer-ui .product-card{border-radius:12px}
+ .tb-customer-ui .product-info{padding:10px}
+ .tb-customer-ui .product-info h3{font-size:12px;min-height:33px}
+ .tb-customer-ui .product-price strong{font-size:14px}
+ .tb-customer-ui .tb-shop-filters{padding:12px;border-radius:13px}
+ .tb-customer-ui .section{padding-top:26px;padding-bottom:32px}
+ .tb-customer-ui .category-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+ .tb-customer-ui .category-card{padding:9px 5px;text-align:center}
+ .tb-customer-ui .category-icon{width:42px;height:42px;margin:0 auto 8px;font-size:21px}
+ .tb-customer-ui .category-card strong{font-size:10px;line-height:1.2}
+ .tb-customer-ui .category-card small{font-size:9px}
+}
