@@ -39,6 +39,12 @@
 </div>
 <div class="an-stat-strip an-retention-summary"><div><span>Last 30 days · Gross profit</span><strong>{{ last_30_gross_profit|inr }}</strong></div><div><span>Last 30 days · Expenses</span><strong>{{ last_30_expenses|inr }}</strong></div><div><span>Last 30 days · Estimated net</span><strong>{{ last_30_net|inr }}</strong></div><div><span>Net calculation</span><strong>Profit − expenses</strong></div></div>
 <div class="an-stat-strip an-retention-summary"><div><span>Average order value</span><strong>{{ average_order_value|inr }}</strong></div><div><span>Repeat customers</span><strong>{{ repeat_customer_count }}</strong></div><div><span>Repeat customer rate</span><strong>{{ repeat_customer_rate }}%</strong></div><div><span>Customer retention</span><strong>{% if repeat_customer_rate >= 30 %}Strong{% elif repeat_customer_rate > 0 %}Growing{% else %}Building{% endif %}</strong></div></div>
+<div class="an-stat-strip an-retention-summary">
+ <div><span>First-order offers issued</span><strong>{{ first_offer_orders }}</strong></div>
+ <div><span>Welcome discount cost</span><strong>{{ first_offer_cost|inr }}</strong></div>
+ <div><span>Free-delivery orders</span><strong>{{ free_delivery_order_count }}</strong></div>
+ <div><span>Delivery fees collected · Delivered</span><strong>{{ delivered_delivery_fees|inr }}</strong></div>
+</div>
 <div class="an-stat-strip an-review-summary">
  <div><span>Customer reviews</span><strong>{{ review_count }}</strong></div>
  <div><span>Average rating</span><strong>{% if review_count %}{{ average_review_rating }}/5 ★{% else %}—{% endif %}</strong></div>
