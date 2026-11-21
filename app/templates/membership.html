@@ -7,7 +7,7 @@
   {% if membership %}
   <div class="admin-panel">
     <h2>{{ membership.tier }} member</h2>
-    <p>{% if membership.tier == 'Platinum' %}Free delivery on every order.{% elif membership.tier == 'Gold' %}Free delivery when your product subtotal is above ₹150.{% endif %}
+    <p>{% if membership.tier == 'Platinum' %}Free delivery on every order · 2 points for every ₹100 spent.{% elif membership.tier == 'Gold' %}Free delivery when your product subtotal is above ₹150 · 1 point for every ₹100 spent.{% endif %}
     <br>Active until {{ membership.ends_at.strftime('%d %B %Y') }}.</p>
   </div>
   {% endif %}
@@ -46,9 +46,9 @@
       <p class="muted">Pay by UPI QR. Submit your UTR; the store team verifies the payment before activating membership.</p>
       <div class="membership-plans">
         <article class="membership-plan"><span class="eyebrow">GOLD</span><h3>₹300 <small>/ 1 month</small></h3>
-          <p>Free delivery on orders above ₹150.</p><strong>3 months: ₹800</strong><small class="muted">Save ₹100</small></article>
+          <p>Free delivery on orders above ₹150. Earn 1 point for every ₹100 spent.</p><strong>3 months: ₹800</strong><small class="muted">Save ₹100</small></article>
         <article class="membership-plan"><span class="eyebrow">PLATINUM</span><h3>₹500 <small>/ 1 month</small></h3>
-          <p>Free delivery on every order.</p><strong>3 months: ₹1,300</strong><small class="muted">Save ₹200</small></article>
+          <p>Free delivery on every order. Earn 2 points for every ₹100 spent.</p><strong>3 months: ₹1,300</strong><small class="muted">Save ₹200</small></article>
       </div>
       <form method="post" action="{{ url_for('membership_request') }}" id="membership-payment-form" class="membership-payment-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
