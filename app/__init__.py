@@ -309,6 +309,28 @@ def create_app():
 
         __table_args__ = (db.UniqueConstraint('user_id', 'referral_id', name='uq_reward_user_referral'),)
 
+    class SpinEntry(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        prize = db.Column(db.String(80), nullable=False, default='')
+        won_at = db.Column(db.DateTime)
+        expires_at = db.Column(db.DateTime)
+        used_at = db.Column(db.DateTime)
+        order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
+        created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+        user = db.relationship('User')
+        order = db.relationship('Order')
+
+    class SupplierPayment(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'), nullable=False, index=True)
+        amount = db.Column(db.Numeric(10, 2), nullable=False)
+        method = db.Column(db.String(30), default='Cash')
+        reference = db.Column(db.String(100), default='')
+        notes = db.Column(db.String(240), default='')
+        paid_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+        supplier = db.relationship('Supplier', backref=db.backref('payments', cascade='all, delete-orphan'))
+
     class RewardRedemption(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
@@ -544,6 +566,31 @@ def create_app():
         credits = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter_by(user_id=user_id, kind='Credit').scalar()
         debits = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter_by(user_id=user_id, kind='Debit').scalar()
         return max(Decimal('0.00'), Decimal(str(credits or 0)) - Decimal(str(debits or 0))).quantize(Decimal('0.01'))
+
+    SPIN_PRIZES = ('Sugar 500g', 'Milk 500ml', 'Maida 500g')
+
+    @app.route('/spin', methods=['GET', 'POST'])
+    @login_required
+    def spin_and_win():
+        if current_user.role != 'customer':
+            abort(403)
+        result = None
+        if request.method == 'POST':
+            # Unlimited spins; every spin is an independent 1-in-200 chance.
+            entry = SpinEntry(user_id=current_user.id)
+            if secrets.randbelow(200) == 0:
+                entry.prize = secrets.choice(SPIN_PRIZES)
+                entry.won_at = datetime.utcnow()
+                entry.expires_at = entry.won_at + timedelta(hours=24)
+            db.session.add(entry)
+            db.session.commit()
+            result = entry
+        active_claim = SpinEntry.query.filter(
+            SpinEntry.user_id == current_user.id, SpinEntry.prize != '',
+            SpinEntry.used_at.is_(None), SpinEntry.expires_at > datetime.utcnow()
+        ).order_by(SpinEntry.won_at.desc()).first()
+        history = SpinEntry.query.filter_by(user_id=current_user.id).order_by(SpinEntry.created_at.desc()).limit(30).all()
+        return render_template('spin.html', result=result, active_claim=active_claim, history=history)
 
     @app.get('/account/tools')
     @login_required
@@ -1520,6 +1567,15 @@ def create_app():
                 db.session.add(order)
                 db.session.flush()
                 db.session.add(DeliverySchedule(order_id=order.id, delivery_date=delivery_date, delivery_slot=delivery_slot))
+                spin_claim = SpinEntry.query.filter(
+                    SpinEntry.user_id == current_user.id, SpinEntry.prize != '',
+                    SpinEntry.used_at.is_(None), SpinEntry.expires_at > datetime.utcnow()
+                ).order_by(SpinEntry.won_at.asc()).with_for_update().first() if subtotal > Decimal('200.00') else None
+                if spin_claim:
+                    db.session.add(OrderItem(order_id=order.id, product_id=None, product_name=f"Spin & Win: {spin_claim.prize}",
+                                             unit='Free prize', quantity=1, unit_price=Decimal('0.00'), purchase_cost=Decimal('0.00')))
+                    spin_claim.used_at = datetime.utcnow()
+                    spin_claim.order_id = order.id
                 create_customer_notification(order, 'Order placed successfully', f'Your order {order.order_number} has been received. Requested delivery: {delivery_date} at {delivery_slot}. We will confirm it shortly.')
                 for row in rows:
                     p = row['product']
@@ -1570,7 +1626,10 @@ def create_app():
                 return redirect(url_for('my_orders'))
         saved_addresses = Address.query.filter_by(user_id=current_user.id).order_by(Address.id.desc()).all()
         active_combo, combo_discount = active_cart_combo(rows)
+        spin_claim = SpinEntry.query.filter(SpinEntry.user_id == current_user.id, SpinEntry.prize != '',
+            SpinEntry.used_at.is_(None), SpinEntry.expires_at > datetime.utcnow()).order_by(SpinEntry.won_at.asc()).first()
         return render_template('checkout.html', rows=rows, subtotal=subtotal, delivery_fee=fee, total=total,
+                               spin_claim=spin_claim if subtotal > Decimal('200.00') else None,
                                coupon=coupon, discount=discount, reward_discount=reward_discount,
                                membership=membership, combo=active_combo, combo_discount=combo_discount,
                                available_reward_points=available_reward_points, use_rewards=use_rewards,
@@ -2551,12 +2610,13 @@ def create_app():
         referral = Referral.query.filter_by(referred_id=order.user_id).first()
         if not referral:
             return
-        if RewardTransaction.query.filter_by(user_id=referral.referrer_id, referral_id=referral.id).first():
+        reference = f'REFERRAL-{referral.id}'
+        if WalletTransaction.query.filter_by(user_id=referral.referrer_id, reference=reference).first():
             return
-        db.session.add(RewardTransaction(user_id=referral.referrer_id, referral_id=referral.id,
-                                          points=50, description='Referral reward for a friend’s first delivered order'))
-        db.session.add(RewardTransaction(user_id=referral.referred_id, referral_id=referral.id,
-                                          points=50, description='Welcome reward for your first delivered order'))
+        db.session.add(WalletTransaction(user_id=referral.referrer_id, amount=Decimal('50.00'), kind='Credit',
+                                          reference=reference, description='₹50 referral reward'))
+        db.session.add(WalletTransaction(user_id=referral.referred_id, amount=Decimal('50.00'), kind='Credit',
+                                          reference=reference, description='₹50 welcome reward'))
 
     @app.post('/admin/gift-cards/create')
     @admin_required
@@ -2694,6 +2754,27 @@ def create_app():
         db.session.commit()
         flash('Purchase record updated.', 'success')
         return redirect(url_for('admin_purchases'))
+
+    @app.post('/admin/suppliers/<int:supplier_id>/payment')
+    @admin_required
+    def admin_supplier_payment(supplier_id):
+        supplier = Supplier.query.get_or_404(supplier_id)
+        amount = money(request.form.get('amount'))
+        if amount <= 0:
+            flash('Enter a valid payment amount.', 'danger')
+        else:
+            db.session.add(SupplierPayment(supplier_id=supplier.id, amount=amount,
+                method=request.form.get('method', 'Cash'), reference=request.form.get('reference', '').strip(),
+                notes=request.form.get('notes', '').strip()))
+            db.session.commit()
+            flash('Supplier payment recorded.', 'success')
+        return redirect(url_for('admin_suppliers'))
+
+    @app.get('/admin/spins')
+    @admin_required
+    def admin_spins():
+        entries = SpinEntry.query.order_by(SpinEntry.created_at.desc()).limit(300).all()
+        return render_template('admin/spins.html', entries=entries)
 
     @app.get('/admin/purchases')
     @admin_required
