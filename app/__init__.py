@@ -2118,6 +2118,7 @@ def create_app():
                 top_product_totals[key]['quantity'] += int(item.quantity or 0)
                 top_product_totals[key]['revenue'] += Decimal(str(item.unit_price or 0)) * int(item.quantity or 0)
         top_products = sorted(top_product_totals.values(), key=lambda item: item['quantity'], reverse=True)[:5]
+        delivered_items = OrderItem.query.join(Order).filter(Order.status == 'Delivered').all()
         profit_by_product = {}
         for item in delivered_items:
             key = item.product_name
@@ -2147,7 +2148,6 @@ def create_app():
             WalletTransaction.kind == 'Credit',
             WalletTransaction.reference.like('ORDER-CASHBACK-%')
         ).scalar() or 0
-        delivered_items = OrderItem.query.join(Order).filter(Order.status == 'Delivered').all()
         gross_profit = sum(((Decimal(str(item.unit_price or 0)) - Decimal(str(item.purchase_cost or 0))) * int(item.quantity or 0)
                             for item in delivered_items), Decimal('0.00'))
         recorded_expenses = db.session.query(db.func.coalesce(db.func.sum(StoreExpense.amount), 0)).scalar() or 0
