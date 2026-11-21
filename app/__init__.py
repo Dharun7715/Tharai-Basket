@@ -532,15 +532,13 @@ def create_app():
         membership = VipMembership.query.filter_by(user_id=order.user_id, active=True).filter(
             VipMembership.ends_at > datetime.utcnow()
         ).order_by(VipMembership.ends_at.desc()).first()
-        points_per_hundred = 2 if membership and membership.tier == 'Platinum' else 1
-        if points_per_hundred <= 0:
-            return
+        points_per_hundred = 20 if membership and membership.tier == 'Platinum' else 10 if membership and membership.tier == 'Gold' else 5
         points = int(Decimal(str(order.subtotal or 0)) // Decimal('100')) * points_per_hundred
         if points > 0:
             db.session.add(LoyaltyPoint(user_id=order.user_id, order_id=order.id, points=points))
             tier_label = f" {membership.tier} membership" if membership else ""
             create_customer_notification(order, 'Loyalty points earned',
-                f'You earned {points} Tharai points{(" with your" + tier_label) if tier_label else ""}. 1 point = ₹1 reward value at checkout.', 'rewards')
+                f'You earned {points} Tharai points{(" with your" + tier_label) if tier_label else ""}. 100 points = ₹1 reward value at checkout.', 'rewards')
 
     def wallet_balance(user_id):
         credits = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter_by(user_id=user_id, kind='Credit').scalar()
@@ -1287,7 +1285,8 @@ def create_app():
         reward_credits += sum(item.points for item in LoyaltyPoint.query.filter_by(user_id=current_user.id).all())
         reward_spent = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar()
         available_reward_points = max(0, reward_credits - int(reward_spent or 0))
-        reward_discount = min(Decimal(available_reward_points), subtotal) if session.get('use_rewards') else Decimal('0.00')
+        # 100 reward points = ₹1. Redeem only whole-rupee point blocks.
+        reward_discount = min(Decimal(available_reward_points // 100), subtotal) if session.get('use_rewards') else Decimal('0.00')
         discount = min(subtotal, coupon_discount + reward_discount + combo_discount)
         total = max(Decimal('0.00'), subtotal + fee - discount)
         upi_params = {'pa': '8838145515@sbi', 'pn': 'Tharai Basket', 'am': f'{total:.2f}',
@@ -1540,7 +1539,7 @@ def create_app():
                         remaining_to_allocate -= used
                 db.session.flush()
                 if reward_discount > 0:
-                    points_used = int(reward_discount)
+                    points_used = int(reward_discount * 100)
                     db.session.add(RewardRedemption(user_id=current_user.id, order_id=order.id, points=points_used))
                 if wallet_used > 0:
                     db.session.add(WalletTransaction(user_id=current_user.id, amount=wallet_used, kind='Debit',
