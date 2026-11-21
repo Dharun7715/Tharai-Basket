@@ -51,6 +51,18 @@
  <div><span>Cashback issued</span><strong>{{ wallet_cashback_total|inr }}</strong></div>
  <div><span>Order tracking</span><strong>Live status</strong></div>
 </div>
+<div class="an-stat-strip an-retention-summary">
+ <div><span>New customers · This month</span><strong>{{ new_customers_month }}</strong></div>
+ <div><span>Orders · This month</span><strong>{{ monthly_order_count }}</strong></div>
+ <div><span>Active repeat baskets</span><strong>{{ active_subscription_count }}</strong></div>
+ <div><span>Subscriptions due</span><strong>{{ due_subscription_count }}</strong></div>
+</div>
+<div class="an-stat-strip an-retention-summary">
+ <div><span>Wallet balance liability</span><strong>{{ wallet_liability|inr }}</strong></div>
+ <div><span>Promotional wallet credits</span><strong>{{ wallet_promo_credits|inr }}</strong></div>
+ <div><span>Cashback credited</span><strong>{{ wallet_cashback_total|inr }}</strong></div>
+ <div><span>Wallet accounting</span><strong>Credits − debits</strong></div>
+</div>
 
 
 <div class="an-main-grid">
