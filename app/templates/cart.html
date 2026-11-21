@@ -43,19 +43,16 @@
         <div class="tb-free-delivery-note" id="tb-free-delivery-note">{% if subtotal < threshold %}Add {{ (threshold - subtotal)|inr }} more for free delivery.{% else %}✓ You've unlocked free delivery!{% endif %}</div>
 
         <div class="tb-cart-coupon">
-          <div class="tb-coupon-label"><span>🎟 SPECIAL WELCOME OFFER</span><span>THARAI BASKET</span></div>
-          <div class="tb-coupon-main"><div><small>FLAT</small><strong>₹50 OFF</strong></div><span class="tb-coupon-min">₹500+</span></div>
-          <p>Get ₹50 off when your product subtotal reaches ₹500.</p>
-          <div class="tb-coupon-code"><strong>THARAI50</strong><span>COUPON CODE</span></div>
-          <div id="tb-coupon-state">
-          {% if coupon and coupon.code == 'THARAI50' %}
-            <div class="tb-coupon-success">✓ THARAI50 applied — you saved {{ coupon_discount|inr }}</div>
-          {% elif subtotal < 500 %}
-            <div class="tb-coupon-progress"><div class="tb-coupon-track"><span id="tb-coupon-progress-fill" style="width:{{ [((subtotal / 500) * 100), 100]|min }}%"></span></div><small id="tb-coupon-progress-text">Add <strong>{{ (500 - subtotal)|inr }}</strong> more to unlock this offer.</small></div>
+          <div class="tb-coupon-label"><span>🎁 THARAI BASKET OFFERS</span><span>AUTOMATIC</span></div>
+          {% if first_order %}
+            <div class="tb-coupon-main"><div><small>FIRST ORDER</small><strong>₹50 OFF</strong></div><span class="tb-coupon-min">₹300+</span></div>
+            {% if welcome_discount > 0 %}<p class="tb-coupon-success">✓ ₹50 first-order discount applied automatically.</p>
+            {% else %}<p>Spend {{ (300.01 - subtotal)|inr }} more to unlock your ₹50 first-order offer.</p>{% endif %}
+            <p>Free delivery also unlocks when your first basket is above ₹200.</p>
           {% else %}
-            <form method="post" action="{{ url_for('coupon_apply') }}" class="tb-coupon-apply"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="coupon_code" value="THARAI50"><button type="submit">Apply ₹50 offer</button></form>
+            <div class="tb-coupon-main"><div><small>EVERY ORDER</small><strong>FREE DELIVERY</strong></div><span class="tb-coupon-min">₹300+</span></div>
+            <p>Welcome discount is for the first order only. Spend above ₹300 for free delivery.</p>
           {% endif %}
-          </div>
         </div>
 
         <div class="tb-other-coupon-area">
@@ -116,7 +113,18 @@ async function updateCartQuantity(productId, change) {
     document.getElementById('tb-cart-total').textContent = '₹' + Number(data.total).toFixed(2);
     document.getElementById('tb-cart-count').textContent = data.item_count + ' item(s)';
     const freeThreshold = Number(data.free_delivery_threshold || 300);
-    document.getElementById('tb-free-delivery-note').textContent = freeThreshold <= 0 || Number(data.subtotal) >= freeThreshold ? '✓ You’ve unlocked free delivery!' : 'Add ₹' + (freeThreshold - Number(data.subtotal)).toFixed(2) + ' more for free delivery.';
+    const isFree = freeThreshold <= 0 || Number(data.subtotal) > freeThreshold;
+    document.getElementById('tb-free-delivery-note').textContent = isFree ? '✓ You’ve unlocked free delivery!' : 'Add ₹' + Math.max(0, freeThreshold + 0.01 - Number(data.subtotal)).toFixed(2) + ' more for free delivery.';
+    const offerBox = document.querySelector('.tb-cart-coupon');
+    if (offerBox) {
+      if (data.is_first_order) {
+        offerBox.innerHTML = '<div class="tb-coupon-label"><span>🎁 THARAI BASKET OFFERS</span><span>AUTOMATIC</span></div><div class="tb-coupon-main"><div><small>FIRST ORDER</small><strong>₹50 OFF</strong></div><span class="tb-coupon-min">₹300+</span></div>' +
+          (Number(data.welcome_discount) > 0 ? '<p class="tb-coupon-success">✓ ₹50 first-order discount applied automatically.</p>' : '<p>Spend ₹' + Math.max(0,300.01-Number(data.subtotal)).toFixed(2) + ' more to unlock your ₹50 first-order offer.</p>') +
+          '<p>Free delivery also unlocks when your first basket is above ₹200.</p>';
+      } else {
+        offerBox.innerHTML = '<div class="tb-coupon-label"><span>🎁 THARAI BASKET OFFERS</span><span>AUTOMATIC</span></div><div class="tb-coupon-main"><div><small>EVERY ORDER</small><strong>FREE DELIVERY</strong></div><span class="tb-coupon-min">₹300+</span></div><p>Welcome discount is for the first order only. Spend above ₹300 for free delivery.</p>';
+      }
+    }
     const discountRow = document.getElementById('tb-cart-discount-row');
     if (Number(data.discount) > 0) {
       discountRow.hidden = false;
