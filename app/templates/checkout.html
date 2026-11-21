@@ -169,6 +169,17 @@
 .tb-trust-row{display:flex;flex-wrap:wrap;gap:8px 14px;color:#7b897e;font-size:9px;padding:0 4px}
 @media(max-width:900px){.tb-checkout-grid{grid-template-columns:1fr}.tb-checkout-side{position:static;grid-row:1}.tb-checkout-form{grid-row:2}}
 @media(max-width:620px){.tb-schedule-fields{grid-template-columns:1fr}.tb-checkout{padding-top:28px}.tb-checkout-heading{align-items:flex-start;flex-direction:column}.tb-secure-note{align-self:flex-start}.tb-checkout-card,.tb-order-card{padding:17px}.tb-fields-grid{grid-template-columns:1fr}.tb-full-field{grid-column:auto}.tb-location-box{align-items:flex-start;flex-wrap:wrap}.tb-location-copy{min-width:calc(100% - 60px)}.tb-location-button{margin-left:51px}.tb-qr-wrap{gap:10px}.tb-qr-wrap img{width:120px;height:120px}.tb-qr-amount{font-size:20px}.tb-offer-main strong{font-size:29px}}
+
+/* Compact automatic-offer panel */
+.tb-offer-card{padding:11px 13px;border-radius:12px;box-shadow:0 5px 13px rgba(21,75,42,.09)}
+.tb-offer-top{font-size:7px;letter-spacing:.65px}
+.tb-offer-main{margin:7px 0 3px}
+.tb-offer-main small{font-size:8px;letter-spacing:.6px}
+.tb-offer-main strong{font-size:22px;letter-spacing:-.5px}
+.tb-offer-tag{font-size:11px;padding:5px 8px;border-radius:8px}
+.tb-offer-card>p{font-size:9px;line-height:1.35;margin:4px 0 0}
+@media(max-width:620px){.tb-offer-card{padding:10px 12px}.tb-offer-main strong{font-size:20px}}
+
 </style>
 <script>
 async function changeCheckoutQuantity(productId, change) {
