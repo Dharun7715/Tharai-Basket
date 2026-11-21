@@ -3,7 +3,7 @@
 
 {% block content %}
 <script>
-(function(){
+document.addEventListener('DOMContentLoaded', function () {
  const open=document.getElementById('tb-delivery-open');
  const modal=document.getElementById('tb-delivery-modal');
  const close=document.getElementById('tb-delivery-close');
@@ -12,58 +12,56 @@
  if(!open||!modal||!slotsBox||!caption)return;
  const pad=n=>String(n).padStart(2,'0');
  const dateKey=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
- const timeLabel=d=>{let h=d.getHours(),m=d.getMinutes(),ampm=h>=12?'PM':'AM';h=h%12||12;return h+':'+pad(m)+' '+ampm;};
- const saved=localStorage.getItem('tb_delivery_slot')||'';
- function buildSlots(){
+ const timeLabel=value=>{const [h,m]=value.split(':').map(Number);const ap=h>=12?'PM':'AM';return (h%12||12)+':'+pad(m)+' '+ap;};
+ function dayLabel(date){
+  const today=dateKey(new Date()), tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+  return date===today?'Today':date===dateKey(tomorrow)?'Tomorrow':new Date(date+'T00:00:00').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short'});
+ }
+ function updateCaption(value){
+  if(!value){caption.textContent='Choose a time slot';return;}
+  const [date,time]=value.split('|');caption.textContent=dayLabel(date)+' · '+timeLabel(time);
+ }
+ async function buildSlots(){
+  slotsBox.innerHTML='<p class="tb-delivery-note">Loading available slots…</p>';
+  const now=new Date(), dates=[];
+  for(let i=0;i<=7;i++){const d=new Date(now);d.setDate(d.getDate()+i);dates.push(dateKey(d));}
+  const saved=localStorage.getItem('tb_delivery_slot')||'';
+  const groups=await Promise.all(dates.map(async date=>{
+   try{const response=await fetch('/api/delivery-slots?date='+encodeURIComponent(date));const data=await response.json();return {date,slots:response.ok&&Array.isArray(data.slots)?data.slots:[]};}
+   catch(e){return {date,slots:[]};}
+  }));
   slotsBox.innerHTML='';
-  const now=new Date();
-  const first=new Date(now.getTime()+120*60000);
-  first.setSeconds(0,0);
-  const mins=first.getMinutes();
-  first.setMinutes(mins===0?0:(mins<=30?30:60));
-  const last=new Date(now);last.setDate(last.getDate()+1);last.setHours(21,0,0,0);
-  const groups=new Map();
-  for(let t=new Date(first);t<=last;t=new Date(t.getTime()+30*60000)){
-   if(t.getHours()<8||t.getHours()>=21)continue;
-   const key=dateKey(t);
-   if(!groups.has(key))groups.set(key,[]);
-   groups.get(key).push(new Date(t));
-  }
-  if(!groups.size){
-   const tomorrow=new Date(now);tomorrow.setDate(tomorrow.getDate()+1);tomorrow.setHours(8,0,0,0);
-   groups.set(dateKey(tomorrow),[tomorrow]);
-  }
-  groups.forEach((times,date)=>{
+  let selectedStillAvailable=false;
+  groups.forEach(group=>{
+   if(!group.slots.length)return;
    const day=document.createElement('div');day.className='tb-delivery-day';
-   const d=new Date(date+'T00:00:00');
-   const title=document.createElement('strong');
-   title.className='tb-delivery-day-title';
-   title.textContent=dateKey(now)===date?'Today':(dateKey(new Date(now.getTime()+86400000))===date?'Tomorrow':d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short'}));
-   day.appendChild(title);
+   const title=document.createElement('strong');title.className='tb-delivery-day-title';title.textContent=dayLabel(group.date);day.appendChild(title);
    const grid=document.createElement('div');grid.className='tb-delivery-slots';
-   times.forEach(t=>{
-    const value=date+'|'+pad(t.getHours())+':'+pad(t.getMinutes());
-    const btn=document.createElement('button');btn.type='button';btn.className='tb-delivery-slot-option'+(value===saved?' is-selected':'');btn.textContent=timeLabel(t);
+   group.slots.forEach(slot=>{
+    const [hour,minute]=slot.split(':');const h24=Number(hour)%12+(slot.endsWith('PM')?12:0);
+    const time=pad(h24)+':'+minute.slice(0,2);const value=group.date+'|'+time;
+    const btn=document.createElement('button');btn.type='button';btn.className='tb-delivery-slot-option'+(value===saved?' is-selected':'');btn.textContent=slot;
+    if(value===saved)selectedStillAvailable=true;
     btn.addEventListener('click',()=>{
-     localStorage.setItem('tb_delivery_slot',value);
-     caption.textContent=title.textContent+' · '+timeLabel(t);
-     modal.hidden=true;document.body.classList.remove('tb-delivery-modal-open');
+     localStorage.setItem('tb_delivery_slot',value);updateCaption(value);
+     slotsBox.querySelectorAll('.tb-delivery-slot-option').forEach(x=>x.classList.remove('is-selected'));
+     btn.classList.add('is-selected');modal.hidden=true;document.body.classList.remove('tb-delivery-modal-open');
     });
     grid.appendChild(btn);
    });
    day.appendChild(grid);slotsBox.appendChild(day);
   });
+  if(!slotsBox.children.length)slotsBox.innerHTML='<p class="tb-delivery-note">No slots available right now. Please try again later.</p>';
+  if(saved&&!selectedStillAvailable){localStorage.removeItem('tb_delivery_slot');updateCaption('');}
+  else updateCaption(saved);
  }
- function show(){buildSlots();modal.hidden=false;document.body.classList.add('tb-delivery-modal-open');}
+ function show(){modal.hidden=false;document.body.classList.add('tb-delivery-modal-open');buildSlots();}
  function hide(){modal.hidden=true;document.body.classList.remove('tb-delivery-modal-open');}
  open.addEventListener('click',show);close.addEventListener('click',hide);
  modal.addEventListener('click',e=>{if(e.target===modal)hide();});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')hide();});
- if(saved){
-  const parts=saved.split('|');
-  if(parts.length===2){const d=new Date(parts[0]+'T00:00:00');caption.textContent=(dateKey(new Date())===parts[0]?'Today':(dateKey(new Date(Date.now()+86400000))===parts[0]?'Tomorrow':d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'}))+' · '+timeLabel(new Date(parts[0]+'T'+parts[1]+':00'));}
- }
-})();
+ updateCaption(localStorage.getItem('tb_delivery_slot')||'');
+});
 </script>
 <style>
 .tb-shop-filters{display:grid;grid-template-columns:minmax(220px,1.6fr) repeat(3,minmax(135px,1fr));gap:14px;align-items:end;padding:20px;background:#fff;border:1px solid #e4ece5;border-radius:18px;margin:24px 0 14px;box-shadow:0 10px 28px rgba(24,62,37,.045)}
