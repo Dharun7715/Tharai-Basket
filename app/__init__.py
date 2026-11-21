@@ -2380,8 +2380,9 @@ def create_app():
         products = Product.query.all()
         for product in products:
             product.stock = 10
+            product.active = True
         db.session.commit()
-        flash(f'TEST STOCK UPDATE: {len(products)} products now show 10 units each. Restore real stock before accepting live orders.', 'warning')
+        flash(f'TEST CATALOGUE UPDATE: {len(products)} products are now active with 10 units each. Restore real stock and availability before accepting live orders.', 'warning')
         return redirect(url_for('admin_products'))
 
     @app.route('/admin/products', methods=['GET', 'POST'])
