@@ -230,6 +230,21 @@
 .tb-offer-card>p{font-size:9px;line-height:1.35;margin:4px 0 0}
 @media(max-width:620px){.tb-offer-card{padding:10px 12px}.tb-offer-main strong{font-size:20px}}
 
+
+/* High-contrast coupon panel: easy to spot above Referral Rewards */
+.tb-checkout-coupon.tb-coupon-sidebar{
+ display:block!important;visibility:visible!important;opacity:1!important;
+ background:#fff!important;border:2px solid #16833b!important;border-radius:15px!important;
+ padding:16px!important;min-height:150px!important;box-shadow:0 5px 18px rgba(22,131,59,.12)!important;
+ color:#253329!important;
+}
+.tb-checkout-coupon.tb-coupon-sidebar .tb-card-heading h2{color:#17271b!important;font-size:17px!important;font-weight:900!important}
+.tb-checkout-coupon.tb-coupon-sidebar .tb-card-heading p{color:#59675d!important;font-size:11px!important}
+.tb-checkout-coupon.tb-coupon-sidebar .tb-step{background:#e8f5eb!important;color:#16833b!important}
+.tb-checkout-coupon.tb-coupon-sidebar .tb-checkout-coupon-hint{color:#58675d!important;font-size:10px!important}
+.tb-checkout-coupon.tb-coupon-sidebar .tb-checkout-coupon-form input{background:#fff!important;color:#202820!important;border:1px solid #cbd8cd!important;min-height:44px!important}
+.tb-checkout-coupon.tb-coupon-sidebar .tb-checkout-coupon-form input::placeholder{color:#66736a!important;opacity:1!important}
+.tb-checkout-coupon.tb-coupon-sidebar .tb-checkout-coupon-form button{background:#176b39!important;color:#fff!important;min-height:44px!important}
 </style>
 <script>
 async function changeCheckoutQuantity(productId, change) {
