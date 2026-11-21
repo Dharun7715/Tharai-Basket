@@ -3,35 +3,44 @@
 {% block content %}
 <section class="section">
   <div class="container">
-    <div class="section-heading">
-      <div><span class="eyebrow">YOUR THARAI BASKET ACTIVITY</span><h2>My <em>orders.</em></h2></div>
+    <div class="section-heading"><div><span class="eyebrow">YOUR THARAI BASKET ACTIVITY</span><h2>My <em>orders.</em></h2><p class="muted">Track deliveries, view invoices and reorder your favourites.</p></div></div>
+    {% if orders %}
+    <div class="tb-my-order-tools">
+      <input id="tb-my-order-search" type="search" placeholder="Search order number or item…" aria-label="Search your orders">
+      <select id="tb-my-order-filter" aria-label="Filter orders"><option value="all">All orders</option><option value="active">In progress</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select>
+      <small id="tb-my-order-count" role="status" aria-live="polite">{{ orders|length }} orders</small>
     </div>
+    <div id="tb-my-order-list">
     {% for order in orders %}
-    <div class="order-card" style="align-items:center">
+    <div class="order-card tb-my-order-card" data-order-status="{{ order.status|lower }}" style="align-items:center">
       <a href="{{ url_for('order_detail', order_id=order.id) }}" style="flex:1;min-width:160px">
         <small>{{ order.order_number }} · {{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</small>
         <strong>{{ order.items|length }} item(s)</strong>
         <span class="status-pill">{{ order.status }}</span>
+        <small class="tb-my-order-items">{% for item in order.items %}{{ item.product_name }}{% if not loop.last %}, {% endif %}{% endfor %}</small>
       </a>
       <strong>{{ order.total|inr }}</strong>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <a class="btn btn-small btn-outline" href="{{ url_for('order_detail', order_id=order.id) }}">View order</a>
+        <a class="btn btn-small btn-outline" href="{{ url_for('order_detail', order_id=order.id) }}">Track order</a>
         <a class="btn btn-small btn-outline" href="{{ url_for('order_invoice', order_id=order.id) }}">Invoice PDF</a>
         {% if order.delivery_partner_id is none and order.status not in ['Delivered', 'Cancelled'] %}
-        <form method="post" action="{{ url_for('cancel_order', order_id=order.id) }}" onsubmit="return confirm('Cancel this order? It has not been assigned to a delivery partner.');">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-small btn-outline" type="submit">Cancel</button>
-        </form>
+        <form method="post" action="{{ url_for('cancel_order', order_id=order.id) }}" onsubmit="return confirm('Cancel this order? It has not been assigned to a delivery partner.');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-small btn-outline" type="submit">Cancel</button></form>
         {% endif %}
-        <form method="post" action="{{ url_for('buy_again', order_id=order.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-small" type="submit">Buy again</button>
-        </form>
+        <form method="post" action="{{ url_for('buy_again', order_id=order.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-small" type="submit">Buy again</button></form>
       </div>
     </div>
-    {% else %}
-    <div class="empty-panel"><div>📦</div><h3>No orders yet.</h3><p>Your completed orders will show up here.</p><a class="btn" href="{{ url_for('index') }}">Start shopping</a></div>
     {% endfor %}
+    <p id="tb-my-order-empty-filter" class="empty-panel" hidden>No orders match this filter. Try another search.</p>
+    </div>
+    {% else %}
+    <div class="empty-panel"><div>📦</div><h3>No orders yet.</h3><p>Your orders will appear here after checkout.</p><a class="btn" href="{{ url_for('index') }}">Start shopping</a></div>
+    {% endif %}
   </div>
 </section>
+<style>
+.tb-my-order-tools{display:grid;grid-template-columns:minmax(0,1fr) 190px auto;gap:10px;align-items:center;margin:0 0 15px}.tb-my-order-tools input,.tb-my-order-tools select{height:44px;width:100%;padding:0 12px;border:1px solid #dce7dd;border-radius:10px;background:#fff;color:#24372a;font:500 12px 'DM Sans',sans-serif}.tb-my-order-tools small{color:#77857a;font-size:11px;white-space:nowrap}.tb-my-order-items{display:block;margin-top:5px;color:#7b887e;font-size:10px;line-height:1.5}.tb-my-order-card[hidden]{display:none!important}@media(max-width:620px){.tb-my-order-tools{grid-template-columns:1fr 1fr}.tb-my-order-tools input{grid-column:1/-1}.tb-my-order-tools small{grid-column:1/-1}}
+</style>
+<script>
+(()=>{const search=document.getElementById('tb-my-order-search'),filter=document.getElementById('tb-my-order-filter'),count=document.getElementById('tb-my-order-count'),empty=document.getElementById('tb-my-order-empty-filter'),cards=[...document.querySelectorAll('.tb-my-order-card')];if(!search||!filter||!count)return;function apply(){const q=search.value.trim().toLowerCase(),f=filter.value;let visible=0;cards.forEach(card=>{const s=card.dataset.orderStatus,active=!['delivered','cancelled'].includes(s),matchStatus=f==='all'||(f==='active'&&active)||(f==='delivered'&&s==='delivered')||(f==='cancelled'&&s==='cancelled'),matchText=!q||card.textContent.toLowerCase().includes(q);card.hidden=!(matchStatus&&matchText);if(!card.hidden)visible++;});count.textContent=visible+' of '+cards.length+' orders';if(empty)empty.hidden=visible!==0;}search.addEventListener('input',apply);filter.addEventListener('change',apply);apply();})();
+</script>
 {% endblock %}
