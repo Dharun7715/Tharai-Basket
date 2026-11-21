@@ -26,6 +26,14 @@
       {% elif not current_user.is_authenticated %}<p class="muted tiny"><a href="{{ url_for('login') }}">Login</a> to save this product.</p>{% endif %}
       <form method="post" action="{{ url_for('shopping_list_add', product_id=product.id) }}" style="margin:10px 0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline" type="submit">＋ Save to shopping list</button></form>
       <form id="product-add-form" method="post" action="{{ url_for('cart_add', product_id=product.id) }}" class="add-detail"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}"><button class="btn" {% if product.stock <= 0 %}disabled{% endif %}>Add to basket</button></form>
+      {% if current_user.is_authenticated and current_user.role == 'customer' %}
+      <form method="post" action="{{ url_for('product_price_alert', product_id=product.id) }}" class="tb-price-watch">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>🔔 Price Watch <small>Notify me when price reaches</small></label>
+        <div><span>₹</span><input type="number" name="target_price" min="1" max="{{ (product.price|float - 0.01)|round(2) }}" step="0.01" placeholder="Target price" value="{{ existing_price_alert.target_price if existing_price_alert else '' }}" required><button type="submit">{{ 'Update alert' if existing_price_alert else 'Set alert' }}</button></div>
+        {% if existing_price_alert %}<small class="muted">Active target: {{ existing_price_alert.target_price|inr }}</small>{% endif %}
+      </form>
+      {% endif %}
       <div class="tb-product-benefits"><span>✓ Secure checkout</span><span>✓ Stock checked before dispatch</span><span>✓ Local customer support</span></div>
       <div class="tb-mobile-buy-bar">
         <div><small>Price</small><strong>{{ product.price|inr }}</strong></div>
