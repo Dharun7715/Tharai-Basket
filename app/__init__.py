@@ -618,10 +618,33 @@ def create_app():
     def account_tools():
         if current_user.role != 'customer':
             abort(403)
+        local_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+        today_date = local_today.isoformat()
         items = ShoppingListItem.query.filter_by(user_id=current_user.id).order_by(ShoppingListItem.created_at.desc()).all()
         subscriptions = GrocerySubscription.query.filter_by(user_id=current_user.id).order_by(GrocerySubscription.next_date.asc()).all()
+        # Send one in-app reminder per subscription due date; never create an order automatically.
+        for sub in subscriptions:
+            if sub.active and sub.next_date <= today_date:
+                reminder_title = f'Repeat basket due: {sub.title}'
+                already_notified = Notification.query.filter_by(
+                    user_id=current_user.id, title=reminder_title, category='subscriptions'
+                ).filter(Notification.message.like(f'%{sub.next_date}%')).first()
+                if not already_notified:
+                    db.session.add(Notification(
+                        user_id=current_user.id, title=reminder_title,
+                        message=f'Your {sub.frequency.lower()} repeat basket is due on {sub.next_date}. Open My Tools to review it and add it to your basket.',
+                        category='subscriptions'
+                    ))
+        db.session.commit()
         transactions = WalletTransaction.query.filter_by(user_id=current_user.id).order_by(WalletTransaction.created_at.desc()).limit(30).all()
-        today_date = datetime.now(ZoneInfo('Asia/Kolkata')).date().isoformat()
+        cashback_earned = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter(
+            WalletTransaction.user_id == current_user.id, WalletTransaction.kind == 'Credit',
+            WalletTransaction.reference.like('ORDER-CASHBACK-%')
+        ).scalar() or 0
+        promo_wallet_credits = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter(
+            WalletTransaction.user_id == current_user.id, WalletTransaction.kind == 'Credit',
+            ~WalletTransaction.reference.like('ORDER-CASHBACK-%')
+        ).scalar() or 0
         loyalty_points = sum(row.points for row in LoyaltyPoint.query.filter_by(user_id=current_user.id).all())
         referral_points = sum(row.points for row in RewardTransaction.query.filter_by(user_id=current_user.id).all())
         redeemed_points = db.session.query(db.func.coalesce(db.func.sum(RewardRedemption.points), 0)).filter_by(user_id=current_user.id).scalar() or 0
@@ -635,6 +658,8 @@ def create_app():
         tier_progress = min(100, round((available_points-current_tier[1])*100/(next_tier[1]-current_tier[1]))) if next_tier else 100
         return render_template('account_tools.html', items=items, subscriptions=subscriptions, today_date=today_date,
                                wallet_balance=wallet_balance(current_user.id), transactions=transactions,
+                               cashback_earned=Decimal(str(cashback_earned or 0)),
+                               promo_wallet_credits=Decimal(str(promo_wallet_credits or 0)),
                                loyalty_points=available_points, loyalty_earned=loyalty_points,
                                referral_points=referral_points, redeemed_points=int(redeemed_points),
                                delivered_orders_count=delivered_orders_count,
@@ -704,10 +729,24 @@ def create_app():
             flash('Add available products to your basket before creating a subscription.', 'warning')
             return redirect(url_for('cart'))
         local_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
-        delta = {'Weekly': 7, 'Fortnightly': 14, 'Monthly': 30}[frequency]
+        if frequency == 'Weekly':
+            next_date = local_today + timedelta(days=7)
+        elif frequency == 'Fortnightly':
+            next_date = local_today + timedelta(days=14)
+        else:
+            # Calendar-month recurrence (e.g. Jan 31 -> Feb 28/29), not a fixed 30 days.
+            import calendar
+            month_index = local_today.month
+            year_value = local_today.year
+            if month_index == 12:
+                month_index, year_value = 1, year_value + 1
+            else:
+                month_index += 1
+            next_date = local_today.replace(year=year_value, month=month_index,
+                day=min(local_today.day, calendar.monthrange(year_value, month_index)[1]))
         title = request.form.get('title', '').strip()[:120] or f'{frequency} grocery basket'
         db.session.add(GrocerySubscription(user_id=current_user.id, title=title, items_json=__import__('json').dumps(valid),
-                                           frequency=frequency, next_date=(local_today + timedelta(days=delta)).isoformat()))
+                                           frequency=frequency, next_date=next_date.isoformat()))
         db.session.commit()
         flash('Repeat basket saved. We will remind you when it is due; no payment or order is created automatically.', 'success')
         return redirect(url_for('account_tools'))
@@ -1712,13 +1751,26 @@ def create_app():
                     completed_subscription = GrocerySubscription.query.filter_by(id=pending_subscription_id, user_id=current_user.id, active=True).first()
                     if completed_subscription:
                         today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
-                        delta = {'Weekly': 7, 'Fortnightly': 14, 'Monthly': 30}.get(completed_subscription.frequency, 7)
                         try:
                             due = datetime.strptime(completed_subscription.next_date, '%Y-%m-%d').date()
                         except ValueError:
                             due = today
-                        while due <= today:
-                            due += timedelta(days=delta)
+                        if completed_subscription.frequency == 'Weekly':
+                            while due <= today:
+                                due += timedelta(days=7)
+                        elif completed_subscription.frequency == 'Fortnightly':
+                            while due <= today:
+                                due += timedelta(days=14)
+                        else:
+                            import calendar
+                            while due <= today:
+                                month_index, year_value = due.month, due.year
+                                if month_index == 12:
+                                    month_index, year_value = 1, year_value + 1
+                                else:
+                                    month_index += 1
+                                due = due.replace(year=year_value, month=month_index,
+                                    day=min(due.day, calendar.monthrange(year_value, month_index)[1]))
                         completed_subscription.next_date = due.isoformat()
                         db.session.commit()
                 session['cart'] = {}
@@ -2023,6 +2075,22 @@ def create_app():
         free_delivery_order_count = Order.query.filter(Order.delivery_fee == 0, Order.status != 'Cancelled').count()
         delivered_order_count = delivered_query.count()
         average_order_value = (Decimal(str(total_sales or 0)) / delivered_order_count) if delivered_order_count else Decimal('0.00')
+        month_start_dt = datetime.combine(month_start, datetime.min.time())
+        new_customers_month = User.query.filter(User.role == 'customer', User.created_at >= month_start_dt).count()
+        monthly_order_count = Order.query.filter(Order.created_at >= month_start_dt).count()
+        active_subscription_count = GrocerySubscription.query.filter_by(active=True).count()
+        due_subscription_count = GrocerySubscription.query.filter(
+            GrocerySubscription.active.is_(True), GrocerySubscription.next_date <= today.isoformat()
+        ).count()
+        wallet_credits_all = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter(
+            WalletTransaction.kind == 'Credit').scalar() or 0
+        wallet_debits_all = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter(
+            WalletTransaction.kind == 'Debit').scalar() or 0
+        wallet_liability = max(Decimal('0.00'), Decimal(str(wallet_credits_all or 0)) - Decimal(str(wallet_debits_all or 0)))
+        wallet_promo_credits = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter(
+            WalletTransaction.kind == 'Credit',
+            ~WalletTransaction.reference.like('ORDER-CASHBACK-%')
+        ).scalar() or 0
         repeat_customer_count = db.session.query(Order.user_id).filter(
             Order.status == 'Delivered'
         ).group_by(Order.user_id).having(db.func.count(Order.id) >= 2).count()
@@ -2050,7 +2118,10 @@ def create_app():
             latest_order_id=latest_order_id,
             first_offer_orders=first_offer_orders, first_offer_cost=first_offer_cost,
             free_delivery_order_count=free_delivery_order_count,
-            delivered_delivery_fees=Decimal(str(delivered_delivery_fees or 0)))
+            delivered_delivery_fees=Decimal(str(delivered_delivery_fees or 0)),
+            new_customers_month=new_customers_month, monthly_order_count=monthly_order_count,
+            active_subscription_count=active_subscription_count, due_subscription_count=due_subscription_count,
+            wallet_liability=wallet_liability, wallet_promo_credits=Decimal(str(wallet_promo_credits or 0)))
 
     @app.get('/admin/orders/poll')
     @admin_required
