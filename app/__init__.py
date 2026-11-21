@@ -1071,6 +1071,7 @@ def create_app():
                     category='offers'))
                 db.session.commit()
                 login_user(user, remember=True)
+                restore_customer_cart_snapshot()
                 flash('Welcome to Tharai Basket! Your first-order offers are ready.', 'success')
                 return redirect(url_for('index'))
         return render_template('auth.html', mode='register')
@@ -1084,6 +1085,7 @@ def create_app():
             user = User.query.filter_by(email=email, active=True).first()
             if user and user.check_password(request.form.get('password', '')):
                 login_user(user, remember=True)
+                restore_customer_cart_snapshot()
                 # Always return to the customer-facing homepage after login.
                 return redirect(url_for('index'))
             flash('Incorrect email or password.', 'danger')
@@ -1293,6 +1295,7 @@ def create_app():
         key = str(product_id)
         cart[key] = min(int(cart.get(key, 0)) + max(1, int(request.form.get('quantity', 1))), product.stock)
         session['cart'] = cart
+        session.permanent = True
         save_customer_cart_snapshot()
         flash(f'{product.name} added to your basket.', 'success')
         return redirect(request.referrer or url_for('index'))
@@ -1331,6 +1334,50 @@ def create_app():
             elif record:
                 db.session.delete(record)
             db.session.commit()
+
+    def restore_customer_cart_snapshot():
+        """Restore the signed-in customer's latest open basket into the browser session."""
+        if not current_user.is_authenticated or current_user.role != 'customer':
+            return
+        record = AbandonedCart.query.filter_by(
+            user_id=current_user.id, recovered_at=None
+        ).order_by(AbandonedCart.updated_at.desc(), AbandonedCart.id.desc()).first()
+        if not record or not record.cart_data:
+            return
+        try:
+            saved_cart = __import__('json').loads(record.cart_data)
+            if not isinstance(saved_cart, dict):
+                return
+            current_cart = session.get('cart', {})
+            if not isinstance(current_cart, dict):
+                current_cart = {}
+            restored = {}
+            for product_id, saved_quantity in saved_cart.items():
+                try:
+                    product = Product.query.get(int(product_id))
+                    quantity = max(0, int(saved_quantity))
+                except (TypeError, ValueError):
+                    continue
+                if product and product.active and product.stock > 0 and quantity > 0:
+                    restored[str(product.id)] = min(quantity, int(product.stock))
+            # Preserve any items added in this browser since the last snapshot.
+            for product_id, quantity in current_cart.items():
+                try:
+                    product = Product.query.get(int(product_id))
+                    quantity = max(0, int(quantity))
+                except (TypeError, ValueError):
+                    continue
+                if product and product.active and product.stock > 0 and quantity > 0:
+                    key = str(product.id)
+                    restored[key] = min(max(restored.get(key, 0), quantity), int(product.stock))
+            session['cart'] = restored
+            session.permanent = True
+            if restored != saved_cart:
+                record.cart_data = __import__('json').dumps(restored)
+                record.updated_at = datetime.utcnow()
+                db.session.commit()
+        except (ValueError, TypeError):
+            app.logger.warning("Could not restore saved cart for customer %s", current_user.id)
 
     def cart_data():
         cart = session.get('cart', {})
@@ -1538,6 +1585,7 @@ def create_app():
 
     @app.get('/cart')
     def cart():
+        restore_customer_cart_snapshot()
         rows, subtotal = cart_data()
         membership = current_vip_membership()
         first_order = bool(current_user.is_authenticated and current_user.role == 'customer' and is_first_order_customer(current_user.id))
@@ -1620,6 +1668,7 @@ def create_app():
     def checkout():
         if current_user.role != 'customer':
             abort(403)
+        restore_customer_cart_snapshot()
         rows, subtotal = cart_data()
         if not rows:
             flash('Your basket is empty.', 'warning')
