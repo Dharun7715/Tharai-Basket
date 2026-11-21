@@ -16,12 +16,21 @@
       <h1>{{ product.name }}</h1>
       <p class="muted">{{ product.description or 'A daily essential selected for your home.' }}</p>
       <div class="product-price detail-price"><strong>{{ product.price|inr }}</strong>{% if product.mrp > product.price %}<del>{{ product.mrp|inr }}</del><span class="discount-tag">{{ product.discount_percent }}% OFF</span>{% endif %}</div>
-      <p>{{ product.unit }} · {% if product.stock > 0 %}<span class="stock-good">Available</span>{% else %}<span class="stock-out">Out of stock</span>{% endif %}</p>
+      <div class="tb-product-availability">
+        <span class="tb-product-stock {% if product.stock <= 0 %}is-out{% elif product.stock <= 5 %}is-low{% endif %}">{% if product.stock <= 0 %}Out of stock{% elif product.stock <= 5 %}Only {{ product.stock }} left{% else %}In stock{% endif %}</span>
+        <span>{{ product.unit }}</span>
+        <span>Local delivery in Tharamangalam</span>
+      </div>
       {% if current_user.is_authenticated and current_user.role == 'customer' %}
       <form method="post" action="{{ url_for('wishlist_toggle', product_id=product.id) }}" style="margin:14px 0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline" type="submit">{% if is_wishlisted %}♥ Remove from wishlist{% else %}♡ Add to wishlist{% endif %}</button></form>
       {% elif not current_user.is_authenticated %}<p class="muted tiny"><a href="{{ url_for('login') }}">Login</a> to save this product.</p>{% endif %}
       <form method="post" action="{{ url_for('shopping_list_add', product_id=product.id) }}" style="margin:10px 0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline" type="submit">＋ Save to shopping list</button></form>
-      <form method="post" action="{{ url_for('cart_add', product_id=product.id) }}" class="add-detail"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}"><button class="btn" {% if product.stock <= 0 %}disabled{% endif %}>Add to basket</button></form>
+      <form id="product-add-form" method="post" action="{{ url_for('cart_add', product_id=product.id) }}" class="add-detail"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}"><button class="btn" {% if product.stock <= 0 %}disabled{% endif %}>Add to basket</button></form>
+      <div class="tb-product-benefits"><span>✓ Secure checkout</span><span>✓ Stock checked before dispatch</span><span>✓ Local customer support</span></div>
+      <div class="tb-mobile-buy-bar">
+        <div><small>Price</small><strong>{{ product.price|inr }}</strong></div>
+        <a href="#product-add-form" class="btn">Add to basket</a>
+      </div>
       <p class="muted tiny">Availability is confirmed before your order is prepared.</p>
     </div>
   </div>
@@ -40,5 +49,23 @@
 <style>
 .tb-rating-summary{display:grid;grid-template-columns:130px 1fr;gap:22px;max-width:560px;padding:18px;border:1px solid #e4ece5;border-radius:15px;background:#fbfdfb;margin:18px 0 24px}.tb-rating-score{display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid #e4ece5;padding-right:15px}.tb-rating-score strong{font:800 42px 'Manrope';line-height:1;color:#1e6338}.tb-rating-score span{color:#d59b1a;letter-spacing:2px}.tb-rating-score small{font-size:9px;color:#718076;text-align:center}.tb-rating-bars{display:grid;gap:7px;align-content:center}.tb-rating-row{display:grid;grid-template-columns:34px 1fr 20px;align-items:center;gap:8px;font-size:10px;color:#6d7b70}.tb-rating-row>div{height:7px;background:#e9eee9;border-radius:9px;overflow:hidden}.tb-rating-row i{display:block;height:100%;background:#d7a52d;border-radius:9px}.tb-fbt-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}.tb-fbt-card{border:1px solid #e4ece5;border-radius:13px;overflow:hidden;background:#fff;min-width:0}.tb-fbt-image{height:125px;display:grid;place-items:center;background:#f3f8f3}.tb-fbt-image img{width:100%;height:100%;object-fit:cover}.tb-fbt-image span{font-size:38px}.tb-fbt-card>div{display:grid;gap:8px;padding:11px}.tb-fbt-name{font-size:12px;font-weight:700;min-height:32px}.tb-fbt-card strong{font-size:13px}.tb-fbt-card form{margin:0}.tb-fbt-card .btn{width:100%}@media(max-width:620px){.tb-rating-summary{grid-template-columns:95px 1fr;gap:12px;padding:13px}.tb-rating-score strong{font-size:34px}.tb-fbt-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.tb-fbt-image{height:115px}}
 .product-gallery{height:100%;display:flex;flex-direction:column;gap:10px;padding:12px}.product-gallery-main{flex:1;min-height:0;overflow:hidden;border-radius:14px}.product-gallery-main img{width:100%;height:100%;object-fit:contain}.product-gallery-thumbs{display:flex;gap:8px;overflow:auto}.product-gallery-thumb{width:64px;height:64px;flex:0 0 64px;border:1px solid #dce8de;background:#fff;border-radius:9px;padding:4px;cursor:pointer}.product-gallery-thumb img{width:100%;height:100%;object-fit:cover;border-radius:5px}
+ 
+.tb-product-availability{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:15px 0;color:#718076;font-size:10px}
+.tb-product-availability>span:not(:first-child){padding-left:9px;border-left:1px solid #dce7dd}
+.tb-product-stock{display:inline-flex;align-items:center;padding:6px 9px;border-radius:20px;background:#eaf6ed;color:#1d713c;font-weight:800}
+.tb-product-stock.is-low{background:#fff5e7;color:#a56518}
+.tb-product-stock.is-out{background:#fff0ef;color:#b43d35}
+.tb-product-benefits{display:flex;flex-wrap:wrap;gap:7px;margin:16px 0;color:#54705b;font-size:9px}
+.tb-product-benefits span{padding:7px 9px;border:1px solid #e1ece2;background:#f7fbf7;border-radius:8px}
+.tb-mobile-buy-bar{display:none}
+@media(max-width:700px){
+ .tb-mobile-buy-bar{position:fixed;z-index:40;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid #e1eae2;box-shadow:0 -7px 22px rgba(24,60,34,.09);backdrop-filter:blur(12px)}
+ .tb-mobile-buy-bar small,.tb-mobile-buy-bar strong{display:block}
+ .tb-mobile-buy-bar small{font-size:9px;color:#819086}
+ .tb-mobile-buy-bar strong{font-size:16px;color:#1d6338}
+ .tb-mobile-buy-bar .btn{padding:11px 18px;font-size:11px}
+ body{padding-bottom:62px}
+}
+
 </style>
 {% endblock %}
