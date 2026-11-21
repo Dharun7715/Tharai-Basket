@@ -1382,7 +1382,7 @@ def create_app():
             'line_total': f"{current_row['line_total']:.2f}" if current_row else '0.00',
             'subtotal': f'{subtotal:.2f}', 'delivery_fee': f'{fee:.2f}',
             'delivery_label': 'FREE' if fee == 0 else f'₹{fee:.2f}',
-            'free_delivery_threshold': f'{delivery_threshold_for_membership(current_vip_membership()):.2f}',
+            'free_delivery_threshold': f'{delivery_threshold_for_membership(current_vip_membership(), current_user.id):.2f}',
             'discount': f'{discount:.2f}', 'coupon_discount': f'{coupon_discount:.2f}',
             'welcome_discount': f'{welcome_discount:.2f}', 'is_first_order': is_first_order_customer(current_user.id),
             'reward_discount': f'{reward_discount:.2f}', 'combo_discount': f'{combo_discount:.2f}',
