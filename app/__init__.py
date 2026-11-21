@@ -45,6 +45,9 @@ def create_app():
         REMEMBER_COOKIE_SECURE=True,
         REMEMBER_COOKIE_HTTPONLY=True,
         REMEMBER_COOKIE_SAMESITE='Lax',
+        SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Lax',
         UPLOAD_FOLDER=str(BASE_DIR / 'static' / 'uploads'),
         FREE_DELIVERY_THRESHOLD=Decimal(os.environ.get('FREE_DELIVERY_THRESHOLD', '300')),
         DELIVERY_FEE=Decimal(os.environ.get('DELIVERY_FEE', '25')),
@@ -61,6 +64,16 @@ def create_app():
     db.init_app(app)
     login_manager.init_app(app)
     csrf.init_app(app)
+
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)')
+        if request.is_secure:
+            response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+        return response
 
     @app.context_processor
     def inject_globals():
@@ -2166,8 +2179,9 @@ def create_app():
         if not status_history:
             # Legacy orders pre-date the event timeline; show their current status without inventing earlier timestamps.
             status_history = [OrderStatusEvent(status=order.status, note='Current recorded status', created_at=order.created_at)]
+        order_issues = OrderIssue.query.filter_by(order_id=order.id, user_id=order.user_id).order_by(OrderIssue.created_at.desc()).all() if current_user.role == 'customer' and order.user_id == current_user.id else []
         return render_template('order_detail.html', order=order, addable_products=addable_products,
-                               status_history=status_history)
+                               status_history=status_history, order_issues=order_issues)
 
     @app.get('/order/<int:order_id>/invoice')
     @login_required
@@ -2458,7 +2472,8 @@ def create_app():
             active_subscription_count=active_subscription_count, due_subscription_count=due_subscription_count,
             wallet_liability=wallet_liability, wallet_promo_credits=Decimal(str(wallet_promo_credits or 0)),
             category_performance=category_performance, peak_order_hours=peak_order_hours,
-            abandoned_cart_count=abandoned_cart_count, recovered_cart_count=recovered_cart_count)
+            abandoned_cart_count=abandoned_cart_count, recovered_cart_count=recovered_cart_count,
+            open_issue_count=OrderIssue.query.filter(OrderIssue.status.in_(['Open', 'Reviewing'])).count())
 
     @app.get('/admin/orders/poll')
     @admin_required
@@ -3429,6 +3444,28 @@ def create_app():
     @app.get('/health')
     def health():
         return jsonify({'status': 'ok', 'service': 'Tharai Basket'})
+
+    @app.cli.command('backup-db')
+    def backup_db():
+        """Create a consistent SQLite backup in the instance/backups directory."""
+        if db.engine.dialect.name != 'sqlite':
+            print('This command supports SQLite only. For PostgreSQL, configure managed database backups/snapshots in your hosting provider.')
+            return
+        import sqlite3
+        from datetime import datetime
+        backup_dir = Path(app.instance_path) / 'backups'
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup_path = backup_dir / f"tharai-basket-{datetime.now().strftime('%Y%m%d-%H%M%S')}.sqlite3"
+        source = db.engine.raw_connection()
+        try:
+            destination = sqlite3.connect(str(backup_path))
+            try:
+                source.backup(destination)
+            finally:
+                destination.close()
+        finally:
+            source.close()
+        print(f'Database backup created: {backup_path}')
 
     @app.cli.command('init-db')
     def init_db():
