@@ -2178,13 +2178,18 @@ def create_app():
         ).order_by(Product.stock.asc(), Product.name.asc()).limit(6).all()
         # Extra operating insights: category contribution and busiest order hours.
         category_totals = {}
-        for line in OrderItem.query.join(Order).join(Product, OrderItem.product_id == Product.id).filter(
+        category_rows = db.session.query(
+            Category.name, OrderItem.quantity, OrderItem.unit_price
+        ).join(Product, OrderItem.product_id == Product.id).outerjoin(
+            Category, Product.category_id == Category.id
+        ).join(Order, Order.id == OrderItem.order_id).filter(
             Order.status == 'Delivered', Order.created_at >= datetime.combine(today - timedelta(days=29), datetime.min.time())
-        ).all():
-            category_name = line.product.category.name if line.product and line.product.category else 'Uncategorised'
+        ).all()
+        for category_name_value, quantity_value, unit_price_value in category_rows:
+            category_name = category_name_value or 'Uncategorised'
             bucket = category_totals.setdefault(category_name, {'name': category_name, 'units': 0, 'revenue': Decimal('0.00')})
-            bucket['units'] += int(line.quantity or 0)
-            bucket['revenue'] += Decimal(str(line.unit_price or 0)) * int(line.quantity or 0)
+            bucket['units'] += int(quantity_value or 0)
+            bucket['revenue'] += Decimal(str(unit_price_value or 0)) * int(quantity_value or 0)
         category_performance = sorted(category_totals.values(), key=lambda item: item['revenue'], reverse=True)[:6]
         recent_orders_for_hours = Order.query.filter(
             Order.created_at >= datetime.combine(today - timedelta(days=29), datetime.min.time())
