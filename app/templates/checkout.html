@@ -79,6 +79,28 @@
           {% endif %}
         </section>
 
+        <section class="tb-order-card tb-checkout-coupon">
+          <div class="tb-card-heading" style="margin-bottom:12px"><span class="tb-step">%</span><div><h2>Have a coupon?</h2><p>Apply a promo code to save on this order.</p></div></div>
+          {% if coupon %}
+            <div class="tb-checkout-coupon-applied">
+              <div><strong>✓ {{ coupon.code }} applied</strong><small>Coupon discount: {{ coupon_discount|inr }}</small></div>
+              <form method="post" action="{{ url_for('coupon_remove') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next_page" value="checkout">
+                <button type="submit">Remove</button>
+              </form>
+            </div>
+          {% else %}
+            <form method="post" action="{{ url_for('coupon_apply') }}" class="tb-checkout-coupon-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="next_page" value="checkout">
+              <input type="text" name="coupon_code" placeholder="Enter coupon code" autocomplete="off" maxlength="40" required>
+              <button type="submit">Apply</button>
+            </form>
+            <small class="tb-checkout-coupon-hint">Enter a valid coupon shared by Tharai Basket. First-order offers are applied automatically.</small>
+          {% endif %}
+        </section>
+
         <section class="tb-order-card" style="padding:17px">
           <div class="tb-card-heading" style="margin-bottom:12px"><span class="tb-step">🎁</span><div><h2>Referral rewards</h2><p>Use your earned points on this order.</p></div></div>
           {% if available_reward_points > 0 %}
@@ -155,6 +177,17 @@
 .tb-offer-code{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.12);border:1px dashed rgba(255,255,255,.48);border-radius:10px;padding:9px 10px}
 .tb-offer-code>span{font:800 14px 'Manrope';letter-spacing:1.2px}.tb-offer-code button{border:0;background:#fff;color:#205d34;border-radius:7px;padding:9px 12px;font-size:10px;font-weight:800;cursor:pointer}
 .tb-offer-applied,.tb-offer-hint{display:block;font-size:9px;margin-top:9px;color:#dcefe0}
+.tb-checkout-coupon-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.tb-checkout-coupon-form input{min-width:0;width:100%;border:1px solid #dfe8e0;border-radius:10px;padding:12px;background:#fff;font:500 12px 'DM Sans',sans-serif;color:#24372a;text-transform:uppercase}
+.tb-checkout-coupon-form button,.tb-checkout-coupon-applied button{border:0;border-radius:9px;background:#236b3d;color:#fff;padding:0 17px;font:800 11px 'DM Sans',sans-serif;cursor:pointer}
+.tb-checkout-coupon-hint{display:block;margin-top:9px;color:#819086;font-size:10px;line-height:1.5}
+.tb-checkout-coupon-applied{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;background:#eff8f0;border:1px solid #d8eadb;border-radius:11px}
+.tb-checkout-coupon-applied strong,.tb-checkout-coupon-applied small{display:block}
+.tb-checkout-coupon-applied strong{font-size:12px;color:#21683a}
+.tb-checkout-coupon-applied small{font-size:10px;color:#6e8172;margin-top:3px}
+.tb-checkout-coupon-applied form{margin:0}
+.tb-checkout-coupon-applied button{background:#fff;color:#a33b36;border:1px solid #efd8d6;padding:9px 12px}
+@media(max-width:480px){.tb-checkout-coupon-form{grid-template-columns:1fr auto}}
 .tb-order-card{padding:21px}
 .tb-order-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
 .tb-order-title h2{margin-top:4px}.tb-item-count{font-size:10px;background:#f0f5f0;color:#657469;padding:6px 9px;border-radius:20px}
