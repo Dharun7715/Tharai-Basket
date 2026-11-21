@@ -600,7 +600,7 @@ def create_app():
             result = entry
             next_spin_at = entry.created_at + timedelta(hours=24)
             # Four 90-degree sectors; stop the selected sector's center under the top pointer.
-            wheel_rotation = (360 * 7) + (360 - (visible_sector * 90 + 45))
+            wheel_rotation = (360 * 7) + (360 - (visible_sector * 90))
         active_claim = SpinEntry.query.filter(
             SpinEntry.user_id == current_user.id, SpinEntry.prize != '',
             SpinEntry.used_at.is_(None), SpinEntry.expires_at > datetime.utcnow()
