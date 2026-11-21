@@ -292,6 +292,38 @@ def create_app():
 
         __table_args__ = (db.UniqueConstraint('user_id', 'product_id', name='uq_review_user_product'),)
 
+    class ProductPriceAlert(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False, index=True)
+        target_price = db.Column(db.Numeric(10, 2), nullable=False)
+        active = db.Column(db.Boolean, default=True, nullable=False)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        user = db.relationship('User')
+        product = db.relationship('Product')
+        __table_args__ = (db.UniqueConstraint('user_id', 'product_id', name='uq_price_alert_user_product'),)
+
+    class FamilyGroceryBudget(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        month_key = db.Column(db.String(7), nullable=False, index=True)
+        amount = db.Column(db.Numeric(10, 2), nullable=False)
+        updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+        user = db.relationship('User')
+        __table_args__ = (db.UniqueConstraint('user_id', 'month_key', name='uq_family_budget_user_month'),)
+
+    class OrderIssue(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, index=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+        issue_type = db.Column(db.String(40), nullable=False)
+        description = db.Column(db.String(1000), default='')
+        photo_path = db.Column(db.String(255), default='')
+        status = db.Column(db.String(30), default='Open', nullable=False)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        order = db.relationship('Order')
+        user = db.relationship('User')
+
     class ReferralCode(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
@@ -643,6 +675,12 @@ def create_app():
                         category='subscriptions'
                     ))
         db.session.commit()
+        current_month_key = local_today.strftime('%Y-%m')
+        family_budget = FamilyGroceryBudget.query.filter_by(user_id=current_user.id, month_key=current_month_key).first()
+        month_start_local = datetime.combine(local_today.replace(day=1), datetime.min.time())
+        monthly_grocery_spend = db.session.query(db.func.coalesce(db.func.sum(Order.total), 0)).filter(
+            Order.user_id == current_user.id, Order.status != 'Cancelled', Order.created_at >= month_start_local
+        ).scalar() or 0
         transactions = WalletTransaction.query.filter_by(user_id=current_user.id).order_by(WalletTransaction.created_at.desc()).limit(30).all()
         cashback_earned = db.session.query(db.func.coalesce(db.func.sum(WalletTransaction.amount), 0)).filter(
             WalletTransaction.user_id == current_user.id, WalletTransaction.kind == 'Credit',
@@ -663,7 +701,10 @@ def create_app():
         current_tier = max((tier for tier in reward_tiers if available_points >= tier[1]), key=lambda item: item[1])
         next_tier = next((tier for tier in reward_tiers if tier[1] > available_points), None)
         tier_progress = min(100, round((available_points-current_tier[1])*100/(next_tier[1]-current_tier[1]))) if next_tier else 100
-        return render_template('account_tools.html', items=items, subscriptions=subscriptions, today_date=today_date,
+        return render_template('account_tools.html', family_budget=family_budget,
+                               monthly_grocery_spend=Decimal(str(monthly_grocery_spend or 0)),
+                               budget_remaining=max(Decimal(str(family_budget.amount)) - Decimal(str(monthly_grocery_spend or 0)), Decimal('0')) if family_budget else None,
+                               budget_percent=min(100, int(Decimal(str(monthly_grocery_spend or 0)) * 100 / Decimal(str(family_budget.amount)))) if family_budget and family_budget.amount else 0, items=items, subscriptions=subscriptions, today_date=today_date,
                                wallet_balance=wallet_balance(current_user.id), transactions=transactions,
                                cashback_earned=Decimal(str(cashback_earned or 0)),
                                promo_wallet_credits=Decimal(str(promo_wallet_credits or 0)),
@@ -1031,11 +1072,89 @@ def create_app():
                                   OrderItem.product_id == product.id,
                                   Order.status == 'Delivered').first()) is not None
             existing_review = ProductReview.query.filter_by(user_id=current_user.id, product_id=product.id).first()
-        return render_template('product.html', product=product, is_wishlisted=is_wishlisted,
+        existing_price_alert = ProductPriceAlert.query.filter_by(user_id=current_user.id, product_id=product.id, active=True).first() if current_user.is_authenticated and current_user.role == 'customer' else None
+        return render_template('product.html', product=product, existing_price_alert=existing_price_alert, is_wishlisted=is_wishlisted,
                                reviews=reviews, review_count=review_count, average_rating=average_rating,
                                rating_distribution=rating_distribution,
                                frequently_bought_together=frequently_bought_together,
                                can_review=can_review, existing_review=existing_review, gallery_images=gallery_images)
+
+    @app.post('/product/<int:product_id>/price-alert')
+    @login_required
+    def product_price_alert(product_id):
+        if current_user.role != 'customer':
+            abort(403)
+        product = Product.query.filter_by(id=product_id, active=True).first_or_404()
+        target = request.form.get('target_price', type=float)
+        if target is None or target <= 0 or target >= float(product.price or 0):
+            flash('Enter a target price below the current selling price.', 'warning')
+            return redirect(url_for('product_detail', product_id=product.id))
+        alert = ProductPriceAlert.query.filter_by(user_id=current_user.id, product_id=product.id).first()
+        if alert:
+            alert.target_price = Decimal(str(target))
+            alert.active = True
+        else:
+            db.session.add(ProductPriceAlert(user_id=current_user.id, product_id=product.id, target_price=Decimal(str(target))))
+        db.session.commit()
+        flash('Price watch saved. We will notify you when the price reaches your target.', 'success')
+        return redirect(url_for('product_detail', product_id=product.id))
+
+    @app.post('/account/budget')
+    @login_required
+    def save_family_budget():
+        if current_user.role != 'customer':
+            abort(403)
+        amount = request.form.get('amount', type=float)
+        if amount is None or amount < 100 or amount > 1000000:
+            flash('Set a monthly budget between ₹100 and ₹10,00,000.', 'warning')
+            return redirect(url_for('account_tools'))
+        month_key = datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m')
+        budget = FamilyGroceryBudget.query.filter_by(user_id=current_user.id, month_key=month_key).first()
+        if budget:
+            budget.amount = Decimal(str(amount))
+        else:
+            db.session.add(FamilyGroceryBudget(user_id=current_user.id, month_key=month_key, amount=Decimal(str(amount))))
+        db.session.commit()
+        flash('Monthly family grocery budget saved.', 'success')
+        return redirect(url_for('account_tools'))
+
+    @app.post('/order/<int:order_id>/issue')
+    @login_required
+    def report_order_issue(order_id):
+        if current_user.role != 'customer':
+            abort(403)
+        order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
+        if order.status != 'Delivered':
+            flash('You can report an item issue after the order is delivered.', 'warning')
+            return redirect(url_for('order_detail', order_id=order.id))
+        issue_type = request.form.get('issue_type', '').strip()
+        description = request.form.get('description', '').strip()[:1000]
+        if issue_type not in ['Damaged item', 'Wrong item', 'Missing item', 'Quality concern']:
+            flash('Choose a valid issue type.', 'warning')
+            return redirect(url_for('order_detail', order_id=order.id))
+        photo_path = ''
+        upload = request.files.get('photo')
+        if upload and upload.filename:
+            from werkzeug.utils import secure_filename
+            import os, uuid
+            extension = os.path.splitext(secure_filename(upload.filename))[1].lower()
+            if extension not in ['.jpg', '.jpeg', '.png', '.webp']:
+                flash('Upload a JPG, PNG or WEBP photo.', 'warning')
+                return redirect(url_for('order_detail', order_id=order.id))
+            if len(upload.read()) > 5 * 1024 * 1024:
+                flash('Photo must be 5 MB or smaller.', 'warning')
+                return redirect(url_for('order_detail', order_id=order.id))
+            upload.seek(0)
+            filename = f'order-issue-{uuid.uuid4().hex}{extension}'
+            folder = os.path.join(app.root_path, 'static', 'uploads', 'order-issues')
+            os.makedirs(folder, exist_ok=True)
+            upload.save(os.path.join(folder, filename))
+            photo_path = f'uploads/order-issues/{filename}'
+        db.session.add(OrderIssue(order_id=order.id, user_id=current_user.id,
+                                  issue_type=issue_type, description=description, photo_path=photo_path))
+        db.session.commit()
+        flash('Issue reported. Our team will review it and contact you.', 'success')
+        return redirect(url_for('order_detail', order_id=order.id))
 
     @app.post('/product/<int:product_id>/review')
     @login_required
