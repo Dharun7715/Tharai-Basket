@@ -575,22 +575,27 @@ def create_app():
         if current_user.role != 'customer':
             abort(403)
         result = None
+        wheel_rotation = None
         if request.method == 'POST':
-            # Unlimited spins; every spin is an independent 1-in-200 chance.
+            # One winning wheel segment out of 200: exact 0.5% chance per spin.
+            landing_segment = secrets.randbelow(200)
             entry = SpinEntry(user_id=current_user.id)
-            if secrets.randbelow(200) == 0:
+            if landing_segment == 0:
                 entry.prize = secrets.choice(SPIN_PRIZES)
                 entry.won_at = datetime.utcnow()
                 entry.expires_at = entry.won_at + timedelta(hours=24)
             db.session.add(entry)
             db.session.commit()
             result = entry
+            # The wheel rotates 7+ full turns and stops at the server-selected segment.
+            wheel_rotation = (360 * 7) + (360 - (landing_segment * 1.8) - 0.9)
         active_claim = SpinEntry.query.filter(
             SpinEntry.user_id == current_user.id, SpinEntry.prize != '',
             SpinEntry.used_at.is_(None), SpinEntry.expires_at > datetime.utcnow()
         ).order_by(SpinEntry.won_at.desc()).first()
         history = SpinEntry.query.filter_by(user_id=current_user.id).order_by(SpinEntry.created_at.desc()).limit(30).all()
-        return render_template('spin.html', result=result, active_claim=active_claim, history=history)
+        return render_template('spin.html', result=result, active_claim=active_claim, history=history,
+                               wheel_rotation=wheel_rotation)
 
     @app.get('/account/tools')
     @login_required
