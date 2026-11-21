@@ -8,7 +8,7 @@
       <div class="tb-secure-note"><span>🔒</span><div><strong>Secure checkout</strong><small>Your details are protected</small></div></div>
     </div>
 
-    <div class="tb-checkout-grid">
+    {% if spin_claim %}<div class="tb-checkout-card" style="margin-bottom:18px;border:1px solid #86b98e"><strong>🎁 Spin & Win prize ready: {{ spin_claim.prize }}</strong><p class="muted tiny">Your free prize will be added to this order because your basket is above ₹200. Claim expires {{ spin_claim.expires_at.strftime('%d %b %Y, %I:%M %p') }}.</p></div>{% endif %}<div class="tb-checkout-grid">
       <form method="post" class="tb-checkout-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="delivery_lat" id="delivery-lat">
