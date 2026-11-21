@@ -91,6 +91,15 @@ git push -u origin main
 
 See `.env.example`. Never commit `.env`, credentials, payment keys or customer data.
 
+## Operations and reliability
+
+- Admin quality reports are available at **Admin → Quality reports**. Admin status changes and response notes generate an in-app customer notification and appear on the customer's order page.
+- The analytics overview includes delivered revenue/profit, category performance, peak order hours, repeat-customer metrics and open quality reports.
+- Customer storefront recommendations and one-click Buy Again use the customer's delivered-order history and current product stock.
+- Run `flask --app wsgi:app backup-db` for a consistent local SQLite backup. PostgreSQL backups should be configured as managed database backups/snapshots in Render; the SQLite command intentionally does not attempt a PostgreSQL dump.
+- Session cookies are marked Secure, HttpOnly and SameSite=Lax. Standard browser security response headers are added by the app.
+- Local uploaded photos can be ephemeral on Render. Configure persistent object storage or a persistent disk before relying on complaint photos for long-term evidence.
+
 ## Current limitations to address before launch
 
 - No live Razorpay/UPI payment integration is activated.
