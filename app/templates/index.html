@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   renderSelectedDay();
   if(savedAvailable)updateCaption(saved);
+ }
  function show(){modal.hidden=false;document.body.classList.add('tb-delivery-modal-open');buildSlots();}
  function hide(){modal.hidden=true;document.body.classList.remove('tb-delivery-modal-open');}
  open.addEventListener('click',show);close.addEventListener('click',hide);
@@ -136,9 +137,17 @@ document.addEventListener('DOMContentLoaded', function () {
       </div>
       <div class="location-actions">
         <button type="button" class="btn" id="gps-location" onclick="chooseDeliveryLocation()">◎ Use my current location</button>
-        <button type="button" class="btn btn-outline" id="manual-location" onclick="enableManualSelection()">⌖ Select manually on map</button>
+        <button type="button" class="btn btn-outline" id="manual-location" onclick="enableManualSelection()">⌖ Select on map</button>
       </div>
-      <div id="map-help" class="summary-note" role="status" aria-live="polite" style="margin-bottom:12px">Map-la unga veedu irukkura place-ah tap pannunga. Marker set aagum.</div>
+      <div class="tb-manual-address">
+        <label for="manual-delivery-address">Or type your delivery location</label>
+        <div class="tb-manual-address-row">
+          <input type="text" id="manual-delivery-address" placeholder="Enter area, street, landmark or full address">
+          <button type="button" class="btn" id="search-manual-address" onclick="searchManualDeliveryAddress()">Search</button>
+        </div>
+        <small>Example: Tharamangalam bus stand, Salem</small>
+      </div>
+      <div id="map-help" class="summary-note" role="status" aria-live="polite" style="margin-bottom:12px">Use GPS, type your address, or tap the map to choose your delivery location.</div>
       <div id="delivery-map"></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px">
         <button type="button" class="btn btn-full" id="confirm-map-location" onclick="submitSelectedLocation()" disabled>Confirm this location</button>
@@ -153,6 +162,7 @@ document.addEventListener('DOMContentLoaded', function () {
 #delivery-map{height:330px;width:100%;border-radius:14px;overflow:hidden;border:1px solid #d9e3d8;z-index:1}
 .location-actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
 .location-actions .btn{min-height:42px}
+.tb-manual-address{margin:14px 0;padding:14px;background:#f6faf6;border:1px solid #e1ebe2;border-radius:12px}.tb-manual-address label{display:block;margin-bottom:8px;font-size:12px;font-weight:800;color:#35533d}.tb-manual-address-row{display:flex;gap:8px}.tb-manual-address-row input{flex:1;min-width:0;height:43px;padding:0 12px;border:1px solid #d7e5d9;border-radius:9px;background:#fff;color:#24372a;font:500 12px 'DM Sans',sans-serif}.tb-manual-address-row button{min-width:88px;padding:0 16px}.tb-manual-address small{display:block;margin-top:7px;color:#7b887e;font-size:10px}
 @media(max-width:620px){
   .tb-location-section{padding:14px 0!important}
   .tb-location-card{padding:13px!important;position:static}
@@ -162,6 +172,7 @@ document.addEventListener('DOMContentLoaded', function () {
   #delivery-map{height:205px;min-height:0}
   .location-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:9px 0}
   .location-actions .btn{width:100%;min-height:38px;padding:7px 6px;font-size:11px}
+  .tb-manual-address{padding:11px;margin:10px 0}.tb-manual-address-row{gap:6px}.tb-manual-address-row input{font-size:11px;padding:0 9px}.tb-manual-address-row button{min-width:70px;padding:0 10px;font-size:11px}
   #map-help{font-size:10px;padding:8px;margin-bottom:8px!important}
   #confirm-map-location{width:100%;min-height:39px;padding:8px;font-size:12px}
   #location-message{font-size:10px;padding:8px;margin-top:8px!important}
@@ -203,6 +214,40 @@ function enableManualSelection() {
   deliveryMap.invalidateSize();
   document.getElementById('delivery-map').scrollIntoView({behavior:'smooth', block:'center'});
 }
+async function searchManualDeliveryAddress() {
+  const input = document.getElementById('manual-delivery-address');
+  const button = document.getElementById('search-manual-address');
+  const message = document.getElementById('map-help');
+  const query = (input.value || '').trim();
+  if (!query) { message.textContent = 'Please type your area, street or full delivery address.'; input.focus(); return; }
+  button.disabled = true;
+  button.textContent = 'Searching…';
+  message.textContent = 'Finding your address on the map…';
+  try {
+    const url = 'https://photon.komoot.io/api/?limit=1&lang=en&q=' + encodeURIComponent(query + ', Tamil Nadu, India');
+    const response = await fetch(url, {headers:{'Accept':'application/json'}});
+    if (!response.ok) throw new Error('Address search is temporarily unavailable.');
+    const data = await response.json();
+    const feature = data.features && data.features[0];
+    if (!feature || !feature.geometry || !feature.geometry.coordinates) {
+      message.textContent = 'Address not found. Try adding your area, town or a nearby landmark.';
+      return;
+    }
+    const [lon, lat] = feature.geometry.coordinates;
+    initDeliveryMap();
+    deliveryMap.setView([lat, lon], 17);
+    setMapMarker(lat, lon);
+    const props = feature.properties || {};
+    const found = [props.name, props.street, props.locality, props.city, props.state].filter((v,i,a)=>v && a.indexOf(v)===i).join(', ');
+    message.textContent = 'Found: ' + (found || query) + '. Check the map pin, then confirm your location.';
+    document.getElementById('delivery-map').scrollIntoView({behavior:'smooth', block:'center'});
+  } catch (error) {
+    message.textContent = error.message || 'Could not find this address. Please try again or select on the map.';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Search';
+  }
+}
 async function submitSelectedLocation() {
   if (!selectedCoords) return;
   const button = document.getElementById('confirm-map-location');
@@ -215,7 +260,7 @@ async function submitSelectedLocation() {
     const result = await response.json();
     if (response.ok && result.eligible) {
       message.textContent = 'Delivery available! ' + result.distance_km.toFixed(1) + ' km away. Loading products…';
-      window.location.reload();
+      window.location.href = '/';
     } else {
       message.textContent = 'Sorry, this pin is outside our 5 km delivery area (' + (result.distance_km ?? '—') + ' km away). Please select another place.';
     }
