@@ -45,7 +45,7 @@ body{padding-bottom:82px!important}.tb-bottom-nav.has-cart-bar{bottom:55px!impor
 }
 </style>
 </head>
-<body class="tb-customer-ui{% if vip_theme_tier %} tb-vip-theme tb-vip-{{ vip_theme_tier|lower }}{% endif %}">
+<body class="{% if not request.endpoint or (not request.endpoint.startswith('admin_') and not request.endpoint.startswith('delivery_')) %}tb-customer-ui {% endif %}{% if vip_theme_tier %}tb-vip-theme tb-vip-{{ vip_theme_tier|lower }}{% endif %}">
 
 <header class="site-header"><div class="container nav-wrap">
   <a class="brand" href="{{ url_for('index') }}" aria-label="Tharai Basket home"><img class="brand-logo" src="{{ url_for('static', filename='images/tharai-basket-logo.webp') }}?v=6" alt="Tharai Basket"></a>
