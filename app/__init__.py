@@ -1054,7 +1054,7 @@ def create_app():
         referral_count = Referral.query.filter_by(referrer_id=current_user.id).count()
         return render_template('account.html', addresses=addresses, referral_code=referral_code,
                                reward_transactions=reward_transactions, reward_points=reward_points,
-                               referral_count=referral_count)
+                               referral_count=referral_count, referral_wallet_balance=wallet_balance(current_user.id))
 
     @app.post('/account/address/add')
     @login_required
