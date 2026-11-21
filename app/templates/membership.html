@@ -27,7 +27,6 @@
         <div><strong>Gold → Platinum upgrade</strong><h2>₹{{ '%.2f'|format(upgrade_amount) }}</h2><small>Prorated upgrade amount · remaining validity</small></div>
         <img src="{{ upgrade_qr }}" alt="UPI QR code for Platinum upgrade">
       </div>
-      <p class="muted">UPI ID: <strong>{{ upi_id }}</strong></p>
       <form method="post" action="{{ url_for('membership_upgrade') }}" class="membership-payment-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label>UPI transaction reference / UTR
@@ -57,7 +56,6 @@
         <label>Duration<select name="months" id="membership-months" required><option value="1">1 month</option><option value="3">3 months (discounted)</option></select></label>
         <div class="membership-pay-box"><div><strong id="membership-pay-title">Gold · 1 month</strong><h2 id="membership-pay-amount">₹300</h2><small>Scan with Google Pay, PhonePe, Paytm or BHIM</small></div>
           <img id="membership-qr" src="{{ plans['Gold'][1]['qr'] }}" alt="UPI QR code for membership payment"></div>
-        <p class="muted">UPI ID: <strong>{{ upi_id }}</strong></p>
         <label>UPI transaction reference / UTR<input name="upi_reference" required minlength="6" maxlength="100" placeholder="Enter UTR after successful payment"></label>
         <button class="btn" type="submit">Submit payment for verification</button>
       </form>
