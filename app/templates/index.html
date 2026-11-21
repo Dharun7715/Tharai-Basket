@@ -595,6 +595,24 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
     </div>
   </section>
   {% endif %}
+  {% if buy_again_products and not search_query and not selected_category_id and not min_price and not max_price and not in_stock %}
+  <section class="tb-products tb-buy-again-shelf" style="padding:12px 0 8px">
+    <div class="tb-products-heading"><div><span class="eyebrow">YOUR PREVIOUS ORDER</span><h2>Buy again</h2><p>Quickly add items from your latest delivered basket.</p></div></div>
+    <div class="product-grid">
+      {% for product in buy_again_products %}
+      <article class="product-card">
+        <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-image">{% if product.image %}<img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}" loading="lazy">{% else %}<div class="product-placeholder">🛍️</div>{% endif %}</a>
+        <div class="product-info">
+          <small>{{ product.category.name if product.category else 'Daily essentials' }} · {{ product.unit }}</small>
+          <a href="{{ url_for('product_detail', product_id=product.id) }}"><h3>{{ product.name }}</h3></a>
+          <div class="product-price"><strong>{{ product.price|inr }}</strong>{% if product.mrp > product.price %}<del>{{ product.mrp|inr }}</del>{% endif %}</div>
+          <form method="post" action="{{ url_for('cart_add', product_id=product.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="quantity" value="1"><button class="add-btn" type="submit">↻ Buy again</button></form>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
   {% if location_verified and recommended_products and not search_query and not selected_category_id and not min_price and not max_price and not in_stock %}
   <section class="tb-products" style="padding-bottom:10px">
     <div class="tb-products-heading"><div><span class="eyebrow">PICKS FOR YOUR BASKET</span><h2>Recommended for you</h2><p>Based on your shopping and popular delivered items.</p></div></div>
