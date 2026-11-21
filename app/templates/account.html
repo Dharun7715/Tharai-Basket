@@ -3,8 +3,31 @@
 {% block content %}
 <section class="section tb-account">
  <div class="container">
-  <div class="tb-account-heading"><span class="eyebrow">YOUR THARAI BASKET</span><h1>My <em>account.</em></h1><p>Manage your profile and saved delivery addresses in one place.</p></div>
-  <section class="tb-account-card" style="margin-bottom:20px">
+  <div class="tb-account-mobile-title"><span>‹</span><strong>My Account</strong></div>
+  <section class="tb-account-profile">
+   <div class="tb-account-profile-top"><div class="tb-account-avatar">👤</div><div class="tb-account-profile-copy"><strong>{{ current_user.name }}</strong><small>♧ {{ current_user.phone or 'Add your phone number' }}</small><small>✉ {{ current_user.email }}</small></div><a href="#tb-personal-details" aria-label="Edit profile">✎</a></div>
+   <div class="tb-account-shortcuts">
+    <a href="{{ url_for('my_orders') }}"><span>▤</span><strong>Orders</strong></a>
+    <a href="{{ url_for('account_tools') }}"><span>₹</span><strong>Wallet</strong></a>
+    <a href="#tb-saved-addresses"><span>⌖</span><strong>Address</strong></a>
+   </div>
+  </section>
+  <div class="tb-account-promo-grid">
+   <a href="{{ url_for('account_tools') }}"><span>✦</span><strong>My tools</strong><small>Rewards & savings</small></a>
+   <a href="{{ url_for('spin_and_win') }}"><span>🎁</span><strong>Spin & Win</strong><small>Try your luck</small></a>
+   <a href="{{ url_for('account_membership') }}"><span>👑</span><strong>VIP benefits</strong><small>Member privileges</small></a>
+  </div>
+  <nav class="tb-account-menu">
+   <a href="{{ url_for('wishlist') }}"><span>♡</span> My Wishlist <b>›</b></a>
+   <a href="{{ url_for('account_tools') }}"><span>☷</span> Shopping Lists <b>›</b></a>
+   <a href="{{ url_for('account_tools') }}"><span>▣</span> Saved Payments & Wallet <b>›</b></a>
+   <a href="{{ url_for('notifications') }}"><span>♧</span> Notifications <b>›</b></a>
+   <a href="#tb-referral-section"><span>🎁</span> Refer & Earn <b>›</b></a>
+   <a href="#tb-personal-details"><span>⚙</span> Personal Details <b>›</b></a>
+   <a href="#tb-saved-addresses"><span>⌖</span> Saved Addresses <b>›</b></a>
+  </nav>
+  <a class="tb-account-vip-cta" href="{{ url_for('account_membership') }}"><span class="tb-vip-crown">♛</span><span><strong>Explore Tharai Basket VIP</strong><small>Unlock exclusive savings and benefits</small></span><b>→</b></a>
+  <section id="tb-referral-section" class="tb-account-card" style="margin-bottom:20px">
    <div class="tb-account-card-head"><div class="tb-account-icon">🎁</div><div><h2>Refer a friend & earn rewards</h2><p>Share your code. You and your friend each receive ₹50 in wallet credit after their first order is delivered.</p></div></div>
    {% if referral_code %}
    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#f2f8f3;border:1px dashed #9fc8a8;border-radius:13px;padding:15px">
@@ -33,7 +56,7 @@
     <p>{% if current_user.birthday_date or current_user.anniversary_date %}Your saved special dates are locked. On each special day, ₹50 is automatically added to your wallet once per year.{% else %}Save your birthday or anniversary in Personal details to receive a ₹50 gift card every year.{% endif %}</p>
    </div>
   </section>
-  <div class="tb-account-grid">
+  <div class="tb-account-grid" id="tb-account-details">
    <section class="tb-account-card">
     <div class="tb-account-card-head"><div class="tb-account-icon">👤</div><div><h2>Personal details</h2><p>Keep your contact information up to date.</p></div></div>
     <form method="post" class="tb-account-form">
