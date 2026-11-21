@@ -320,7 +320,9 @@ def create_app():
         description = db.Column(db.String(1000), default='')
         photo_path = db.Column(db.String(255), default='')
         status = db.Column(db.String(30), default='Open', nullable=False)
+        admin_note = db.Column(db.String(1000), default='')
         created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
         order = db.relationship('Order')
         user = db.relationship('User')
 
@@ -2250,6 +2252,42 @@ def create_app():
         return app.response_class(buffer.getvalue(), mimetype='application/pdf',
                                   headers={'Content-Disposition': f'attachment; filename=Tharai-Basket-{order.order_number}.pdf'})
 
+    @app.get('/admin/issues')
+    @admin_required
+    def admin_issues():
+        status_filter = request.args.get('status', 'Open').strip()
+        allowed_statuses = ['Open', 'Reviewing', 'Resolved', 'Rejected', 'Replacement arranged', 'Refund arranged']
+        if status_filter not in ['All'] + allowed_statuses:
+            status_filter = 'Open'
+        query = OrderIssue.query
+        if status_filter != 'All':
+            query = query.filter_by(status=status_filter)
+        issues = query.order_by(OrderIssue.created_at.desc()).limit(300).all()
+        counts = {status: OrderIssue.query.filter_by(status=status).count() for status in allowed_statuses}
+        return render_template('admin/issues.html', issues=issues, counts=counts,
+                               status_filter=status_filter, allowed_statuses=allowed_statuses)
+
+    @app.post('/admin/issues/<int:issue_id>/update')
+    @admin_required
+    def admin_issue_update(issue_id):
+        issue = OrderIssue.query.get_or_404(issue_id)
+        status = request.form.get('status', '').strip()
+        allowed_statuses = ['Open', 'Reviewing', 'Resolved', 'Rejected', 'Replacement arranged', 'Refund arranged']
+        if status not in allowed_statuses:
+            abort(400)
+        issue.status = status
+        issue.admin_note = request.form.get('admin_note', '').strip()[:1000]
+        issue.updated_at = datetime.utcnow()
+        db.session.add(Notification(
+            user_id=issue.user_id, order_id=issue.order_id, title='Update on your quality report',
+            message=f'Your report for order {issue.order.order_number} is now {status}. ' +
+                    (issue.admin_note if issue.admin_note else 'Open your order details to see the latest status.'),
+            category='support'
+        ))
+        db.session.commit()
+        flash('Customer issue report updated and notification sent.', 'success')
+        return redirect(url_for('admin_issues', status=request.form.get('return_status', 'Open')))
+
     @app.get('/admin')
     @admin_required
     def admin_dashboard():
@@ -3450,6 +3488,11 @@ def create_app():
                 connection.execute(db.text('ALTER TABLE "user" ADD COLUMN birthday_date VARCHAR(10)'))
             if 'anniversary_date' not in user_columns:
                 connection.execute(db.text('ALTER TABLE "user" ADD COLUMN anniversary_date VARCHAR(10)'))
+            issue_columns = {column['name'] for column in db.inspect(db.engine).get_columns('order_issue')}
+            if 'admin_note' not in issue_columns:
+                connection.execute(db.text("ALTER TABLE order_issue ADD COLUMN admin_note VARCHAR(1000) DEFAULT ''"))
+            if 'updated_at' not in issue_columns:
+                connection.execute(db.text("ALTER TABLE order_issue ADD COLUMN updated_at DATETIME"))
 
         # Idempotently prepare an editable starter grocery catalogue.
         # Starter items are hidden and have placeholder prices/zero stock until the admin reviews them.
