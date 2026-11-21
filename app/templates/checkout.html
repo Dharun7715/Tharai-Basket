@@ -261,7 +261,7 @@ function renderDeliveryDays() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'tb-checkout-day-option' + (deliveryDateInput.value === key ? ' is-active' : '');
-    const title = offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : day.toLocaleDateString('en-IN', {day:'2-digit', month:'2-digit', year:'numeric'});
+    const title = offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : String(day.getDate()).padStart(2, '0') + '/' + String(day.getMonth() + 1).padStart(2, '0');
     button.innerHTML = title + (offset >= 2 ? '<span>Day ' + (offset + 1) + '</span>' : '<span>' + day.toLocaleDateString('en-IN', {weekday:'short'}) + '</span>');
     button.setAttribute('aria-pressed', deliveryDateInput.value === key ? 'true' : 'false');
     button.addEventListener('click', () => {
