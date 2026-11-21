@@ -1322,6 +1322,8 @@ def create_app():
         return redirect(url_for('cart'))
 
     def save_customer_cart_snapshot():
+        # Keep the browser cart cookie across normal browser restarts as well.
+        session.permanent = True
         if current_user.is_authenticated and current_user.role == 'customer':
             cart = session.get('cart', {})
             record = AbandonedCart.query.filter_by(user_id=current_user.id, recovered_at=None).first()
