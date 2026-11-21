@@ -260,6 +260,7 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
 .tb-home-search input{flex:1;min-width:0;width:100%;border:1px solid #dce7dd;border-right:0;border-radius:9px 0 0 9px;padding:0 12px;background:#fbfdfb;font:500 13px 'DM Sans',sans-serif;outline:none}
 .tb-home-search input:focus{border-color:#65a978;box-shadow:0 0 0 3px #eaf5ec}
 .tb-home-search .tb-voice-search{width:44px;flex:0 0 44px;border:0;border-radius:0 9px 9px 0;background:#f0f7f1;color:#236b3d;display:grid;place-items:center;cursor:pointer}.tb-home-search .tb-voice-search svg{width:20px;height:20px}.tb-home-search .tb-voice-search.is-listening{background:#236b3d;color:#fff;animation:tb-mic-pulse 1s infinite alternate}@keyframes tb-mic-pulse{to{box-shadow:0 0 0 5px #d7eddd}}
+.tb-home-search .tb-parchi-scan{width:43px;flex:0 0 43px;border:1px solid #dce7dd;border-left:0;border-radius:0 9px 9px 0;background:#f5faf6;color:#236b3d;display:grid;place-items:center;cursor:pointer}.tb-home-search .tb-parchi-scan svg{width:19px;height:19px}.tb-home-search .tb-parchi-scan:hover{background:#e6f3e8}.tb-parchi-modal{position:fixed;inset:0;z-index:11000;background:rgba(10,25,14,.55);display:flex;align-items:center;justify-content:center;padding:14px}.tb-parchi-modal[hidden]{display:none}.tb-parchi-dialog{width:min(100%,520px);max-height:90vh;overflow:auto;background:#fff;border-radius:20px;padding:20px;box-shadow:0 20px 70px #0003}.tb-parchi-head{display:flex;justify-content:space-between;align-items:center;gap:12px}.tb-parchi-head strong{font-size:18px;color:#1e422a}.tb-parchi-head button{width:34px;height:34px;border:0;border-radius:50%;background:#f0f5f0;font-size:22px;color:#34543b}.tb-parchi-upload{display:block;margin:16px 0;padding:18px;border:1.5px dashed #a9c9ae;border-radius:13px;background:#f7fbf7;text-align:center;color:#285b36;cursor:pointer}.tb-parchi-upload input{display:none}.tb-parchi-upload b{display:block;font-size:13px}.tb-parchi-upload small{display:block;margin-top:5px;color:#758278;font-size:11px}.tb-parchi-status{font-size:12px;color:#607365;min-height:20px;margin:10px 0}.tb-parchi-dialog textarea{width:100%;min-height:145px;padding:12px;border:1px solid #dce7dd;border-radius:11px;font:13px/1.6 Arial,sans-serif;resize:vertical}.tb-parchi-items{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.tb-parchi-items button{border:1px solid #dce7dd;border-radius:999px;background:#f5faf6;color:#236b3d;padding:8px 12px;font-size:11px;font-weight:700}.tb-parchi-help{font-size:11px;line-height:1.5;color:#77857a;margin:10px 0 0}
 .tb-filter-toggle{width:43px;flex:0 0 43px;border:1px solid #dce7dd;border-radius:9px;background:#f5faf6;color:#236b3d;display:grid;place-items:center;cursor:pointer}
 .tb-filter-toggle svg{width:19px;height:19px}
 .tb-filter-panel{display:none;padding:10px 0 2px;border-top:1px solid #edf2ed;margin-top:2px}
@@ -415,6 +416,7 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
         <span class="tb-search-glass" aria-hidden="true">⌕</span>
         <input type="search" id="tb-home-search-input" name="q" value="{{ search_query }}" placeholder="Search for groceries…" aria-label="Search products">
         <button class="tb-voice-search" id="tb-home-voice" type="button" aria-label="Search by voice" title="Search by voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></svg></button>
+        <button class="tb-parchi-scan" id="tb-parchi-open" type="button" aria-label="Scan grocery list" title="Scan handwritten or printed grocery list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2m10 0h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M7 12h10M7 9h10M7 15h6"/></svg></button>
       </form>
       <button class="tb-filter-toggle" type="button" aria-label="Show filters" aria-expanded="false" onclick="const p=document.getElementById('tb-filter-panel');const open=p.classList.toggle('is-open');this.setAttribute('aria-expanded',open?'true':'false');">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/></svg>
@@ -451,6 +453,55 @@ document.addEventListener('DOMContentLoaded', initDeliveryMap);
       <label class="tb-filter-check"><input type="checkbox" name="in_stock" value="1" {% if in_stock %}checked{% endif %}> In stock only</label>
       <button type="submit">Apply filters</button>
     </form>
+    <div class="tb-parchi-modal" id="tb-parchi-modal" hidden>
+      <section class="tb-parchi-dialog" role="dialog" aria-modal="true" aria-labelledby="tb-parchi-title">
+        <div class="tb-parchi-head"><div><strong id="tb-parchi-title">Parchi Scanner</strong><div class="muted" style="font-size:11px;margin-top:3px">Photo-la irukkura grocery list-ah scan pannunga</div></div><button type="button" id="tb-parchi-close" aria-label="Close">×</button></div>
+        <label class="tb-parchi-upload" for="tb-parchi-file"><span style="font-size:27px">📷</span><b>Take a photo or upload grocery list</b><small>Handwritten or printed · Tamil and English</small><input id="tb-parchi-file" type="file" accept="image/*" capture="environment"></label>
+        <div class="tb-parchi-status" id="tb-parchi-status" role="status" aria-live="polite">Upload a clear photo with good lighting. You can edit the detected text.</div>
+        <textarea id="tb-parchi-text" placeholder="Detected grocery items will appear here, one item per line…"></textarea>
+        <div class="tb-parchi-items" id="tb-parchi-items"></div>
+        <p class="tb-parchi-help">Tap any item below to search it in Tharai Basket. Please check spelling and quantity before adding to cart. OCR runs in your browser; your photo is not uploaded to our server.</p>
+      </section>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script>
+    (function(){
+      const open=document.getElementById('tb-parchi-open'),modal=document.getElementById('tb-parchi-modal'),close=document.getElementById('tb-parchi-close');
+      const file=document.getElementById('tb-parchi-file'),status=document.getElementById('tb-parchi-status'),textArea=document.getElementById('tb-parchi-text'),items=document.getElementById('tb-parchi-items');
+      if(!open||!modal||!file||!textArea)return;
+      let workerPromise=null;
+      function renderItems(){
+        items.innerHTML='';
+        const lines=[...new Set(textArea.value.split(/\n|,/).map(x=>x.trim()).filter(Boolean))];
+        lines.forEach(line=>{
+          const b=document.createElement('button');b.type='button';b.textContent='Search: '+line;
+          b.addEventListener("click",()=>{
+            const field=document.getElementById('tb-home-search-input');field.value=line;
+            modal.hidden=true;field.form.requestSubmit();
+          });
+          items.appendChild(b);
+        });
+      }
+      function hide(){modal.hidden=true;}
+      open.addEventListener("click",()=>{modal.hidden=false;});close.addEventListener("click",hide);
+      modal.addEventListener("click",e=>{if(e.target===modal)hide();});
+      document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!modal.hidden)hide();});
+      textArea.addEventListener("input",renderItems);
+      file.addEventListener("change",async()=>{
+        const image=file.files&&file.files[0];if(!image)return;
+        if(!window.Tesseract){status.textContent="Scanner library could not load. Refresh the page and try again.";return;}
+        status.textContent="Preparing Tamil + English scanner…";items.innerHTML="";
+        try{
+          if(!workerPromise)workerPromise=window.Tesseract.createWorker('eng+tam',1,{logger:m=>{if(m.status==='recognizing text')status.textContent='Reading grocery list… '+Math.round((m.progress||0)*100)+'%';}});
+          const worker=await workerPromise;
+          const result=await worker.recognize(image);
+          textArea.value=result.data.text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).join('\n');
+          renderItems();status.textContent="Scan complete. Edit the text if needed, then tap an item to search.";
+        }catch(error){console.error("Parchi OCR error",error);status.textContent="Could not read this image. Try a brighter, sharper photo.";}
+        file.value="";
+      });
+    })();
+    </script>
     <nav class="tb-category-strip" aria-label="Shop by category">
       <a class="tb-category-chip {% if not selected_category_id %}is-active{% endif %}" href="{{ url_for('index') }}#shop"><span>▦</span><small>All</small></a>
       {% for category in categories %}
