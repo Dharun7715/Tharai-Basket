@@ -15,10 +15,10 @@
    </div>
    {% endif %}
    <div style="display:flex;gap:25px;flex-wrap:wrap;margin-top:17px">
-    <div><small style="color:#7b897e;font-size:10px">YOUR REWARD POINTS</small><div style="font:800 25px 'Manrope';color:#185d35">{{ reward_points }} pts</div></div>
+    <div><small style="color:#7b897e;font-size:10px">YOUR WALLET BALANCE</small><div style="font:800 25px 'Manrope';color:#185d35">{{ referral_wallet_balance|inr }}</div></div>
     <div><small style="color:#7b897e;font-size:10px">FRIENDS REFERRED</small><div style="font:800 25px 'Manrope';color:#203428">{{ referral_count }}</div></div>
    </div>
-   <p class="muted tiny" style="margin:12px 0 0">Referral cash rewards are credited directly to your wallet after the referred friend's first delivered order.</p>
+   <p class="muted tiny" style="margin:12px 0 0">You and your friend each receive ₹50 wallet credit after your friend's first order is delivered. Wallet balance can be used during checkout.</p>
    {% if reward_transactions %}
    <div style="margin-top:15px;border-top:1px solid #e8eee8;padding-top:12px">
     <strong style="font-size:11px">Reward history</strong>
