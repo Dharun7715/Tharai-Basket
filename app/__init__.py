@@ -459,7 +459,7 @@ def create_app():
         status = db.Column(db.String(30), default='Planned')
         notes = db.Column(db.Text, default='')
         created_at = db.Column(db.DateTime, default=datetime.utcnow)
-        supplier = db.relationship('Supplier')
+        supplier = db.relationship('Supplier', backref=db.backref('purchases', lazy='dynamic'))
         order = db.relationship('Order')
 
     class PurchaseItem(db.Model):
