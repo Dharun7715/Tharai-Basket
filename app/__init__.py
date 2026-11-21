@@ -820,6 +820,8 @@ def create_app():
 
     @app.get('/')
     def index():
+        if current_user.is_authenticated and current_user.role == 'customer':
+            restore_customer_cart_snapshot()
         location_verified = bool(session.get('delivery_location'))
         show_location_picker = request.args.get('choose_location') == '1'
         categories = Category.query.filter_by(active=True).order_by(Category.name).all()
@@ -864,6 +866,20 @@ def create_app():
         if sort not in sort_options:
             sort = 'recommended'
         products = products_query.order_by(*sort_options[sort]).all()
+        # Offer in-stock substitutes from the same category for unavailable items.
+        out_of_stock_alternatives = {}
+        for unavailable in [item for item in products if item.stock <= 0][:12]:
+            alternatives_query = Product.query.filter(
+                Product.active.is_(True), Product.stock > 0, Product.id != unavailable.id
+            )
+            if unavailable.category_id:
+                alternatives_query = alternatives_query.filter(Product.category_id == unavailable.category_id)
+            alternatives = alternatives_query.order_by(Product.featured.desc(), Product.created_at.desc()).limit(3).all()
+            if len(alternatives) < 3:
+                existing = [item.id for item in alternatives] + [unavailable.id]
+                fill = Product.query.filter(Product.active.is_(True), Product.stock > 0, ~Product.id.in_(existing))
+                alternatives.extend(fill.order_by(Product.featured.desc(), Product.created_at.desc()).limit(3-len(alternatives)).all())
+            out_of_stock_alternatives[unavailable.id] = alternatives
         recently_viewed = []
         if not search_query and not category_id and not min_price and not max_price and not in_stock:
             viewed_ids = session.get('recently_viewed_products', [])
@@ -945,7 +961,26 @@ def create_app():
                                in_stock=in_stock, filters_active=filters_active, recently_viewed=recently_viewed,
                                 recommended_products=recommended_products, active_flash_sales=active_flash_sales,
                                 active_combo_offers=active_combo_offers, vip_membership=vip_membership,
-                               buy_again_products=buy_again_products)
+                               buy_again_products=buy_again_products,
+                               out_of_stock_alternatives=out_of_stock_alternatives)
+
+    @app.get('/api/product-suggestions')
+    def product_suggestions_api():
+        term = (request.args.get('q') or '').strip()[:80]
+        if len(term) < 2:
+            return jsonify({'suggestions': []})
+        pattern = f'%{term}%'
+        rows = Product.query.outerjoin(Category, Product.category_id == Category.id).filter(
+            Product.active.is_(True),
+            db.or_(Product.name.ilike(pattern), Product.brand.ilike(pattern),
+                   Product.description.ilike(pattern), Category.name.ilike(pattern))
+        ).order_by(Product.stock.desc(), Product.featured.desc(), Product.name.asc()).limit(8).all()
+        return jsonify({'suggestions': [{
+            'id': item.id, 'name': item.name, 'brand': item.brand or '',
+            'unit': item.unit or '1 unit', 'price': float(item.price or 0),
+            'in_stock': bool(item.stock > 0),
+            'url': url_for('product_detail', product_id=item.id)
+        } for item in rows]})
 
     @app.get('/product/<int:product_id>')
     def product_detail(product_id):
@@ -2141,6 +2176,33 @@ def create_app():
         low_stock_products = Product.query.filter(
             Product.active.is_(True), Product.stock <= 5
         ).order_by(Product.stock.asc(), Product.name.asc()).limit(6).all()
+        # Extra operating insights: category contribution and busiest order hours.
+        category_totals = {}
+        for line in OrderItem.query.join(Order).join(Product, OrderItem.product_id == Product.id).filter(
+            Order.status == 'Delivered', Order.created_at >= datetime.combine(today - timedelta(days=29), datetime.min.time())
+        ).all():
+            category_name = line.product.category.name if line.product and line.product.category else 'Uncategorised'
+            bucket = category_totals.setdefault(category_name, {'name': category_name, 'units': 0, 'revenue': Decimal('0.00')})
+            bucket['units'] += int(line.quantity or 0)
+            bucket['revenue'] += Decimal(str(line.unit_price or 0)) * int(line.quantity or 0)
+        category_performance = sorted(category_totals.values(), key=lambda item: item['revenue'], reverse=True)[:6]
+        recent_orders_for_hours = Order.query.filter(
+            Order.created_at >= datetime.combine(today - timedelta(days=29), datetime.min.time())
+        ).all()
+        hour_counts = {}
+        for order in recent_orders_for_hours:
+            hour = order.created_at.hour
+            hour_counts[hour] = hour_counts.get(hour, 0) + 1
+        peak_order_hours = [
+            {'label': (datetime.min.replace(hour=hour).strftime('%I %p')).lstrip('0'), 'count': count}
+            for hour, count in sorted(hour_counts.items(), key=lambda pair: pair[1], reverse=True)[:5]
+        ]
+        open_abandoned_carts = AbandonedCart.query.filter_by(recovered_at=None).all()
+        abandoned_cart_count = len(open_abandoned_carts)
+        recovered_cart_count = AbandonedCart.query.filter(
+            AbandonedCart.recovered_at.isnot(None),
+            AbandonedCart.recovered_at >= datetime.utcnow() - timedelta(days=30)
+        ).count()
         recent_reviews = ProductReview.query.order_by(ProductReview.created_at.desc()).limit(8).all()
         review_count = ProductReview.query.count()
         average_review_rating = db.session.query(db.func.avg(ProductReview.rating)).scalar() or 0
@@ -2225,7 +2287,9 @@ def create_app():
             delivered_delivery_fees=Decimal(str(delivered_delivery_fees or 0)),
             new_customers_month=new_customers_month, monthly_order_count=monthly_order_count,
             active_subscription_count=active_subscription_count, due_subscription_count=due_subscription_count,
-            wallet_liability=wallet_liability, wallet_promo_credits=Decimal(str(wallet_promo_credits or 0)))
+            wallet_liability=wallet_liability, wallet_promo_credits=Decimal(str(wallet_promo_credits or 0)),
+            category_performance=category_performance, peak_order_hours=peak_order_hours,
+            abandoned_cart_count=abandoned_cart_count, recovered_cart_count=recovered_cart_count)
 
     @app.get('/admin/orders/poll')
     @admin_required
@@ -2482,7 +2546,9 @@ def create_app():
     @admin_required
     def admin_abandoned_carts():
         carts = AbandonedCart.query.filter_by(recovered_at=None).order_by(AbandonedCart.updated_at.desc()).limit(200).all()
-        return render_template('admin/abandoned_carts.html', carts=carts)
+        recovered_count = AbandonedCart.query.filter(AbandonedCart.recovered_at.isnot(None)).count()
+        return render_template('admin/abandoned_carts.html', carts=carts,
+                               recovered_count=recovered_count, open_count=len(carts))
 
     def membership_plan_amount(tier, months):
         prices = {
