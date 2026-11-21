@@ -576,26 +576,40 @@ def create_app():
             abort(403)
         result = None
         wheel_rotation = None
+        now = datetime.utcnow()
+        latest_spin = SpinEntry.query.filter_by(user_id=current_user.id).order_by(SpinEntry.created_at.desc()).first()
+        next_spin_at = latest_spin.created_at + timedelta(hours=24) if latest_spin else None
         if request.method == 'POST':
-            # One winning wheel segment out of 200: exact 0.5% chance per spin.
-            landing_segment = secrets.randbelow(200)
+            if next_spin_at and now < next_spin_at:
+                remaining = max(0, int((next_spin_at - now).total_seconds()))
+                flash(f'Your next spin will be available in {remaining // 3600}h {(remaining % 3600) // 60}m.', 'info')
+                return redirect(url_for('spin_and_win'))
+            # Server-side odds: exactly 1 winning outcome among 200 possible outcomes.
+            # The visible wheel has four sectors only; the result is mapped to one of them.
             entry = SpinEntry(user_id=current_user.id)
-            if landing_segment == 0:
+            outcome = secrets.randbelow(200)
+            if outcome == 0:
                 entry.prize = secrets.choice(SPIN_PRIZES)
-                entry.won_at = datetime.utcnow()
-                entry.expires_at = entry.won_at + timedelta(hours=24)
+                entry.won_at = now
+                entry.expires_at = now + timedelta(hours=24)
+                visible_sector = SPIN_PRIZES.index(entry.prize)
+            else:
+                visible_sector = 3  # NONE
             db.session.add(entry)
             db.session.commit()
             result = entry
-            # The wheel rotates 7+ full turns and stops at the server-selected segment.
-            wheel_rotation = (360 * 7) + (360 - (landing_segment * 1.8) - 0.9)
+            next_spin_at = entry.created_at + timedelta(hours=24)
+            # Four 90-degree sectors; stop the selected sector's center under the top pointer.
+            wheel_rotation = (360 * 7) + (360 - (visible_sector * 90 + 45))
         active_claim = SpinEntry.query.filter(
             SpinEntry.user_id == current_user.id, SpinEntry.prize != '',
             SpinEntry.used_at.is_(None), SpinEntry.expires_at > datetime.utcnow()
         ).order_by(SpinEntry.won_at.desc()).first()
         history = SpinEntry.query.filter_by(user_id=current_user.id).order_by(SpinEntry.created_at.desc()).limit(30).all()
+        remaining_seconds = max(0, int((next_spin_at - datetime.utcnow()).total_seconds())) if next_spin_at else 0
         return render_template('spin.html', result=result, active_claim=active_claim, history=history,
-                               wheel_rotation=wheel_rotation)
+                               wheel_rotation=wheel_rotation, next_spin_at=next_spin_at,
+                               remaining_seconds=remaining_seconds)
 
     @app.get('/account/tools')
     @login_required
