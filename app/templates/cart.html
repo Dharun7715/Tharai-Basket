@@ -11,6 +11,7 @@
     <div class="tb-cart-layout">
       <div class="tb-cart-products">
         <div class="tb-cart-list-heading"><strong>Your items</strong><span id="tb-cart-count">{{ rows|length }} product(s)</span></div>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" id="tb-cart-csrf">
         <div id="tb-cart-items">
         {% for row in rows %}
           <article class="tb-cart-item" id="tb-cart-item-{{ row.product.id }}">
@@ -47,7 +48,7 @@
           {% if first_order %}
             <div class="tb-coupon-main"><div><small>FIRST ORDER</small><strong>₹50 OFF</strong></div><span class="tb-coupon-min">₹300+</span></div>
             {% if welcome_discount > 0 %}<p class="tb-coupon-success">✓ ₹50 first-order discount applied automatically.</p>
-            {% else %}<p>Spend {{ (300.01 - subtotal)|inr }} more to unlock your ₹50 first-order offer.</p>{% endif %}
+            {% else %}<p>Spend {{ welcome_offer_remaining|inr }} more to unlock your ₹50 first-order offer.</p>{% endif %}
             <p>Free delivery also unlocks when your first basket is above ₹200.</p>
           {% else %}
             <div class="tb-coupon-main"><div><small>EVERY ORDER</small><strong>FREE DELIVERY</strong></div><span class="tb-coupon-min">₹300+</span></div>
@@ -131,15 +132,6 @@ async function updateCartQuantity(productId, change) {
       document.getElementById('tb-cart-discount').textContent = '-₹' + Number(data.discount).toFixed(2);
     } else discountRow.hidden = true;
 
-    const couponState = document.getElementById('tb-coupon-state');
-    if (data.coupon_code === 'THARAI50' && Number(data.discount) > 0) {
-      couponState.innerHTML = '<div class="tb-coupon-success">✓ THARAI50 applied — you saved ₹' + Number(data.coupon_discount).toFixed(2) + '</div>';
-    } else if (Number(data.subtotal) < 500) {
-      const progress = Math.min(100, Number(data.subtotal) / 500 * 100);
-      couponState.innerHTML = '<div class="tb-coupon-progress"><div class="tb-coupon-track"><span style="width:' + progress + '%"></span></div><small>Add <strong>₹' + (500 - Number(data.subtotal)).toFixed(2) + '</strong> more to unlock this offer.</small></div>';
-    } else {
-      couponState.innerHTML = '<form method="post" action="/coupon/apply" class="tb-coupon-apply"><input type="hidden" name="csrf_token" value="' + csrf + '"><input type="hidden" name="coupon_code" value="THARAI50"><button type="submit">Apply ₹50 offer</button></form>';
-    }
     if (data.coupon_message) status.textContent = data.coupon_message;
     else status.textContent = 'Basket updated. Total recalculated.';
     setTimeout(() => { if (status.textContent === 'Basket updated. Total recalculated.') status.textContent = ''; }, 1800);
