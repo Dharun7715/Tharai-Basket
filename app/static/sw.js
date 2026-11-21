@@ -1,4 +1,4 @@
-const CACHE='tharai-basket-shell-v12';
+const CACHE='tharai-basket-shell-v13';
 const SHELL=[
  '/static/css/style.css',
  '/static/js/app.js',
