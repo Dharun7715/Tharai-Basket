@@ -118,7 +118,9 @@ document.addEventListener('DOMContentLoaded', () => {
   help.querySelector('.install-help-done').addEventListener('click', closeHelp);
   help.addEventListener('click', event => { if (event.target === help) closeHelp(); });
 
-  if (isIOS) installButton.hidden = false;
+  // Keep the install entry visible on every browser; use the native prompt when available,
+  // otherwise show platform-specific Add to Home Screen instructions.
+  installButton.hidden = false;
   window.addEventListener('beforeinstallprompt', event => {
     event.preventDefault();
     deferredInstallPrompt = event;
